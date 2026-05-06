@@ -31,7 +31,10 @@ import {
   Bookmark,
   Trash2,
   Save,
-  Clock
+  Clock,
+  Layers,
+  ArrowRightCircle,
+  RotateCw
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { Button } from "@/components/ui/button";
@@ -812,42 +815,43 @@ export default function App() {
   return (
     <div className="relative min-h-[100dvh] w-full flex flex-col font-sans selection:bg-teal-500/30 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-20 overflow-x-hidden">
       {/* Immersive Mesh Background */}
-      <div className="immersive-bg mesh-gradient" />
+      <div className="immersive-bg mesh-gradient opacity-60 dark:opacity-40" />
       
-      {/* Decorative Ornaments */}
+      {/* Dynamic Animated Blobs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 40, repeat: Infinity, ease: "linear" }} className="absolute top-[15%] left-[10%] opacity-20 dark:opacity-10 text-teal-500"><Sparkles size={40} /></motion.div>
-        <motion.div animate={{ y: [0, 20, 0] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[40%] right-[15%] opacity-20 dark:opacity-10 text-blue-500"><Compass size={32} /></motion.div>
-        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[20%] left-[25%] opacity-20 dark:opacity-10 text-emerald-500"><Gem size={24} /></motion.div>
+        <motion.div 
+          animate={{ 
+            x: [-100, 100, -100],
+            y: [-100, 100, -100],
+            scale: [1, 1.2, 1]
+          }}
+          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+          className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-teal-500/10 dark:bg-teal-600/5 rounded-full blur-[120px]" 
+        />
+        <motion.div 
+          animate={{ 
+            x: [100, -100, 100],
+            y: [50, -50, 50],
+            scale: [1.2, 1, 1.2]
+          }}
+          transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-[-10%] right-[-5%] w-[700px] h-[700px] bg-blue-500/10 dark:bg-blue-600/5 rounded-full blur-[140px]" 
+        />
+        <motion.div 
+          animate={{ 
+            opacity: [0.3, 0.6, 0.3],
+            scale: [0.8, 1.1, 0.8]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-emerald-400/5 dark:bg-emerald-500/5 rounded-full blur-[100px]" 
+        />
       </div>
 
-      {/* Floating Blobs */}
-      <motion.div 
-        animate={{ 
-          x: [0, 100, 0], 
-          y: [0, -50, 0],
-          scale: [1, 1.2, 1]
-        }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-teal-400/20 dark:bg-teal-600/10 rounded-full blur-[120px] pointer-events-none" 
-      />
-      <motion.div 
-        animate={{ 
-          x: [0, -80, 0], 
-          y: [0, 120, 0],
-          scale: [1, 1.1, 1]
-        }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        className="fixed bottom-[10%] right-[-10%] w-[600px] h-[600px] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" 
-      />
-      <motion.div 
-        animate={{ 
-          opacity: [0.3, 0.6, 0.3],
-          scale: [0.8, 1, 0.8]
-        }}
-        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        className="fixed top-[40%] left-[30%] w-[300px] h-[300px] bg-emerald-300/10 dark:bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none" 
-      />
+      {/* Glass Ornaments */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: "linear" }} className="absolute top-[12%] left-[8%] opacity-10 dark:opacity-5 text-teal-500"><Sparkles size={64} /></motion.div>
+        <motion.div animate={{ y: [0, 40, 0], opacity: [0.05, 0.15, 0.05] }} transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[45%] right-[12%] text-blue-500"><Compass size={48} /></motion.div>
+      </div>
       
       {/* Main Container - Liquid Glass */}
       <motion.div 
@@ -856,31 +860,47 @@ export default function App() {
         className="relative w-full flex-1 flex flex-col z-10"
       >
         {/* Header */}
-        <div className="p-4 sm:p-8 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-8 shrink-0">
-          <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4 relative">
+        <div className="p-4 sm:p-8 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-8 shrink-0 relative overflow-hidden group">
+          <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-teal-500/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-1000" />
+          <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+            <div className="flex items-center gap-5">
               <div className="relative group">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 shadow-[0_0_20px_rgba(20,184,166,0.3)] flex items-center justify-center transform group-hover:rotate-6 transition-transform">
-                  <Database className="text-white w-6 h-6 sm:w-7 sm:h-7" />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1.5rem] bg-gradient-to-tr from-slate-900 via-teal-800 to-teal-500 shadow-[0_10px_40px_rgba(20,184,166,0.4)] flex items-center justify-center transform group-hover:rotate-12 transition-all duration-500 group-hover:scale-110">
+                  <Database className="text-white w-7 h-7 sm:w-8 sm:h-8" />
                 </div>
                 <motion.div 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg border-2 border-white dark:border-slate-900"
+                  transition={{ delay: 0.5, type: "spring" }}
+                  className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-2xl flex items-center justify-center shadow-xl border-2 border-white dark:border-slate-900"
                 >
-                  <Sparkles size={12} className="text-yellow-800" />
+                  <Sparkles size={14} className="text-white drop-shadow-sm" />
                 </motion.div>
               </div>
-              <div className="relative z-10">
-                <h1 className="text-xl sm:text-2xl font-display font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
-                  實價登錄探索儀
-                </h1>
-                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5 flex items-center gap-1.5 leading-none">
-                  <Waves size={10} className="text-teal-500 animate-pulse" />
-                  INNER MINISTRY OPEN DATA EXPLORER
-                </p>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-200 dark:to-slate-400">
+                    實價登錄查詢
+                  </h1>
+                  <Button 
+                    variant="ghost"
+                    size="icon"
+                    onClick={fetchData} 
+                    disabled={loading}
+                    className="w-8 h-8 rounded-full bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 transition-all active:rotate-180 duration-500"
+                    title="重新整理資料"
+                  >
+                    <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 mt-1.5 opacity-80">
+                  <span className="h-px w-6 bg-teal-500/30" />
+                  <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.3em] flex items-center gap-1.5 leading-none">
+                    <Waves size={10} className="text-teal-500 animate-pulse" />
+                    Taiwan Real Estate Price Explorer
+                  </p>
+                </div>
               </div>
-              <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(20,184,166,0.05)_1px,transparent_1px)] bg-[size:100%_4px] opacity-20"></div>
             </div>
 
             <div className="flex items-center gap-3">
@@ -901,50 +921,44 @@ export default function App() {
 
               <div className="hidden sm:flex items-center px-4 py-2 bg-teal-500/10 dark:bg-teal-400/5 border border-teal-500/20 rounded-full">
                 <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse mr-3 shadow-[0_0_8px_rgba(20,184,166,0.8)]"></div>
-                <span className="text-[10px] font-extrabold text-teal-700 dark:text-teal-400 uppercase tracking-widest">智能代理連線中</span>
+                <span className="text-[10px] font-extrabold text-teal-700 dark:text-teal-400 uppercase tracking-widest">連線中</span>
               </div>
-              <Button 
-                variant="ghost"
-                onClick={fetchData} 
-                disabled={loading}
-                className="rounded-xl h-10 px-6 font-bold text-sm bg-white/50 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 backdrop-blur-md border border-white/40 dark:border-white/10 transition-all active:scale-95"
-              >
-                {loading ? "更新中..." : "重新整理"}
-              </Button>
             </div>
           </div>
 
           {/* Filters Grid */}
-          <div className="flex flex-col gap-4 liquid-glass-panel p-5 rounded-[1.5rem]">
+          <div className="max-w-7xl mx-auto w-full flex flex-col gap-4 liquid-glass-panel p-6 sm:p-7 rounded-[2rem] shadow-2xl">
             
             {/* Row 1: Location & Search */}
-            <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-3 items-end">
-              <div className="space-y-1.5 col-span-1 sm:w-32">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest ml-1 drop-shadow-sm">縣市</label>
-                <select className="w-full liquid-glass-input h-10 px-2 sm:px-3 rounded-[0.85rem] outline-none text-sm font-medium" value={cityName} onChange={e => { setCityName(e.target.value); setDistrict("全部"); }}>
+            <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-4 items-end">
+              <div className="space-y-2 col-span-1 sm:w-36">
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">縣市</label>
+                <select className="w-full liquid-glass-input h-11 px-3 rounded-[1rem] outline-none text-sm font-bold shadow-sm" value={cityName} onChange={e => { setCityName(e.target.value); setDistrict("全部"); }}>
                   {CITIES.map(c => <option key={c.name} value={c.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{c.name}</option>)}
                 </select>
               </div>
-              <div className="space-y-1.5 col-span-1 sm:w-32">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest ml-1 drop-shadow-sm">鄉鎮市</label>
-                <select className="w-full liquid-glass-input h-10 px-2 sm:px-3 rounded-[0.85rem] outline-none text-sm font-medium" value={district} onChange={e => setDistrict(e.target.value)}>
+              <div className="space-y-2 col-span-1 sm:w-36">
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">鄉鎮市</label>
+                <select className="w-full liquid-glass-input h-11 px-3 rounded-[1rem] outline-none text-sm font-bold shadow-sm" value={district} onChange={e => setDistrict(e.target.value)}>
                   {uniqueDistricts.map(d => <option key={d} value={d} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{d}</option>)}
                 </select>
               </div>
-              <div className="space-y-1.5 col-span-1 sm:w-32">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest ml-1 drop-shadow-sm">類型</label>
-                <select className="w-full liquid-glass-input h-10 px-2 sm:px-3 rounded-[0.85rem] outline-none text-xs sm:text-sm font-medium" value={typeName} onChange={e => setTypeName(e.target.value)}>
+              <div className="space-y-2 col-span-1 sm:w-36">
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">類型</label>
+                <select className="w-full liquid-glass-input h-11 px-3 rounded-[1rem] outline-none text-xs sm:text-sm font-bold shadow-sm" value={typeName} onChange={e => setTypeName(e.target.value)}>
                   {TRANSACTION_TYPES.map(t => <option key={t.name} value={t.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{t.name.replace("租賃", "租")}</option>)}
                 </select>
               </div>
-              <div className="space-y-1.5 col-span-3 sm:flex-1 sm:min-w-[200px]">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest ml-1 drop-shadow-sm">門牌 / 社區名稱 / 地段</label>
+              <div className="space-y-2 col-span-3 sm:flex-1 sm:min-w-[240px]">
+                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">門牌 / 社區名稱 / 地段</label>
                 <div className="relative group">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-teal-500 transition-colors" />
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Search className="w-4 h-4 text-slate-400 group-focus-within:text-teal-500 group-focus-within:scale-110 transition-all duration-300" />
+                  </div>
                   <input 
                     type="text"
-                    placeholder="請輸入關鍵字..." 
-                    className="w-full pl-10 liquid-glass-input h-10 rounded-[0.85rem] outline-none text-sm font-medium placeholder:text-slate-400"
+                    placeholder="輸入關鍵字查詢..." 
+                    className="w-full pl-11 liquid-glass-input h-11 rounded-[1rem] outline-none text-sm font-bold placeholder:text-slate-400 shadow-sm"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
@@ -1049,23 +1063,24 @@ export default function App() {
               )}
             </AnimatePresence>
 
-            {/* Row 4: Search Button */}
-            <div className="flex justify-between items-center mt-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => setIsAdvancedSearchOpen(!isAdvancedSearchOpen)}
-                className={`text-sm font-bold ${isAdvancedSearchOpen ? 'text-teal-600 dark:text-teal-400 bg-teal-500/5' : 'text-slate-500 dark:text-slate-400'} hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-[1rem] h-10 transition-all gap-2 px-4 border border-transparent ${isAdvancedSearchOpen ? 'border-teal-500/20 shadow-inner' : ''}`}
-              >
-                <div className="relative">
-                  <SlidersHorizontal className="w-4 h-4" />
-                  {isAdvancedSearchOpen && (
-                    <motion.div layoutId="search-dot" className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 rounded-full" />
-                  )}
-                </div>
-                進階篩選
-              </Button>
+            {/* Row 4: Search Actions */}
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-6 gap-3 sm:gap-4">
+              {/* Upper row on mobile: Advanced & Clear buttons */}
+              <div className="flex flex-row gap-2 w-full sm:w-auto">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setIsAdvancedSearchOpen(!isAdvancedSearchOpen)}
+                  className={`flex-1 sm:flex-none text-xs sm:text-sm font-bold ${isAdvancedSearchOpen ? 'text-teal-600 dark:text-teal-400 bg-teal-500/5' : 'text-slate-500 dark:text-slate-400'} hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-[1rem] h-10 transition-all gap-2 px-3 sm:px-4 border border-transparent ${isAdvancedSearchOpen ? 'border-teal-500/20 shadow-inner' : ''}`}
+                >
+                  <div className="relative">
+                    <SlidersHorizontal className="w-4 h-4" />
+                    {isAdvancedSearchOpen && (
+                      <motion.div layoutId="search-dot" className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 rounded-full" />
+                    )}
+                  </div>
+                  進階篩選
+                </Button>
 
-              <div className="flex items-center gap-3">
                 <Button 
                   variant="ghost" 
                   onClick={() => {
@@ -1077,27 +1092,29 @@ export default function App() {
                     setArea({ min: "", max: "", unit: "2" });
                     setAge({ min: "", max: "" });
                   }}
-                  className="text-slate-600 dark:text-slate-300 hover:text-slate-900 border border-transparent hover:border-white/40 dark:hover:border-white/10 hover:bg-white/40 dark:hover:bg-white/10 rounded-[1rem] h-10 font-medium transition-all"
+                  className="flex-1 sm:flex-none text-xs sm:text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 border border-transparent hover:border-white/40 dark:hover:border-white/10 hover:bg-white/40 dark:hover:bg-white/10 rounded-[1rem] h-10 font-medium transition-all whitespace-nowrap px-3 sm:px-4"
                 >
                   清除篩選
                 </Button>
-                <div className="flex items-center gap-1">
-                  <Button 
-                    onClick={fetchData} 
-                    disabled={loading}
-                    className="liquid-glass-button-primary rounded-l-[1rem] rounded-r-none px-6 h-10 border-r border-white/20"
-                  >
-                    <Search className="w-4 h-4 mr-2" />
-                    {loading ? "資料擷取中..." : "開始查詢"}
-                  </Button>
-                  <Button
-                    onClick={() => setIsSavingSearch(true)}
-                    className="liquid-glass-button-primary rounded-r-[1rem] rounded-l-none h-10 px-3"
-                    title="儲存此搜尋設定"
-                  >
-                    <Bookmark size={16} />
-                  </Button>
-                </div>
+              </div>
+
+              {/* Search execution group */}
+              <div className="flex items-center gap-1 w-full sm:w-auto">
+                <Button 
+                  onClick={fetchData} 
+                  disabled={loading}
+                  className="flex-1 sm:flex-none liquid-glass-button-primary rounded-l-[1rem] rounded-r-none px-4 sm:px-6 h-10 border-r border-white/20 whitespace-nowrap"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  {loading ? "處理中..." : "查詢"}
+                </Button>
+                <Button
+                  onClick={() => setIsSavingSearch(true)}
+                  className="shrink-0 liquid-glass-button-primary rounded-r-[1rem] rounded-l-none h-10 px-3"
+                  title="儲存此搜尋設定"
+                >
+                  <Bookmark size={16} />
+                </Button>
               </div>
             </div>
           </div>
@@ -1229,10 +1246,15 @@ export default function App() {
                         <TableCell className="text-slate-900 dark:text-slate-100 font-bold font-display pl-8">{item.district}</TableCell>
                         <TableCell className="max-w-[240px]">
                           <div className="flex items-center gap-2">
-                             <MapPin size={10} className="text-teal-500 shrink-0" />
-                             <div className="truncate text-slate-800 dark:text-slate-200 font-semibold group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{item.address}</div>
+                             <div className="w-6 h-6 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
+                               <MapPin size={12} className="text-teal-600 dark:text-teal-400" />
+                             </div>
+                             <div className="truncate text-slate-800 dark:text-slate-200 font-bold group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{item.address}</div>
                           </div>
-                          <div className="text-[10px] text-teal-600/70 dark:text-teal-400/70 font-bold mt-1 tracking-wider uppercase ml-4">{item.transactionType}</div>
+                          <div className="flex items-center gap-2 mt-1.5 ml-8">
+                            <span className="text-[9px] text-teal-600/70 dark:text-teal-400/70 font-black tracking-widest uppercase px-1.5 pt-0.5 rounded border border-teal-500/20 leading-none">{item.transactionType}</span>
+                            <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{item.buildingArea} ㎡</span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm">{formatDate(item.date)}</TableCell>
                         <TableCell>
@@ -1240,14 +1262,18 @@ export default function App() {
                             {item.buildingType.split("(")[0] || "土地"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right text-slate-900 dark:text-white font-black tracking-tighter text-lg">
-                          {formatPrice(item.totalPrice)}
+                        <TableCell className="text-right">
+                          <div className="text-slate-900 dark:text-white font-display font-black tracking-tighter text-xl">
+                            {formatPrice(item.totalPrice)}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="text-slate-900 dark:text-white font-mono font-bold text-sm">
-                            {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-"}
+                          <div className="inline-flex flex-col items-end px-3 py-1 bg-white/40 dark:bg-white/5 rounded-xl border border-white/60 dark:border-white/10 group-hover:border-teal-500/30 transition-all">
+                            <div className="text-slate-900 dark:text-white font-mono font-black text-sm">
+                              {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-"}
+                            </div>
+                            <div className="text-[8px] text-slate-500 dark:text-slate-500 font-black uppercase tracking-widest mt-0.5 leading-none">萬元/坪</div>
                           </div>
-                          <div className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">萬元/坪</div>
                         </TableCell>
                         <TableCell>
                           <div className="w-8 h-8 rounded-full bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all group-hover:scale-110">
@@ -1424,58 +1450,76 @@ export default function App() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-        <DialogContent className="border border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/70 backdrop-blur-[48px] shadow-[0_16px_64px_rgba(0,0,0,0.12)] dark:shadow-[0_16px_64px_rgba(0,0,0,0.4)] text-slate-900 dark:text-slate-100 max-w-2xl rounded-[2rem] overflow-hidden p-0 sm:max-w-2xl">
+        <DialogContent className="max-w-4xl p-0 overflow-hidden liquid-glass-panel border-white/40 dark:border-white/10 rounded-[2.5rem] shadow-[0_32px_128px_rgba(0,0,0,0.3)] dark:shadow-[0_32px_128px_rgba(0,0,0,0.6)]">
           {selectedItem && (
-            <div className="flex flex-col">
-              <div className="p-6 sm:p-8 bg-gradient-to-br from-white/40 to-white/10 dark:from-white/10 dark:to-transparent border-b border-white/30 dark:border-white/10">
-                <DialogHeader>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Badge variant="secondary" className="bg-teal-500/10 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300 hover:bg-teal-500/20 border-teal-500/20 shadow-sm font-bold tracking-wider">
-                      {selectedItem.district}
-                    </Badge>
-                    <Badge variant="outline" className="text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 font-medium drop-shadow-sm">
-                      {selectedItem.transactionType}
-                    </Badge>
+            <div className="flex flex-col h-full max-h-[90vh]">
+              {/* Premium Dialog Header */}
+              <div className="p-7 sm:p-10 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 relative overflow-hidden shrink-0">
+                <div className="absolute inset-0 mesh-gradient opacity-10" />
+                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-teal-500/50 to-transparent" />
+                
+                <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                       <Badge className="bg-teal-500/20 text-teal-300 border-teal-500/30 font-black tracking-widest text-[10px] uppercase py-0.5 px-3 rounded-full">{selectedItem.district}</Badge>
+                       <Badge variant="outline" className="text-slate-500 border-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{selectedItem.id}</Badge>
+                    </div>
+                    <h2 className="text-2xl sm:text-4xl font-display font-black text-white tracking-tight leading-tight max-w-xl">
+                      {selectedItem.address}
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-4 text-xs">
+                      <div className="flex items-center gap-2 text-slate-400 font-bold bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                        <Calendar size={14} className="text-teal-500" />
+                        {formatDate(selectedItem.date)} 交易紀錄
+                      </div>
+                      <div className="flex items-center gap-2 text-slate-400 font-bold bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                        <MapPin size={14} className="text-teal-500" />
+                        {cityName}
+                      </div>
+                    </div>
                   </div>
-                  <DialogTitle className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white leading-tight drop-shadow-sm">
-                    {selectedItem.address}
-                  </DialogTitle>
-                </DialogHeader>
+                  
+                  <div className="flex flex-col items-start sm:items-end bg-teal-500/10 backdrop-blur-md p-4 sm:p-6 rounded-3xl border border-teal-500/20">
+                    <div className="text-slate-400 text-[10px] uppercase font-black tracking-[0.2em] mb-1.5 opacity-70">官方登錄成交價</div>
+                    <div className="text-3xl sm:text-5xl font-display font-black text-teal-400 tracking-tighter drop-shadow-[0_0_15px_rgba(45,212,191,0.3)]">
+                      {formatPrice(selectedItem.totalPrice)}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="max-h-[60vh] overflow-y-auto touch-pan-y custom-scrollbar">
-                <div className="p-6 sm:p-8 space-y-8">
-                  {/* Key Stats */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105 relative overflow-hidden group">
-                      <div className="absolute -right-2 -bottom-2 opacity-5 text-teal-600 group-hover:opacity-10 transition-opacity"><Gem size={48} /></div>
-                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider drop-shadow-sm">
-                        <DollarSign className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" /> 總價
-                      </div>
-                      <div className="text-lg font-black tracking-tight text-slate-900 dark:text-white relative z-10">{formatPrice(selectedItem.totalPrice)}</div>
-                    </div>
-                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105 relative overflow-hidden group">
-                      <div className="absolute -right-2 -bottom-2 opacity-5 text-blue-600 group-hover:opacity-10 transition-opacity"><Maximize2 size={48} /></div>
-                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider drop-shadow-sm">
-                        <Maximize2 className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" /> 面積
-                      </div>
-                      <div className="text-lg font-black tracking-tight text-slate-900 dark:text-white relative z-10">{selectedItem.buildingArea || selectedItem.area} ㎡</div>
-                      <div className="text-[10px] text-teal-600/70 dark:text-teal-300/70 font-semibold mt-auto tracking-wide relative z-10">約 {(parseFloat(selectedItem.buildingArea || selectedItem.area) * 0.3025).toFixed(2)} 坪</div>
-                    </div>
-                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105 relative overflow-hidden group">
-                      <div className="absolute -right-2 -bottom-2 opacity-5 text-emerald-600 group-hover:opacity-10 transition-opacity"><Home size={48} /></div>
-                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider drop-shadow-sm">
-                        <Home className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" /> 型態
-                      </div>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white truncate relative z-10">{selectedItem.buildingType.split("(")[0] || "土地"}</div>
-                    </div>
-                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105 relative overflow-hidden group">
-                      <div className="absolute -right-2 -bottom-2 opacity-5 text-amber-600 group-hover:opacity-10 transition-opacity"><Calendar size={48} /></div>
-                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider drop-shadow-sm">
-                        <Calendar className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" /> 交易日
-                      </div>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white relative z-10">{formatDate(selectedItem.date)}</div>
-                    </div>
+              <div className="flex-1 overflow-y-auto scrollbar-hide">
+                <div className="p-6 sm:p-10 space-y-10">
+                  {/* High Density Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                    {[
+                      { icon: <DollarSign size={20} />, label: "單價/坪", value: selectedItem.unitPrice ? `${(parseFloat(selectedItem.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-", sub: "實價登錄單價", color: "text-teal-500", bg: "bg-teal-500/5" },
+                      { icon: <Maximize2 size={20} />, label: "建物面積", value: `${selectedItem.buildingArea} ㎡`, sub: `約 ${(parseFloat(selectedItem.buildingArea) * 0.3025).toFixed(2)} 坪`, color: "text-blue-500", bg: "bg-blue-500/5" },
+                      { icon: <Layers size={20} />, label: "移轉層次", value: selectedItem.floor ? `${selectedItem.floor}F` : "-", sub: `總樓層 ${selectedItem.totalFloor}F`, color: "text-purple-500", bg: "bg-purple-500/5" },
+                      { icon: <Clock size={20} />, label: "屋齡", value: (() => {
+                        if (!selectedItem.completionDate) return "新成屋";
+                        const compY = parseInt(selectedItem.completionDate.substring(0, 3));
+                        if (isNaN(compY)) return "-";
+                        const currentY = new Date().getFullYear() - 1911;
+                        return `${currentY - compY} 年`;
+                      })(), sub: "建屋完工至今", color: "text-amber-500", bg: "bg-amber-500/5" }
+                    ].map((stat, i) => (
+                      <motion.div 
+                        key={i}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.05 }}
+                        className={`liquid-glass-input p-6 rounded-[2rem] border-white/40 dark:border-white/10 shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-all`}
+                      >
+                         <div className={`absolute -right-2 -top-2 p-6 opacity-5 group-hover:opacity-10 transition-opacity ${stat.color} rotate-12`}>{stat.icon}</div>
+                         <div className="text-[10px] font-black tracking-widest text-slate-500 dark:text-slate-400 uppercase mb-3 flex items-center gap-2">
+                           <div className={`w-6 h-6 rounded-lg ${stat.bg} flex items-center justify-center ${stat.color}`}>{stat.icon}</div>
+                           {stat.label}
+                         </div>
+                         <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{stat.value}</div>
+                         {stat.sub && <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-2 opacity-60 tracking-wide">{stat.sub}</div>}
+                      </motion.div>
+                    ))}
                   </div>
 
                   {/* Map Preview */}
@@ -1562,13 +1606,13 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="p-4 sm:p-6 border-t border-white/30 dark:border-white/10 bg-white/20 dark:bg-black/20 flex justify-end">
+              <div className="p-4 sm:p-6 border-t border-white/30 dark:border-white/10 bg-white/40 dark:bg-black/40 backdrop-blur-3xl flex justify-end">
                 <Button 
                   onClick={() => setSelectedItem(null)}
                   variant="outline"
-                  className="rounded-[1rem] px-8 liquid-glass-button"
+                  className="rounded-2xl px-12 h-12 liquid-glass-button-primary shadow-2xl"
                 >
-                  關閉
+                  確認並關閉
                 </Button>
               </div>
             </div>
@@ -1581,9 +1625,9 @@ export default function App() {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between p-4 text-sm hover:bg-white/30 dark:hover:bg-white/5 transition-colors">
-      <span className="text-slate-600 dark:text-slate-400 font-bold">{label}</span>
-      <span className="text-slate-900 dark:text-slate-100 font-bold tracking-tight">{value || "-"}</span>
+    <div className="flex items-center justify-between p-4 px-5 text-sm hover:bg-teal-500/5 transition-all group">
+      <span className="text-slate-500 dark:text-slate-400 font-bold group-hover:text-teal-600 transition-colors uppercase text-[10px] tracking-widest">{label}</span>
+      <span className="text-slate-900 dark:text-slate-100 font-black tracking-tight">{value || "-"}</span>
     </div>
   );
 }
