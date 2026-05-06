@@ -417,41 +417,70 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-[100dvh] w-full flex flex-col font-sans selection:bg-primary/20 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-20">
-      {/* Dynamic Liquid Background for Glass Refraction */}
-      <div className="fixed top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-teal-300/40 dark:bg-teal-600/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-60 animate-float-blob pointer-events-none" />
-      <div className="fixed top-[20%] right-[-10%] w-[35vw] h-[35vw] bg-cyan-300/40 dark:bg-cyan-600/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-60 animate-float-blob animation-delay-2000 pointer-events-none" />
-      <div className="fixed bottom-[-10%] left-[20%] w-[50vw] h-[50vw] bg-sky-300/40 dark:bg-sky-600/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[100px] opacity-60 animate-float-blob animation-delay-4000 pointer-events-none" />
+    <div className="relative min-h-[100dvh] w-full flex flex-col font-sans selection:bg-teal-500/30 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-20 overflow-x-hidden">
+      {/* Immersive Mesh Background */}
+      <div className="immersive-bg mesh-gradient" />
+      
+      {/* Floating Blobs */}
+      <motion.div 
+        animate={{ 
+          x: [0, 100, 0], 
+          y: [0, -50, 0],
+          scale: [1, 1.2, 1]
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-teal-400/20 dark:bg-teal-600/10 rounded-full blur-[120px] pointer-events-none" 
+      />
+      <motion.div 
+        animate={{ 
+          x: [0, -80, 0], 
+          y: [0, 120, 0],
+          scale: [1, 1.1, 1]
+        }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="fixed bottom-[10%] right-[-10%] w-[600px] h-[600px] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" 
+      />
+      <motion.div 
+        animate={{ 
+          opacity: [0.3, 0.6, 0.3],
+          scale: [0.8, 1, 0.8]
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+        className="fixed top-[40%] left-[30%] w-[300px] h-[300px] bg-emerald-300/10 dark:bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none" 
+      />
       
       {/* Main Container - Liquid Glass */}
       <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         className="relative w-full flex-1 flex flex-col z-10"
       >
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-6 shrink-0">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[1rem] bg-gradient-to-br from-teal-500/80 to-teal-400/40 dark:from-teal-600/80 dark:to-teal-500/20 border border-teal-200 dark:border-teal-700/50 shadow-lg backdrop-blur-md flex items-center justify-center">
-                <Database className="text-white w-5 h-5 sm:w-6 sm:h-6" />
+        <div className="p-4 sm:p-8 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-8 shrink-0">
+          <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 shadow-[0_0_20px_rgba(20,184,166,0.3)] flex items-center justify-center transform hover:rotate-3 transition-transform">
+                <Database className="text-white w-6 h-6 sm:w-7 sm:h-7" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-bold tracking-tight">實價登錄開放資料查詢</h1>
-                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium tracking-wider">即時存取內政部開放資料</p>
+                <h1 className="text-xl sm:text-2xl font-display font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+                  實價登錄探索儀
+                </h1>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">INNER MINISTRY OPEN DATA EXPLORER</p>
               </div>
+              <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(20,184,166,0.05)_1px,transparent_1px)] bg-[size:100%_4px] opacity-20"></div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="hidden md:flex items-center px-3 py-1.5 bg-teal-100/50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 text-xs font-bold rounded-full uppercase tracking-wider border border-teal-200 dark:border-teal-800">
-                <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse mr-2"></div>
-                Robot Mode Active
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center px-4 py-2 bg-teal-500/10 dark:bg-teal-400/5 border border-teal-500/20 rounded-full">
+                <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse mr-3 shadow-[0_0_8px_rgba(20,184,166,0.8)]"></div>
+                <span className="text-[10px] font-extrabold text-teal-700 dark:text-teal-400 uppercase tracking-widest">智能代理連線中</span>
               </div>
               <Button 
                 variant="ghost"
                 onClick={fetchData} 
                 disabled={loading}
-                className="rounded-[1rem] liquid-glass-button h-10 px-5 text-sm"
+                className="rounded-xl h-10 px-6 font-bold text-sm bg-white/50 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 backdrop-blur-md border border-white/40 dark:border-white/10 transition-all active:scale-95"
               >
                 {loading ? "更新中..." : "重新整理"}
               </Button>
@@ -634,7 +663,14 @@ export default function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-t-[2rem] mx-0 sm:mx-6 border-b-0 shadow-none sm:shadow-lg mt-0 sm:-mt-4 relative z-20 pb-10">
+        <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-t-[2.5rem] mx-0 sm:mx-6 border-b-0 shadow-2xl sm:shadow-[0_20px_50px_rgba(0,0,0,0.15)] mt-0 sm:-mt-8 relative z-20 pb-12 overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between bg-white/20 dark:bg-white/5 backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">搜尋結果 ({filteredData.length})</span>
+            </div>
+          </div>
+          
           {loading ? (
             <div className="p-12 space-y-8 flex flex-col items-center justify-center min-h-[400px]">
               <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-500/20 p-6 rounded-2xl flex flex-col items-center justify-center animate-pulse shadow-sm max-w-sm w-full">
@@ -656,60 +692,66 @@ export default function App() {
           ) : (
             <div className="flex-1 min-h-[300px]">
               <Table className="min-w-[800px]">
-                <TableHeader className="sticky top-0 bg-white/40 dark:bg-black/40 backdrop-blur-[24px] z-10 border-b border-white/20 dark:border-white/10">
+                <TableHeader className="sticky top-0 bg-white/60 dark:bg-black/60 backdrop-blur-[32px] z-10 border-b border-white/20 dark:border-white/10">
                   <TableRow className="border-none hover:bg-transparent">
-                    <TableHead className="text-slate-500 dark:text-slate-400 font-bold">
-                      <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 p-0 h-auto font-bold rounded-lg" onClick={() => handleSort("district")}>
-                        地區 <ArrowUpDown className="ml-2 w-3 h-3 opacity-50" />
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest pl-8">
+                      <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 dark:text-slate-500 p-0 h-auto font-bold rounded-lg text-[10px]" onClick={() => handleSort("district")}>
+                        地區 <ArrowUpDown className="ml-1 w-3 h-3 opacity-50" />
                       </Button>
                     </TableHead>
-                    <TableHead className="text-slate-500 dark:text-slate-400 font-bold">位置/社區</TableHead>
-                    <TableHead className="text-slate-500 dark:text-slate-400 font-bold">
-                      <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 p-0 h-auto font-bold rounded-lg" onClick={() => handleSort("date")}>
-                        交易日期 <ArrowUpDown className="ml-2 w-3 h-3 opacity-50" />
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">位置/社區</TableHead>
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">
+                      <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 dark:text-slate-500 p-0 h-auto font-bold rounded-lg text-[10px]" onClick={() => handleSort("date")}>
+                        交易日期 <ArrowUpDown className="ml-1 w-3 h-3 opacity-50" />
                       </Button>
                     </TableHead>
-                    <TableHead className="text-slate-500 dark:text-slate-400 font-bold">型態</TableHead>
-                    <TableHead className="text-slate-500 dark:text-slate-400 font-bold text-right">
-                      <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 p-0 h-auto ml-auto font-bold rounded-lg" onClick={() => handleSort("totalPrice")}>
-                        總價 <ArrowUpDown className="ml-2 w-3 h-3 opacity-50" />
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">型態</TableHead>
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">
+                      <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 dark:text-slate-500 p-0 h-auto ml-auto font-bold rounded-lg text-[10px]" onClick={() => handleSort("totalPrice")}>
+                        總價 <ArrowUpDown className="ml-1 w-3 h-3 opacity-50" />
                       </Button>
                     </TableHead>
-                    <TableHead className="text-slate-500 dark:text-slate-400 font-bold text-right">單價/坪</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">單價/坪</TableHead>
+                    <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   <AnimatePresence mode="popLayout">
-                    {filteredData.map((item) => (
+                    {filteredData.map((item, idx) => (
                       <motion.tr 
                         layout
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.3, delay: Math.min(idx * 0.03, 0.5) }}
                         key={item.id} 
-                        className="border-b border-white/20 dark:border-white/5 hover:bg-white/30 dark:hover:bg-white/5 cursor-pointer group transition-all"
+                        className="border-b border-white/20 dark:border-white/5 hover:bg-white/50 dark:hover:bg-white/5 cursor-pointer group transition-all"
                         onClick={() => setSelectedItem(item)}
                       >
-                        <TableCell className="text-slate-900 dark:text-slate-100 font-bold">{item.district}</TableCell>
-                        <TableCell className="max-w-[200px]">
-                          <div className="truncate text-slate-700 dark:text-slate-300 font-medium group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">{item.address}</div>
-                          <div className="text-[10px] text-teal-600/70 dark:text-teal-300/70 font-semibold mt-0.5 tracking-wider">{item.transactionType}</div>
+                        <TableCell className="text-slate-900 dark:text-slate-100 font-bold font-display pl-8">{item.district}</TableCell>
+                        <TableCell className="max-w-[240px]">
+                          <div className="truncate text-slate-800 dark:text-slate-200 font-semibold group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{item.address}</div>
+                          <div className="text-[10px] text-teal-600/70 dark:text-teal-400/70 font-bold mt-1 tracking-wider uppercase">{item.transactionType}</div>
                         </TableCell>
-                        <TableCell className="text-slate-500 dark:text-slate-400 font-medium">{formatDate(item.date)}</TableCell>
+                        <TableCell className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm">{formatDate(item.date)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="bg-white/50 dark:bg-black/20 text-slate-600 dark:text-slate-300 border-white/60 dark:border-white/10 font-medium shadow-sm">
+                          <Badge variant="outline" className="bg-white/40 dark:bg-white/5 text-slate-600 dark:text-slate-300 border-white/60 dark:border-white/10 font-bold px-2 py-0 h-6">
                             {item.buildingType.split("(")[0] || "土地"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right text-slate-900 dark:text-slate-100 font-bold tracking-tight">
+                        <TableCell className="text-right text-slate-900 dark:text-white font-black tracking-tighter text-lg">
                           {formatPrice(item.totalPrice)}
                         </TableCell>
-                        <TableCell className="text-right text-slate-500 dark:text-slate-400 font-mono text-sm font-medium">
-                          {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-"}
+                        <TableCell className="text-right">
+                          <div className="text-slate-900 dark:text-white font-mono font-bold text-sm">
+                            {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-"}
+                          </div>
+                          <div className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">萬元/坪</div>
                         </TableCell>
                         <TableCell>
-                          <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-teal-500 transition-colors group-hover:translate-x-1 duration-300" />
+                          <div className="w-8 h-8 rounded-full bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all group-hover:scale-110">
+                            <ChevronRight className="w-4 h-4 text-teal-500" />
+                          </div>
                         </TableCell>
                       </motion.tr>
                     ))}
@@ -717,24 +759,38 @@ export default function App() {
                 </TableBody>
               </Table>
               {filteredData.length === 0 && !loading && !error && (
-                <div className="flex flex-col items-center justify-center py-24 text-slate-500/50 dark:text-slate-400/50">
-                  <Info className="w-12 h-12 mb-4 opacity-50 drop-shadow-md" />
-                  <p className="font-medium text-lg tracking-tight">未找到符合條件的資料</p>
-                </div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex flex-col items-center justify-center py-32 text-slate-500/50 dark:text-slate-400/50"
+                >
+                  <div className="w-24 h-24 rounded-3xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center mb-6 shadow-inner relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 to-transparent group-hover:opacity-100 transition-opacity" />
+                    <Info className="w-10 h-10 opacity-50 text-teal-600/50 relative z-10" />
+                  </div>
+                  <p className="font-display font-bold text-xl tracking-tight text-slate-800 dark:text-slate-200">未找到任何匹配紀錄</p>
+                  <p className="text-sm mt-2 font-medium opacity-60">嘗試放寬您的篩選條件或更改關鍵字</p>
+                </motion.div>
               )}
               {error && (
-                <div className="flex flex-col items-center justify-center py-24 text-red-500/80 dark:text-red-400/80">
-                  <X className="w-12 h-12 mb-4 opacity-60 drop-shadow-md" />
-                  <p className="text-base font-bold mb-2 tracking-tight">資料讀取失敗</p>
-                  <p className="text-sm opacity-80 max-w-md text-center font-medium leading-relaxed">{error}</p>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col items-center justify-center py-24 px-6 text-red-500/80 dark:text-red-400/80"
+                >
+                  <div className="w-20 h-20 rounded-2xl bg-red-100/50 dark:bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-8 shadow-sm">
+                    <X className="w-10 h-10 opacity-60" />
+                  </div>
+                  <p className="text-2xl font-display font-extrabold mb-3 tracking-tight text-red-700 dark:text-red-400">數據連線中斷</p>
+                  <p className="text-sm opacity-70 max-w-sm text-center font-medium leading-relaxed mb-10">{error}</p>
                   <Button 
                     variant="outline" 
-                    className="mt-6 liquid-glass-button border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
+                    className="rounded-2xl px-12 h-12 liquid-glass-button border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-500/5 font-bold shadow-xl shadow-red-500/5 transition-all active:scale-95"
                     onClick={fetchData}
                   >
-                    重新嘗試
+                    重新初始化掃描
                   </Button>
-                </div>
+                </motion.div>
               )}
             </div>
           )}

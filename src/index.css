@@ -1,27 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&family=JetBrains+Mono:wght@500&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 @utility liquid-glass {
-  @apply bg-white/50 dark:bg-black/50 backdrop-blur-[24px] border border-white/60 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.2)];
+  @apply bg-white/40 dark:bg-slate-900/40 backdrop-blur-2xl border border-white/50 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)];
 }
 
 @utility liquid-glass-panel {
-  @apply bg-white/60 dark:bg-slate-900/60 backdrop-blur-[40px] border border-white/70 dark:border-white/15 shadow-[0_12px_48px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_48px_rgba(0,0,0,0.3)];
+  @apply bg-white/60 dark:bg-slate-900/60 backdrop-blur-[48px] border border-white/70 dark:border-white/15 shadow-[0_16px_64px_rgba(0,0,0,0.08)] dark:shadow-[0_16px_64px_rgba(0,0,0,0.4)];
 }
 
 @utility liquid-glass-input {
-  @apply bg-white/50 dark:bg-white/5 backdrop-blur-[16px] border border-white/80 dark:border-white/10 focus-visible:bg-white/70 dark:focus-visible:bg-white/10 focus-visible:ring-2 focus-visible:ring-slate-900/20 dark:focus-visible:ring-white/20 transition-all text-slate-900 dark:text-white;
-}
-
-@utility liquid-glass-button {
-  @apply bg-white/70 dark:bg-white/10 backdrop-blur-[20px] border border-white/90 dark:border-white/20 shadow-sm hover:bg-white/90 dark:hover:bg-white/20 active:scale-[0.98] transition-all text-slate-800 dark:text-white font-medium;
+  @apply bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-white/80 dark:border-white/10 focus-visible:bg-white/80 dark:focus-visible:bg-white/10 focus-visible:ring-2 focus-visible:ring-teal-500/20 dark:focus-visible:ring-teal-400/20 transition-all text-slate-900 dark:text-white;
 }
 
 @utility liquid-glass-button-primary {
-  @apply bg-slate-900/80 dark:bg-white/90 backdrop-blur-[20px] border border-slate-900/10 dark:border-white/10 shadow-md hover:bg-slate-900 dark:hover:bg-white active:scale-[0.98] transition-all text-white dark:text-slate-900 font-medium;
+  @apply bg-gradient-to-br from-teal-500 to-teal-600 hover:from-teal-400 hover:to-teal-500 backdrop-blur-md shadow-lg shadow-teal-500/20 active:scale-95 transition-all text-white font-bold tracking-wide;
+}
+
+@utility immersive-bg {
+  @apply fixed inset-0 -z-10 overflow-hidden pointer-events-none;
+}
+
+@utility mesh-gradient {
+  background: 
+    radial-gradient(at 0% 0%, rgba(20, 184, 166, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(20, 184, 166, 0.15) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
 }
 
 @keyframes float-blob {
@@ -32,31 +43,27 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.7; }
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
 }
 
-.animate-float-blob {
-  animation: float-blob 15s infinite ease-in-out;
-}
-
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-
-.animation-delay-4000 {
-  animation-delay: 4s;
+@utility animate-float-blob {
+  animation: float-blob 20s infinite ease-in-out;
 }
 
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-heading: var(--font-display);
+    --font-sans: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius-2xl: 1.5rem;
+    --radius-3xl: 2rem;
+    
+    --color-primary: var(--teal-600);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
