@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import Papa from "papaparse";
 import { 
@@ -20,7 +20,18 @@ import {
   Maximize2,
   Calendar,
   Database,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Sparkles,
+  Compass,
+  Zap,
+  Gem,
+  Waves,
+  Map as MapIcon,
+  List,
+  Bookmark,
+  Trash2,
+  Save,
+  Clock
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { Button } from "@/components/ui/button";
@@ -47,7 +58,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { Skeleton } from "@/components/ui/skeleton";
+
+// Red marker icon generator
+const getRedIcon = (label: string) => new L.DivIcon({
+  className: 'custom-div-icon',
+  html: `<div class="relative group">
+           <div class="w-2.5 h-2.5 bg-red-600 rounded-full border border-white shadow-[0_0_8px_rgba(220,38,38,0.4)] flex items-center justify-center -translate-x-1/2 -translate-y-1/2 hover:scale-150 transition-transform duration-300">
+             <div class="w-1 h-1 bg-white rounded-full"></div>
+           </div>
+           <div class="absolute left-2.5 top-[-10px] whitespace-nowrap bg-red-600/90 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-white/20 pointer-events-none group-hover:scale-110 transition-transform">
+             ${label}
+           </div>
+         </div>`,
+  iconSize: [0, 0],
+});
+
+// Fix for default Leaflet icons
+const customIcon = new L.DivIcon({
+  className: 'custom-div-icon',
+  html: `<div class="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(239,68,68,0.5)] flex items-center justify-center -translate-x-1/2 -translate-y-1/2 hover:scale-125 transition-transform duration-300">
+           <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+         </div>`,
+  iconSize: [0, 0],
+  iconAnchor: [0, 0]
+});
 
 interface Transaction {
   district: string; // 鄉鎮市區
@@ -76,6 +113,80 @@ interface Transaction {
   parkingPrice: string; // 車位總價元
   remarks: string; // 備註
   id: string; // 編號
+  lat?: number;
+  lng?: number;
+}
+
+interface SavedSearch {
+  id: string;
+  name: string;
+  cityName: string;
+  typeName: string | null;
+  district: string;
+  search: string;
+  propertyTypes: string[];
+  period: { startY: string; startM: string; endY: string; endM: string };
+  unitPrice: { min: string; max: string; unit: string };
+  area: { min: string; max: string; unit: string };
+  age: { min: string; max: string };
+  timestamp: number;
+}
+
+// Map center and bounds tracking component
+function MapBoundsManager({ items }: { items: Transaction[] }) {
+  const map = useMap();
+  const lastItemsLength = useRef<number>(0);
+  const lastValidCount = useRef<number>(0);
+  const hasFittedInitial = useRef<boolean>(false);
+  
+  useEffect(() => {
+    const validItems = items.filter(item => {
+      const lat = typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat;
+      const lng = typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng;
+      return lat && lng && lat !== 0;
+    });
+    const validCount = validItems.length;
+
+    if (validCount === 0) {
+      hasFittedInitial.current = false;
+      return;
+    }
+
+    if (
+      items.length !== lastItemsLength.current || 
+      validCount > lastValidCount.current ||
+      !hasFittedInitial.current
+    ) {
+      try {
+        const boundsCoords = validItems.map(item => {
+          const lat = typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat!;
+          const lng = typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng!;
+          return [lat, lng] as [number, number];
+        });
+        const bounds = L.latLngBounds(boundsCoords);
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+          map.invalidateSize(); // Force redraw after resize or layout shift
+          lastItemsLength.current = items.length;
+          lastValidCount.current = validCount;
+          hasFittedInitial.current = true;
+        }
+      } catch (e) {
+        console.warn("Could not calculate map bounds", e);
+      }
+    }
+  }, [items, map]);
+
+  return null;
+}
+
+// Single item center sync
+function MapController({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, 16);
+  }, [center, map]);
+  return null;
 }
 
 export default function App() {
@@ -90,6 +201,87 @@ export default function App() {
   const [area, setArea] = useState({ min: "", max: "", unit: "2" }); // 1:㎡, 2:坪
   const [age, setAge] = useState({ min: "", max: "" });
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [geocodedCount, setGeocodedCount] = useState(0);
+  const [totalToGeocode, setTotalToGeocode] = useState(0);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  
+  // Saved Searches State
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(() => {
+    try {
+      const saved = localStorage.getItem('explorer_saved_searches');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [isSavingSearch, setIsSavingSearch] = useState(false);
+  const [newSearchName, setNewSearchName] = useState("");
+
+  const saveCurrentSearch = () => {
+    if (!newSearchName.trim()) return;
+    
+    const newSavedSearch: SavedSearch = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: newSearchName,
+      cityName,
+      typeName,
+      district,
+      search,
+      propertyTypes,
+      period,
+      unitPrice,
+      area,
+      age,
+      timestamp: Date.now()
+    };
+
+    const updated = [newSavedSearch, ...savedSearches];
+    setSavedSearches(updated);
+    localStorage.setItem('explorer_saved_searches', JSON.stringify(updated));
+    setNewSearchName("");
+    setIsSavingSearch(false);
+  };
+
+  const deleteSavedSearch = (id: string | number) => {
+    const updated = savedSearches.filter(s => s.id !== id);
+    setSavedSearches(updated);
+    localStorage.setItem('explorer_saved_searches', JSON.stringify(updated));
+  };
+
+  const applySavedSearch = (s: SavedSearch) => {
+    setCityName(s.cityName);
+    setTypeName(s.typeName || "買賣");
+    setDistrict(s.district);
+    setSearch(s.search);
+    setPropertyTypes(s.propertyTypes);
+    setPeriod(s.period);
+    setUnitPrice(s.unitPrice);
+    setArea(s.area);
+    setAge(s.age);
+  };
+
+  // Location Cache to avoid redundant API calls
+  const locationCache = useRef<Record<string, { lat: number, lng: number }>>({});
+
+  // Initialize cache from localStorage
+  useEffect(() => {
+    try {
+      const savedCache = localStorage.getItem('real_estate_loc_cache');
+      if (savedCache) {
+        locationCache.current = JSON.parse(savedCache);
+      }
+    } catch (e) {
+      console.warn("Failed to load map cache", e);
+    }
+  }, []);
+
+  // Save cache helper
+  const saveCache = () => {
+    try {
+      localStorage.setItem('real_estate_loc_cache', JSON.stringify(locationCache.current));
+    } catch (e) {}
+  };
   
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -114,6 +306,8 @@ export default function App() {
     setLoading(true);
     setError(null);
     setDataSource(null);
+    setGeocodedCount(0);
+    setIsGeocoding(false);
     setRobotStatus("準備擷取開放資料...");
 
     robotTimeoutsRef.current.forEach(clearTimeout);
@@ -186,34 +380,48 @@ export default function App() {
               return;
             }
 
-            const mappedData: Transaction[] = rows.slice(2).filter(row => row.length > 1).map((row, index) => ({
-              district: row[0],
-              transactionType: row[1],
-              address: row[2],
-              area: row[3],
-              zoning: row[4],
-              date: row[7],
-              content: row[8],
-              floor: row[9],
-              totalFloor: row[10],
-              buildingType: row[11],
-              mainUse: row[12],
-              material: row[13],
-              completionDate: row[14],
-              buildingArea: row[15],
-              rooms: row[16],
-              halls: row[17],
-              bathrooms: row[18],
-              hasPartition: row[19],
-              hasManagement: row[20],
-              totalPrice: row[21],
-              unitPrice: row[22],
-              parkingType: row[23],
-              parkingArea: row[24],
-              parkingPrice: row[25],
-              remarks: row[26],
-              id: row[27] || `item-${index}`,
-            }));
+            const mappedData: Transaction[] = rows.slice(2).filter(row => row.length > 1).map((row, index) => {
+              const districtName = row[0];
+              // Background mapping: Try to find district coordinates for instant display
+              const cityDistricts = CITY_DISTRICTS[cityName] || [];
+              const distInfo = cityDistricts.find(d => districtName.includes(d.name) || d.name.includes(districtName));
+              const cityInfo = CITIES.find(c => c.name === cityName);
+              
+              // Add a small random jitter (approx 100-200m) so markers don't overlap perfectly
+              const jitter = () => (Math.random() - 0.5) * 0.005;
+              const jitterLarge = () => (Math.random() - 0.5) * 0.02;
+
+              return {
+                district: districtName,
+                transactionType: row[1],
+                address: row[2],
+                area: row[3],
+                zoning: row[4],
+                date: row[7],
+                content: row[8],
+                floor: row[9],
+                totalFloor: row[10],
+                buildingType: row[11],
+                mainUse: row[12],
+                material: row[13],
+                completionDate: row[14],
+                buildingArea: row[15],
+                rooms: row[16],
+                halls: row[17],
+                bathrooms: row[18],
+                hasPartition: row[19],
+                hasManagement: row[20],
+                totalPrice: row[21],
+                unitPrice: row[22],
+                parkingType: row[23],
+                parkingArea: row[24],
+                parkingPrice: row[25],
+                remarks: row[26],
+                id: row[27] || `item-${index}`,
+                lat: distInfo?.lat ? distInfo.lat + jitter() : (cityInfo?.lat ? cityInfo.lat + jitterLarge() : undefined),
+                lng: distInfo?.lng ? distInfo.lng + jitter() : (cityInfo?.lng ? cityInfo.lng + jitterLarge() : undefined),
+              };
+            });
             
             setData(mappedData);
             setLoading(false);
@@ -223,34 +431,45 @@ export default function App() {
         // DOM-extracted rows
         const tableId: string = result.tableId || 'bizList_table';
 
-        const mapXlsRow = (row: any[], index: number): Transaction => ({
-          district: row[0] || "",
-          transactionType: row[1] || "",
-          address: row[2] || "",
-          area: row[3] || "",
-          zoning: row[4] || row[5] || "",
-          date: row[7] || "",
-          content: row[8] || "",
-          floor: row[9] || "",
-          totalFloor: row[10] || "",
-          buildingType: row[11] || "",
-          mainUse: row[12] || "",
-          material: row[13] || "",
-          completionDate: row[14] || "",
-          buildingArea: row[15] || "",
-          rooms: row[16] || "",
-          halls: row[17] || "",
-          bathrooms: row[18] || "",
-          hasPartition: row[19] || "",
-          hasManagement: row[20] || "",
-          totalPrice: row[21] || "",
-          unitPrice: row[22] || "",
-          parkingType: row[23] || "",
-          parkingArea: row[24] || "",
-          parkingPrice: row[25] || "",
-          remarks: row[26] || "",
-          id: String(row[27] || `item-${index}`),
-        });
+        const mapXlsRow = (row: any[], index: number): Transaction => {
+          const districtName = row[0] || "";
+          const cityDistricts = CITY_DISTRICTS[cityName] || [];
+          const distInfo = cityDistricts.find(d => districtName.includes(d.name) || d.name.includes(districtName));
+          const cityInfo = CITIES.find(c => c.name === cityName);
+          const jitter = () => (Math.random() - 0.5) * 0.008;
+          const jitterLarge = () => (Math.random() - 0.5) * 0.03;
+
+          return {
+            district: districtName,
+            transactionType: row[1] || "",
+            address: row[2] || "",
+            area: row[3] || "",
+            zoning: row[4] || row[5] || "",
+            date: row[7] || "",
+            content: row[8] || "",
+            floor: row[9] || "",
+            totalFloor: row[10] || "",
+            buildingType: row[11] || "",
+            mainUse: row[12] || "",
+            material: row[13] || "",
+            completionDate: row[14] || "",
+            buildingArea: row[15] || "",
+            rooms: row[16] || "",
+            halls: row[17] || "",
+            bathrooms: row[18] || "",
+            hasPartition: row[19] || "",
+            hasManagement: row[20] || "",
+            totalPrice: row[21] || "",
+            unitPrice: row[22] || "",
+            parkingType: row[23] || "",
+            parkingArea: row[24] || "",
+            parkingPrice: row[25] || "",
+            remarks: row[26] || "",
+            id: String(row[27] || `item-${index}`),
+            lat: distInfo?.lat ? distInfo.lat + jitter() : (cityInfo?.lat ? cityInfo.lat + jitterLarge() : undefined),
+            lng: distInfo?.lng ? distInfo.lng + jitter() : (cityInfo?.lng ? cityInfo.lng + jitterLarge() : undefined),
+          };
+        };
 
         const mappedData: Transaction[] = result.data.map(mapXlsRow);
         setData(mappedData);
@@ -387,7 +606,181 @@ export default function App() {
     }
 
     return result;
-  }, [data, search, sortConfig, district, propertyTypes, period, unitPrice, area, age]);
+  }, [data, search, sortConfig, district, propertyTypes, period, unitPrice, area, age, cityName]);
+
+  // Geocoding logic using Nominatim (OpenStreetMap) with fallback & Cache
+  useEffect(() => {
+    if (!filteredData.length) {
+      setGeocodedCount(0);
+      setIsGeocoding(false);
+      return;
+    }
+
+    // We'll geocode the first N items to provide precision
+    const maxToGeocode = 40;
+    const itemsToProcess = filteredData.slice(0, maxToGeocode);
+    
+    // Check if we already have precision for these items
+    const needsGeocoding = itemsToProcess.filter(item => {
+      const cleanedAddress = item.address.replace(/(\d+)\s*[~～-]\s*\d+[號號]?/g, '$1號');
+      const cacheKey = `${cityName}${item.district}${cleanedAddress}`;
+      return !locationCache.current[cacheKey];
+    });
+
+    if (needsGeocoding.length === 0) {
+      setGeocodedCount(itemsToProcess.length);
+      setTotalToGeocode(itemsToProcess.length);
+      setIsGeocoding(false);
+      return;
+    }
+
+    let active = true;
+
+    const geocodeBatch = async () => {
+      if (!active) return;
+      setGeocodedCount(0);
+      setTotalToGeocode(itemsToProcess.length);
+      setIsGeocoding(true);
+      
+      // Update data with cache immediately
+      let newlyFoundFromCache = false;
+      const updatedFullData = [...data];
+      
+      itemsToProcess.forEach(item => {
+        const cleanedAddress = item.address.replace(/(\d+)\s*[~～-]\s*\d+[號號]?/g, '$1號');
+        const cacheKey = `${cityName}${item.district}${cleanedAddress}`;
+        if (locationCache.current[cacheKey]) {
+          const { lat, lng } = locationCache.current[cacheKey];
+          const idx = updatedFullData.findIndex(p => p.id === item.id);
+          if (idx !== -1 && (!updatedFullData[idx].lat || updatedFullData[idx].lat === 0 || updatedFullData[idx].lat.toString().includes('.'))) {
+             updatedFullData[idx] = { ...updatedFullData[idx], lat, lng };
+             newlyFoundFromCache = true;
+          }
+        }
+      });
+
+      if (newlyFoundFromCache && active) {
+        setData(updatedFullData);
+      }
+
+      // Progress count should start from cached items
+      const cachedCount = itemsToProcess.length - needsGeocoding.length;
+      if (active) setGeocodedCount(cachedCount);
+
+      const batchSize = 2; // Keep it safe for Nominatim
+      
+      for (let i = 0; i < needsGeocoding.length; i += batchSize) {
+        if (!active) break;
+        const currentBatch = needsGeocoding.slice(i, i + batchSize);
+
+        await Promise.all(currentBatch.map(async (item) => {
+          try {
+            const cleanedAddress = item.address.replace(/(\d+)\s*[~～-]\s*\d+[號號]?/g, '$1號');
+            const cacheKey = `${cityName}${item.district}${cleanedAddress}`;
+            
+            let query = encodeURIComponent(`${cityName}${item.district}${cleanedAddress}`);
+            let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+                headers: { 'Accept-Language': 'zh-TW', 'User-Agent': `ExplorerApp-v${Math.floor(Math.random()*10000)}` }
+            });
+            
+            if (!response.ok) return;
+            let results = await response.json();
+            
+            if (results && results.length > 0 && active) {
+              const lat = parseFloat(results[0].lat);
+              const lng = parseFloat(results[0].lon);
+              locationCache.current[cacheKey] = { lat, lng };
+              setData(prev => prev.map(p => p.id === item.id ? { ...p, lat, lng } : p));
+            }
+          } catch (e) {
+            console.warn(`Geocoding failed for ${item.address}:`, e);
+          } finally {
+            if (active) setGeocodedCount(prev => prev + 1);
+          }
+        }));
+
+        saveCache();
+        if (i + batchSize < needsGeocoding.length && active) {
+          await new Promise(r => setTimeout(r, 1200)); 
+        }
+      }
+      if (active) setIsGeocoding(false);
+    };
+
+    geocodeBatch();
+    return () => { active = false; };
+  }, [filteredData.length, cityName, search, district]);
+
+  // Priority geocoding for selectedItem
+  useEffect(() => {
+    if (!selectedItem || (selectedItem.lat !== undefined && selectedItem.lng !== undefined)) return;
+
+    const geocodeSingle = async () => {
+      try {
+        const cleanedAddress = selectedItem.address.replace(/(\d+)\s*[~～-]\s*\d+[號號]?/g, '$1號');
+        const cacheKey = `${cityName}${selectedItem.district}${cleanedAddress}`;
+
+        // Check Cache first
+        if (locationCache.current[cacheKey]) {
+          const { lat, lng } = locationCache.current[cacheKey];
+          setData(prev => prev.map(p => p.id === selectedItem.id ? { ...p, lat, lng } : p));
+          setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat, lng } : prev);
+          return;
+        }
+
+        // Priority 1: Full cleaned address
+        let query = encodeURIComponent(`${cityName}${selectedItem.district}${cleanedAddress}`);
+        let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+          headers: { 'Accept-Language': 'zh-TW', 'User-Agent': `ExplorerDetail-v${Math.floor(Math.random()*1000)}` }
+        });
+        let results = await response.json();
+        
+        if (results && results.length > 0) {
+          const lat = parseFloat(results[0].lat);
+          const lng = parseFloat(results[0].lon);
+          
+          locationCache.current[cacheKey] = { lat, lng };
+          saveCache();
+
+          setData(prev => prev.map(p => p.id === selectedItem.id ? { ...p, lat, lng } : p));
+          setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat, lng } : prev);
+        } else {
+          // Priority 2: Road name only
+          const roadName = cleanedAddress.split(/[0-9]/)[0];
+          if (roadName && roadName.length > 2) {
+             const roadQuery = encodeURIComponent(`${cityName}${selectedItem.district}${roadName}`);
+             const rResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${roadQuery}&limit=1`);
+             const rResults = await rResponse.json();
+             if (rResults && rResults.length > 0) {
+                const lat = parseFloat(rResults[0].lat);
+                const lng = parseFloat(rResults[0].lon);
+                setData(prev => prev.map(p => p.id === selectedItem.id ? { ...p, lat, lng } : p));
+                setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat, lng } : prev);
+                return;
+             }
+          }
+
+          // Fallback to district if all fails
+          const districtQuery = encodeURIComponent(`${cityName}${selectedItem.district}`);
+          const dResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${districtQuery}&limit=1`);
+          const dResults = await dResponse.json();
+          if (dResults && dResults.length > 0) {
+            const lat = parseFloat(dResults[0].lat);
+            const lng = parseFloat(dResults[0].lon);
+            setData(prev => prev.map(p => p.id === selectedItem.id ? { ...p, lat, lng } : p));
+            setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat, lng } : prev);
+          } else {
+             setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat: 0, lng: 0 } : prev);
+          }
+        }
+      } catch (e) {
+        console.warn(`Geocoding failed for ${selectedItem.address}:`, e);
+        setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat: 0, lng: 0 } : prev);
+      }
+    };
+
+    geocodeSingle();
+  }, [selectedItem?.id, cityName]);
 
   const handleSort = (key: keyof Transaction) => {
     let direction: "asc" | "desc" = "asc";
@@ -421,6 +814,13 @@ export default function App() {
       {/* Immersive Mesh Background */}
       <div className="immersive-bg mesh-gradient" />
       
+      {/* Decorative Ornaments */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 40, repeat: Infinity, ease: "linear" }} className="absolute top-[15%] left-[10%] opacity-20 dark:opacity-10 text-teal-500"><Sparkles size={40} /></motion.div>
+        <motion.div animate={{ y: [0, 20, 0] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[40%] right-[15%] opacity-20 dark:opacity-10 text-blue-500"><Compass size={32} /></motion.div>
+        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[20%] left-[25%] opacity-20 dark:opacity-10 text-emerald-500"><Gem size={24} /></motion.div>
+      </div>
+
       {/* Floating Blobs */}
       <motion.div 
         animate={{ 
@@ -458,20 +858,47 @@ export default function App() {
         {/* Header */}
         <div className="p-4 sm:p-8 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-8 shrink-0">
           <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 shadow-[0_0_20px_rgba(20,184,166,0.3)] flex items-center justify-center transform hover:rotate-3 transition-transform">
-                <Database className="text-white w-6 h-6 sm:w-7 sm:h-7" />
+            <div className="flex items-center gap-4 relative">
+              <div className="relative group">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 shadow-[0_0_20px_rgba(20,184,166,0.3)] flex items-center justify-center transform group-hover:rotate-6 transition-transform">
+                  <Database className="text-white w-6 h-6 sm:w-7 sm:h-7" />
+                </div>
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg border-2 border-white dark:border-slate-900"
+                >
+                  <Sparkles size={12} className="text-yellow-800" />
+                </motion.div>
               </div>
-              <div>
+              <div className="relative z-10">
                 <h1 className="text-xl sm:text-2xl font-display font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
                   實價登錄探索儀
                 </h1>
-                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">INNER MINISTRY OPEN DATA EXPLORER</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5 flex items-center gap-1.5 leading-none">
+                  <Waves size={10} className="text-teal-500 animate-pulse" />
+                  INNER MINISTRY OPEN DATA EXPLORER
+                </p>
               </div>
               <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(20,184,166,0.05)_1px,transparent_1px)] bg-[size:100%_4px] opacity-20"></div>
             </div>
 
             <div className="flex items-center gap-3">
+              <div className="hidden lg:flex items-center bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 rounded-xl p-1 shadow-inner">
+                <button 
+                  onClick={() => setViewMode("list")}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "list" ? "bg-teal-500 text-white shadow-md" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"}`}
+                >
+                  <List size={14} /> 列表視圖
+                </button>
+                <button 
+                  onClick={() => setViewMode("map")}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "map" ? "bg-teal-500 text-white shadow-md" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"}`}
+                >
+                  <MapIcon size={14} /> 地圖探索
+                </button>
+              </div>
+
               <div className="hidden sm:flex items-center px-4 py-2 bg-teal-500/10 dark:bg-teal-400/5 border border-teal-500/20 rounded-full">
                 <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse mr-3 shadow-[0_0_8px_rgba(20,184,166,0.8)]"></div>
                 <span className="text-[10px] font-extrabold text-teal-700 dark:text-teal-400 uppercase tracking-widest">智能代理連線中</span>
@@ -627,10 +1054,15 @@ export default function App() {
               <Button 
                 variant="ghost" 
                 onClick={() => setIsAdvancedSearchOpen(!isAdvancedSearchOpen)}
-                className={`text-sm font-bold ${isAdvancedSearchOpen ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400'} hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-[1rem] h-10 transition-colors gap-2`}
+                className={`text-sm font-bold ${isAdvancedSearchOpen ? 'text-teal-600 dark:text-teal-400 bg-teal-500/5' : 'text-slate-500 dark:text-slate-400'} hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-[1rem] h-10 transition-all gap-2 px-4 border border-transparent ${isAdvancedSearchOpen ? 'border-teal-500/20 shadow-inner' : ''}`}
               >
-                <SlidersHorizontal className="w-4 h-4" />
-                進階搜尋
+                <div className="relative">
+                  <SlidersHorizontal className="w-4 h-4" />
+                  {isAdvancedSearchOpen && (
+                    <motion.div layoutId="search-dot" className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 rounded-full" />
+                  )}
+                </div>
+                進階篩選
               </Button>
 
               <div className="flex items-center gap-3">
@@ -649,18 +1081,69 @@ export default function App() {
                 >
                   清除篩選
                 </Button>
-                <Button 
-                  onClick={fetchData} 
-                  disabled={loading}
-                  className="liquid-glass-button-primary rounded-[1rem] px-8 h-10"
-                >
-                  <Search className="w-4 h-4 mr-2" />
-                  {loading ? "資料擷取中..." : "開始查詢"}
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button 
+                    onClick={fetchData} 
+                    disabled={loading}
+                    className="liquid-glass-button-primary rounded-l-[1rem] rounded-r-none px-6 h-10 border-r border-white/20"
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    {loading ? "資料擷取中..." : "開始查詢"}
+                  </Button>
+                  <Button
+                    onClick={() => setIsSavingSearch(true)}
+                    className="liquid-glass-button-primary rounded-r-[1rem] rounded-l-none h-10 px-3"
+                    title="儲存此搜尋設定"
+                  >
+                    <Bookmark size={16} />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Quick Access Saved Searches */}
+          {savedSearches.length > 0 && (
+            <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 px-4 no-scrollbar">
+              <span className="text-[10px] text-slate-400 font-bold uppercase whitespace-nowrap">我的最愛：</span>
+              {savedSearches.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => applySavedSearch(s)}
+                  className="group flex items-center gap-2 whitespace-nowrap px-3 py-1 bg-white/40 dark:bg-black/40 hover:bg-teal-500/10 text-slate-600 dark:text-slate-400 text-[10px] font-bold rounded-full border border-white/40 dark:border-white/10 transition-all"
+                >
+                  {s.name}
+                  <X size={10} onClick={(e) => { e.stopPropagation(); deleteSavedSearch(s.id); }} className="opacity-0 group-hover:opacity-100 hover:text-red-500" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Save Search Modal */}
+        <Dialog open={isSavingSearch} onOpenChange={setIsSavingSearch}>
+          <DialogContent className="sm:max-w-[400px] rounded-[2rem] border-none shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <Bookmark className="text-teal-500" /> 儲存目前搜尋設定
+              </DialogTitle>
+            </DialogHeader>
+            <div className="p-4 space-y-4">
+              <p className="text-xs text-slate-500 font-medium">請輸入一個名稱，方便下次快速載入這些篩選條件。</p>
+              <Input 
+                placeholder="例如：臺北市大安區新成屋" 
+                value={newSearchName}
+                onChange={e => setNewSearchName(e.target.value)}
+                className="liquid-glass-input border-none h-12 rounded-xl text-md font-bold"
+                onKeyDown={(e) => e.key === 'Enter' && saveCurrentSearch()}
+              />
+              <div className="pt-2 flex justify-end gap-3">
+                <Button variant="ghost" onClick={() => setIsSavingSearch(false)} className="rounded-xl font-bold">取消</Button>
+                <Button onClick={saveCurrentSearch} disabled={!newSearchName.trim()} className="bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold px-6">儲存設定</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Content */}
         <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-t-[2.5rem] mx-0 sm:mx-6 border-b-0 shadow-2xl sm:shadow-[0_20px_50px_rgba(0,0,0,0.15)] mt-0 sm:-mt-8 relative z-20 pb-12 overflow-hidden">
@@ -668,6 +1151,21 @@ export default function App() {
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-teal-600 dark:text-teal-400" />
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">搜尋結果 ({filteredData.length})</span>
+            </div>
+            
+            <div className="lg:hidden flex items-center bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 rounded-xl p-1">
+              <button 
+                onClick={() => setViewMode("list")}
+                className={`p-2 rounded-lg transition-all ${viewMode === "list" ? "bg-teal-500 text-white shadow-md" : "text-slate-400"}`}
+              >
+                <List size={16} />
+              </button>
+              <button 
+                onClick={() => setViewMode("map")}
+                className={`p-2 rounded-lg transition-all ${viewMode === "map" ? "bg-teal-500 text-white shadow-md" : "text-slate-400"}`}
+              >
+                <MapIcon size={16} />
+              </button>
             </div>
           </div>
           
@@ -689,7 +1187,7 @@ export default function App() {
                 ))}
               </div>
             </div>
-          ) : (
+          ) : viewMode === "list" ? (
             <div className="flex-1 min-h-[300px]">
               <Table className="min-w-[800px]">
                 <TableHeader className="sticky top-0 bg-white/60 dark:bg-black/60 backdrop-blur-[32px] z-10 border-b border-white/20 dark:border-white/10">
@@ -730,8 +1228,11 @@ export default function App() {
                       >
                         <TableCell className="text-slate-900 dark:text-slate-100 font-bold font-display pl-8">{item.district}</TableCell>
                         <TableCell className="max-w-[240px]">
-                          <div className="truncate text-slate-800 dark:text-slate-200 font-semibold group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{item.address}</div>
-                          <div className="text-[10px] text-teal-600/70 dark:text-teal-400/70 font-bold mt-1 tracking-wider uppercase">{item.transactionType}</div>
+                          <div className="flex items-center gap-2">
+                             <MapPin size={10} className="text-teal-500 shrink-0" />
+                             <div className="truncate text-slate-800 dark:text-slate-200 font-semibold group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{item.address}</div>
+                          </div>
+                          <div className="text-[10px] text-teal-600/70 dark:text-teal-400/70 font-bold mt-1 tracking-wider uppercase ml-4">{item.transactionType}</div>
                         </TableCell>
                         <TableCell className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm">{formatDate(item.date)}</TableCell>
                         <TableCell>
@@ -766,9 +1267,17 @@ export default function App() {
                 >
                   <div className="w-24 h-24 rounded-3xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center mb-6 shadow-inner relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 to-transparent group-hover:opacity-100 transition-opacity" />
-                    <Info className="w-10 h-10 opacity-50 text-teal-600/50 relative z-10" />
+                    <motion.div
+                      animate={{ 
+                        rotate: [0, 10, -10, 10, 0],
+                        scale: [1, 1.1, 1] 
+                      }}
+                      transition={{ duration: 5, repeat: Infinity }}
+                    >
+                      <Compass className="w-10 h-10 opacity-50 text-teal-600/50 relative z-10" />
+                    </motion.div>
                   </div>
-                  <p className="font-display font-bold text-xl tracking-tight text-slate-800 dark:text-slate-200">未找到任何匹配紀錄</p>
+                  <p className="font-display font-bold text-xl tracking-tight text-slate-800 dark:text-slate-200">還沒找到藏寶圖？</p>
                   <p className="text-sm mt-2 font-medium opacity-60">嘗試放寬您的篩選條件或更改關鍵字</p>
                 </motion.div>
               )}
@@ -792,6 +1301,101 @@ export default function App() {
                   </Button>
                 </motion.div>
               )}
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 relative min-h-[500px] sm:min-h-[600px]">
+              {filteredData.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8">
+                   <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
+                     <Search className="text-slate-400" size={32} />
+                   </div>
+                   <p className="text-slate-500 font-bold">目前沒有可顯示的搜尋結果</p>
+                </div>
+              ) : (
+                <div className="flex-1 relative">
+                  <MapContainer 
+                    center={(() => {
+                      const cityInfo = CITIES.find(c => c.name === cityName);
+                      const districtInfo = (CITY_DISTRICTS[cityName] || []).find(d => d.name === district);
+                      if (districtInfo?.lat) return [districtInfo.lat, districtInfo.lng] as [number, number];
+                      return cityInfo?.lat ? [cityInfo.lat, cityInfo.lng] as [number, number] : [25.0330, 121.5654] as [number, number];
+                    })()} 
+                    zoom={district !== "全部" ? 14 : 12} 
+                    className="w-full h-full z-0 absolute inset-0"
+                    scrollWheelZoom={true}
+                    key={`map-container-${cityName}-${district}`}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    
+                    {/* Automatic bounds manager */}
+                    <MapBoundsManager items={filteredData} />
+
+                    {filteredData.map((item) => {
+                      const lat = typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat;
+                      const lng = typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng;
+                      
+                      if (!lat || !lng || lat === 0) return null;
+
+                      // Extract "section" from address if possible (e.g., "信義段")
+                      let label = item.district;
+                      const sectionMatch = item.address.match(/([^路街巷]+段)/);
+                      if (sectionMatch) {
+                        label = sectionMatch[1].length > 6 ? item.district : sectionMatch[1];
+                      }
+
+                      return (
+                        <Marker 
+                          key={item.id} 
+                          position={[lat, lng]} 
+                          icon={getRedIcon(label)}
+                          eventHandlers={{
+                            click: () => setSelectedItem(item),
+                          }}
+                        >
+                            <Popup className="custom-popup">
+                            <div className="p-1">
+                              <div className="flex items-center gap-1.5 mb-1 border-b border-slate-100 pb-1">
+                                <span className="bg-red-100 text-red-600 text-[9px] font-bold px-1 rounded">{label}</span>
+                                <p className="font-bold text-slate-900 text-xs truncate">{item.address}</p>
+                              </div>
+                              <div className="flex flex-col gap-0.5">
+                                <p className="text-red-600 font-black text-sm">{formatPrice(item.totalPrice)}</p>
+                                <p className="text-[10px] text-slate-500 font-medium">{item.buildingType} | {item.buildingArea} ㎡</p>
+                              </div>
+                            </div>
+                          </Popup>
+                        </Marker>
+                      );
+                    })}
+                  </MapContainer>
+                </div>
+              )}
+              
+              {/* Map UI Overlays */}
+              <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-[1000]">
+                {isGeocoding && (
+                  <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3 px-4 rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 w-48 transition-all animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">精準校正中...</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.5)]"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(geocodedCount / (totalToGeocode || 1)) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-teal-600 dark:text-teal-400">{geocodedCount}/{totalToGeocode}</span>
+                    </div>
+                    <p className="text-[8px] text-slate-400 mt-2 font-medium leading-tight">使用免費 Nominatim 引擎<br/>正在獲取精準經緯度</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -843,30 +1447,69 @@ export default function App() {
                 <div className="p-6 sm:p-8 space-y-8">
                   {/* Key Stats */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105">
+                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105 relative overflow-hidden group">
+                      <div className="absolute -right-2 -bottom-2 opacity-5 text-teal-600 group-hover:opacity-10 transition-opacity"><Gem size={48} /></div>
                       <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider drop-shadow-sm">
                         <DollarSign className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" /> 總價
                       </div>
-                      <div className="text-lg font-black tracking-tight text-slate-900 dark:text-white">{formatPrice(selectedItem.totalPrice)}</div>
+                      <div className="text-lg font-black tracking-tight text-slate-900 dark:text-white relative z-10">{formatPrice(selectedItem.totalPrice)}</div>
                     </div>
-                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105">
+                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105 relative overflow-hidden group">
+                      <div className="absolute -right-2 -bottom-2 opacity-5 text-blue-600 group-hover:opacity-10 transition-opacity"><Maximize2 size={48} /></div>
                       <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider drop-shadow-sm">
                         <Maximize2 className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" /> 面積
                       </div>
-                      <div className="text-lg font-black tracking-tight text-slate-900 dark:text-white">{selectedItem.buildingArea || selectedItem.area} ㎡</div>
-                      <div className="text-[10px] text-teal-600/70 dark:text-teal-300/70 font-semibold mt-auto tracking-wide">約 {(parseFloat(selectedItem.buildingArea || selectedItem.area) * 0.3025).toFixed(2)} 坪</div>
+                      <div className="text-lg font-black tracking-tight text-slate-900 dark:text-white relative z-10">{selectedItem.buildingArea || selectedItem.area} ㎡</div>
+                      <div className="text-[10px] text-teal-600/70 dark:text-teal-300/70 font-semibold mt-auto tracking-wide relative z-10">約 {(parseFloat(selectedItem.buildingArea || selectedItem.area) * 0.3025).toFixed(2)} 坪</div>
                     </div>
-                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105">
+                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105 relative overflow-hidden group">
+                      <div className="absolute -right-2 -bottom-2 opacity-5 text-emerald-600 group-hover:opacity-10 transition-opacity"><Home size={48} /></div>
                       <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider drop-shadow-sm">
                         <Home className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" /> 型態
                       </div>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{selectedItem.buildingType.split("(")[0] || "土地"}</div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white truncate relative z-10">{selectedItem.buildingType.split("(")[0] || "土地"}</div>
                     </div>
-                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105">
+                    <div className="liquid-glass border-white/80 dark:border-white/10 p-4 rounded-[1.25rem] flex flex-col gap-1.5 shadow-sm transform transition-all hover:scale-105 relative overflow-hidden group">
+                      <div className="absolute -right-2 -bottom-2 opacity-5 text-amber-600 group-hover:opacity-10 transition-opacity"><Calendar size={48} /></div>
                       <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider drop-shadow-sm">
                         <Calendar className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400" /> 交易日
                       </div>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white">{formatDate(selectedItem.date)}</div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white relative z-10">{formatDate(selectedItem.date)}</div>
+                    </div>
+                  </div>
+
+                  {/* Map Preview */}
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm flex items-center gap-2">
+                       <MapIcon size={12} className="text-teal-500" /> 地理位置
+                    </h3>
+                    <div className="h-[200px] sm:h-[250px] w-full liquid-glass rounded-[1.5rem] overflow-hidden border border-white/40 dark:border-white/10 shadow-inner relative isolate">
+                       {selectedItem.lat && selectedItem.lng && selectedItem.lat !== 0 ? (
+                         <MapContainer 
+                           center={[selectedItem.lat, selectedItem.lng]} 
+                           zoom={16} 
+                           className="w-full h-full z-0"
+                           zoomControl={false}
+                           attributionControl={false}
+                         >
+                           <TileLayer
+                             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                           />
+                           <Marker position={[selectedItem.lat, selectedItem.lng]} icon={customIcon} />
+                           <MapController center={[selectedItem.lat, selectedItem.lng]} />
+                         </MapContainer>
+                       ) : selectedItem.lat === 0 ? (
+                         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100/50 dark:bg-slate-900/50 p-4 text-center">
+                            <MapPin className="w-8 h-8 text-slate-400 mb-2" />
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">無法精確定位地址</p>
+                            <p className="text-[9px] text-slate-400 leading-relaxed font-medium">因開放資料地址遮蔽，無法自動解析座標<br/>請參考明細中的門牌資訊</p>
+                         </div>
+                       ) : (
+                         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/50">
+                            <Compass className="w-8 h-8 text-slate-300 dark:text-slate-700 animate-spin-slow mb-2" />
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">正在解析座標...</p>
+                         </div>
+                       )}
                     </div>
                   </div>
 
