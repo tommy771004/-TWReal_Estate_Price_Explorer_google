@@ -839,7 +839,7 @@ export default function App() {
       <div className="immersive-bg mesh-gradient opacity-60 dark:opacity-40" />
       
       {/* Dynamic Animated Blobs */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      <div className="immersive-bg">
         <motion.div 
           animate={{ 
             x: [-100, 100, -100],
@@ -847,7 +847,7 @@ export default function App() {
             scale: [1, 1.2, 1]
           }}
           transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-teal-500/10 dark:bg-teal-600/5 rounded-full blur-[120px]" 
+          className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-teal-500/15 dark:bg-teal-600/10 rounded-full blur-[120px]" 
         />
         <motion.div 
           animate={{ 
@@ -856,7 +856,7 @@ export default function App() {
             scale: [1.2, 1, 1.2]
           }}
           transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
-          className="absolute bottom-[-10%] right-[-5%] w-[700px] h-[700px] bg-blue-500/10 dark:bg-blue-600/5 rounded-full blur-[140px]" 
+          className="absolute bottom-[-10%] right-[-5%] w-[700px] h-[700px] bg-blue-500/15 dark:bg-blue-600/10 rounded-full blur-[140px]" 
         />
         <motion.div 
           animate={{ 
@@ -864,7 +864,7 @@ export default function App() {
             scale: [0.8, 1.1, 0.8]
           }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-emerald-400/5 dark:bg-emerald-500/5 rounded-full blur-[100px]" 
+          className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-emerald-400/10 dark:bg-emerald-500/10 rounded-full blur-[100px]" 
         />
       </div>
 
@@ -1272,7 +1272,7 @@ export default function App() {
           ) : viewMode === "list" ? (
             <div className="flex-1 min-h-[300px]">
               <Table className="min-w-[800px]">
-                <TableHeader className="sticky top-0 bg-white/60 dark:bg-black/60 backdrop-blur-[32px] z-10 border-b border-white/20 dark:border-white/10">
+                <TableHeader className="sticky top-0 bg-white/40 dark:bg-black/30 backdrop-blur-3xl z-10 border-b border-white/20 dark:border-white/10">
                   <TableRow className="border-none hover:bg-transparent">
                     <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest pl-8">
                       <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 dark:text-slate-500 p-0 h-auto font-bold rounded-lg text-[10px]" onClick={() => handleSort("district")}>
@@ -1517,38 +1517,38 @@ export default function App() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden liquid-glass-panel border-white/40 dark:border-white/10 rounded-[2.5rem] shadow-[0_32px_128px_rgba(0,0,0,0.3)] dark:shadow-[0_32px_128px_rgba(0,0,0,0.6)]">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl w-full p-0 overflow-hidden liquid-glass-panel border-white/40 dark:border-white/10 rounded-[2.5rem] shadow-[0_32px_128px_rgba(0,0,0,0.3)] dark:shadow-[0_32px_128px_rgba(0,0,0,0.6)]">
           {selectedItem && (
             <div className="flex flex-col h-full max-h-[90vh]">
               {/* Premium Dialog Header */}
-              <div className="p-7 sm:p-10 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 relative overflow-hidden shrink-0">
-                <div className="absolute inset-0 mesh-gradient opacity-10" />
+              <div className="p-7 sm:p-10 bg-white/20 dark:bg-black/30 backdrop-blur-xl relative overflow-hidden shrink-0">
+                <div className="absolute inset-0 mesh-gradient opacity-20 dark:opacity-30" />
                 <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-teal-500/50 to-transparent" />
                 
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                       <Badge className="bg-teal-500/20 text-teal-300 border-teal-500/30 font-black tracking-widest text-[10px] uppercase py-0.5 px-3 rounded-full">{selectedItem.district}</Badge>
-                       <Badge variant="outline" className="text-slate-500 border-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{selectedItem.id}</Badge>
+                       <Badge className="bg-teal-500/20 text-teal-600 dark:text-teal-300 border-teal-500/30 font-black tracking-widest text-[10px] uppercase py-0.5 px-3 rounded-full">{selectedItem.district}</Badge>
+                       <Badge variant="outline" className="text-slate-500 border-white/10 text-[10px] font-bold px-2 py-0.5 rounded-full">{selectedItem.id}</Badge>
                     </div>
-                    <h2 className="text-2xl sm:text-4xl font-display font-black text-white tracking-tight leading-tight max-w-xl">
+                    <h2 className="text-2xl sm:text-4xl font-display font-black text-slate-900 dark:text-white tracking-tight leading-tight max-w-xl">
                       {selectedItem.address}
                     </h2>
                     <div className="flex flex-wrap items-center gap-4 text-xs">
-                      <div className="flex items-center gap-2 text-slate-400 font-bold bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold bg-white/30 dark:bg-white/5 px-3 py-1.5 rounded-full border border-white/20 dark:border-white/5">
                         <Calendar size={14} className="text-teal-500" />
                         {formatDate(selectedItem.date)} 交易紀錄
                       </div>
-                      <div className="flex items-center gap-2 text-slate-400 font-bold bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold bg-white/30 dark:bg-white/5 px-3 py-1.5 rounded-full border border-white/20 dark:border-white/5">
                         <MapPin size={14} className="text-teal-500" />
                         {cityName}
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col items-start sm:items-end bg-teal-500/10 backdrop-blur-md p-4 sm:p-6 rounded-3xl border border-teal-500/20">
-                    <div className="text-slate-400 text-[10px] uppercase font-black tracking-[0.2em] mb-1.5 opacity-70">官方登錄成交價</div>
-                    <div className="text-3xl sm:text-5xl font-display font-black text-teal-400 tracking-tighter drop-shadow-[0_0_15px_rgba(45,212,191,0.3)]">
+                  <div className="flex flex-col items-start sm:items-end bg-teal-500/10 dark:bg-teal-500/20 backdrop-blur-3xl p-4 sm:p-6 rounded-3xl border border-teal-500/20 shadow-[0_0_30px_rgba(20,184,166,0.1)]">
+                    <div className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-black tracking-[0.2em] mb-1.5 opacity-70">官方登錄成交價</div>
+                    <div className="text-3xl sm:text-5xl font-display font-black text-teal-600 dark:text-teal-400 tracking-tighter drop-shadow-[0_0_15px_rgba(45,212,191,0.3)]">
                       {formatPrice(selectedItem.totalPrice)}
                     </div>
                   </div>
@@ -1558,15 +1558,15 @@ export default function App() {
               <div className="flex-1 overflow-y-auto scrollbar-hide">
                 <div className="p-6 sm:p-10 space-y-10">
                   {/* High Density Stats Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                     {[
                       { icon: <DollarSign size={20} />, label: "單價/坪", value: selectedItem.unitPrice ? `${(parseFloat(selectedItem.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-", sub: "實價登錄單價", color: "text-teal-500", bg: "bg-teal-500/5" },
-                      { icon: <Maximize2 size={20} />, label: "建物面積", value: `${selectedItem.buildingArea} ㎡`, sub: `約 ${(parseFloat(selectedItem.buildingArea) * 0.3025).toFixed(2)} 坪`, color: "text-blue-500", bg: "bg-blue-500/5" },
-                      { icon: <Layers size={20} />, label: "移轉層次", value: selectedItem.floor ? `${selectedItem.floor}F` : "-", sub: `總樓層 ${selectedItem.totalFloor}F`, color: "text-purple-500", bg: "bg-purple-500/5" },
+                      { icon: <Maximize2 size={20} />, label: "建物面積", value: `${selectedItem.buildingArea || selectedItem.area || "0"} ㎡`, sub: `約 ${(parseFloat(selectedItem.buildingArea || selectedItem.area || "0") * 0.3025).toFixed(2)} 坪`, color: "text-blue-500", bg: "bg-blue-500/5" },
+                      { icon: <Layers size={20} />, label: "移轉層次", value: selectedItem.floor ? `${selectedItem.floor}F` : "土地", sub: `總樓層 ${selectedItem.totalFloor || "-"}F`, color: "text-purple-500", bg: "bg-purple-500/5" },
                       { icon: <Clock size={20} />, label: "屋齡", value: (() => {
                         if (!selectedItem.completionDate) return "新成屋";
                         const compY = parseInt(selectedItem.completionDate.substring(0, 3));
-                        if (isNaN(compY)) return "-";
+                        if (isNaN(compY)) return "新成屋";
                         const currentY = new Date().getFullYear() - 1911;
                         return `${currentY - compY} 年`;
                       })(), sub: "建屋完工至今", color: "text-amber-500", bg: "bg-amber-500/5" }
@@ -1576,7 +1576,7 @@ export default function App() {
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: i * 0.05 }}
-                        className={`liquid-glass-input p-6 rounded-[2rem] border-white/40 dark:border-white/10 shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-all`}
+                        className={`liquid-glass-input p-5 sm:p-6 rounded-[2rem] border-white/40 dark:border-white/10 shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-all`}
                       >
                          <div className={`absolute -right-2 -top-2 p-6 opacity-5 group-hover:opacity-10 transition-opacity ${stat.color} rotate-12`}>{stat.icon}</div>
                          <div className="text-[10px] font-black tracking-widest text-slate-500 dark:text-slate-400 uppercase mb-3 flex items-center gap-2">
@@ -1673,11 +1673,11 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="p-4 sm:p-6 border-t border-white/30 dark:border-white/10 bg-white/40 dark:bg-black/40 backdrop-blur-3xl flex justify-end">
+              <div className="p-4 sm:p-6 border-t border-white/10 bg-white/10 dark:bg-black/20 backdrop-blur-3xl flex justify-end">
                 <Button 
                   onClick={() => setSelectedItem(null)}
                   variant="outline"
-                  className="rounded-2xl px-12 h-12 liquid-glass-button-primary shadow-2xl"
+                  className="rounded-2xl px-12 h-12 liquid-glass-button-primary shadow-2xl border-white/20"
                 >
                   確認並關閉
                 </Button>

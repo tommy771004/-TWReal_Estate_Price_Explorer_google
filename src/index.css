@@ -13,7 +13,16 @@
 }
 
 @utility liquid-glass-panel {
-  @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-[64px] border border-white/90 dark:border-white/20 shadow-[0_20px_80px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_80px_rgba(0,0,0,0.5)] transition-all duration-500 hover:shadow-[0_32px_96px_rgba(0,0,0,0.16)] dark:hover:shadow-[0_32px_96px_rgba(0,0,0,0.6)];
+  @apply bg-white/40 dark:bg-slate-950/40 backdrop-blur-[40px] border border-white/40 dark:border-white/10 shadow-[0_32px_128px_rgba(0,0,0,0.15)] dark:shadow-[0_32px_128px_rgba(0,0,0,0.6)] transition-all duration-500 hover:shadow-[0_48px_160px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_48px_160px_rgba(0,0,0,0.8)];
+  box-shadow: 
+    0 32px 128px rgba(0,0,0,0.15),
+    inset 0 0 0 1px rgba(255,255,255,0.4);
+}
+
+.dark .liquid-glass-panel {
+  box-shadow: 
+    0 32px 128px rgba(0,0,0,0.6),
+    inset 0 0 0 1px rgba(255,255,255,0.05);
 }
 
 @utility liquid-glass-input {
