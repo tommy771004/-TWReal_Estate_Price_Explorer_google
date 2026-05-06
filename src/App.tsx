@@ -34,7 +34,9 @@ import {
   Clock,
   Layers,
   ArrowRightCircle,
-  RotateCw
+  RotateCw,
+  Moon,
+  Sun
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { Button } from "@/components/ui/button";
@@ -203,6 +205,25 @@ export default function App() {
   const [unitPrice, setUnitPrice] = useState({ min: "", max: "", unit: "1" }); // 1:萬元/坪, 2:元/㎡
   const [area, setArea] = useState({ min: "", max: "", unit: "2" }); // 1:㎡, 2:坪
   const [age, setAge] = useState({ min: "", max: "" });
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('explorer_theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('explorer_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('explorer_theme', 'light');
+    }
+  }, [darkMode]);
+
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [geocodedCount, setGeocodedCount] = useState(0);
@@ -860,8 +881,8 @@ export default function App() {
         className="relative w-full flex-1 flex flex-col z-10"
       >
         {/* Header */}
-        <div className="p-4 sm:p-8 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-8 shrink-0 relative overflow-hidden group">
-          <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-teal-500/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-1000" />
+        <div className="p-4 sm:px-8 sm:pt-6 sm:pb-8 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-5 shrink-0 relative overflow-hidden group">
+          <div className="absolute bottom-0 left-0 right-0 h-[px] bg-gradient-to-r from-transparent via-teal-500/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-1000" />
           <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
             <div className="flex items-center gap-5">
               <div className="relative group">
@@ -882,16 +903,27 @@ export default function App() {
                   <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-200 dark:to-slate-400">
                     實價登錄查詢
                   </h1>
-                  <Button 
-                    variant="ghost"
-                    size="icon"
-                    onClick={fetchData} 
-                    disabled={loading}
-                    className="w-8 h-8 rounded-full bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 transition-all active:rotate-180 duration-500"
-                    title="重新整理資料"
-                  >
-                    <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button 
+                      variant="ghost"
+                      size="icon"
+                      onClick={fetchData} 
+                      disabled={loading}
+                      className="w-8 h-8 rounded-full bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 transition-all active:rotate-180 duration-500"
+                      title="重新整理資料"
+                    >
+                      <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDarkMode(!darkMode)}
+                      className="w-8 h-8 rounded-full bg-slate-500/10 hover:bg-slate-500/20 text-slate-600 dark:text-slate-400 transition-all shadow-sm"
+                      title={darkMode ? "切換至淺色模式" : "切換至深色模式"}
+                    >
+                      {darkMode ? <Sun size={14} /> : <Moon size={14} />}
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 mt-1.5 opacity-80">
                   <span className="h-px w-6 bg-teal-500/30" />
@@ -919,15 +951,15 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="hidden sm:flex items-center px-4 py-2 bg-teal-500/10 dark:bg-teal-400/5 border border-teal-500/20 rounded-full">
-                <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse mr-3 shadow-[0_0_8px_rgba(20,184,166,0.8)]"></div>
-                <span className="text-[10px] font-extrabold text-teal-700 dark:text-teal-400 uppercase tracking-widest">連線中</span>
+              <div className="hidden sm:flex items-center px-4 py-2 bg-teal-500/10 dark:bg-teal-400/5 border border-teal-500/10 rounded-full backdrop-blur-sm shadow-sm ring-1 ring-white/20">
+                <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse mr-3 shadow-[0_0_12px_rgba(20,184,166,0.8)]"></div>
+                <span className="text-[10px] font-black text-teal-700 dark:text-teal-400 uppercase tracking-[0.2em]">Live</span>
               </div>
             </div>
           </div>
 
           {/* Filters Grid */}
-          <div className="max-w-7xl mx-auto w-full flex flex-col gap-4 liquid-glass-panel p-6 sm:p-7 rounded-[2rem] shadow-2xl">
+          <div className="max-w-7xl mx-auto w-full flex flex-col gap-4 liquid-glass-panel p-5 sm:px-7 sm:py-6 rounded-[2rem] shadow-2xl">
             
             {/* Row 1: Location & Search */}
             <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-4 items-end">
@@ -967,18 +999,20 @@ export default function App() {
             </div>
 
             {/* Row 2: Property Types */}
-            <div className="flex flex-wrap gap-4 items-center py-3 border-y border-white/20 dark:border-white/10">
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest drop-shadow-sm">標的種類</span>
+            <div className="flex flex-wrap gap-3 items-center py-4 border-y border-white/20 dark:border-white/10">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.2em] mr-2 opacity-70">標的種類</span>
               {["房地", "房地(車)", "建物", "車位", "土地"].map(pt => (
-                <label key={pt} className="flex items-center gap-2 cursor-pointer group">
-                  <input type="checkbox" className="accent-teal-500 w-4 h-4 rounded border-white/40 shadow-sm" 
+                <label key={pt} className="relative cursor-pointer group">
+                  <input type="checkbox" className="sr-only peer" 
                     checked={propertyTypes.includes(pt)}
                     onChange={(e) => {
                       if (e.target.checked) setPropertyTypes([...propertyTypes, pt]);
                       else setPropertyTypes(propertyTypes.filter(p => p !== pt));
                     }}
                   />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{pt}</span>
+                  <div className="px-4 py-1.5 rounded-xl border border-white/60 dark:border-white/20 bg-white/40 dark:bg-white/10 text-xs font-bold text-slate-600 dark:text-slate-400 peer-checked:bg-teal-500 dark:peer-checked:bg-teal-400 peer-checked:text-white dark:peer-checked:text-slate-950 peer-checked:border-teal-500 dark:peer-checked:border-teal-400 peer-checked:shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-all hover:border-teal-500/40 peer-checked:scale-105 active:scale-95">
+                    {pt}
+                  </div>
                 </label>
               ))}
             </div>
@@ -994,28 +1028,36 @@ export default function App() {
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-2">
                     {/* Period */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest ml-1 drop-shadow-sm">交易期間</label>
-                      <div className="flex items-center gap-1 liquid-glass-input rounded-[0.85rem] p-1 flex-wrap sm:flex-nowrap">
-                        <select className="bg-transparent border-none outline-none text-sm font-medium cursor-pointer flex-1 min-w-[50px] text-center" value={period.startY} onChange={e => setPeriod({...period, startY: e.target.value})}>
-                          {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{y}</option>)}
-                        </select>
-                        <span className="text-slate-400 dark:text-slate-500 text-xs font-medium">年</span>
-                        <select className="bg-transparent border-none outline-none text-sm font-medium cursor-pointer flex-1 min-w-[40px] text-center" value={period.startM} onChange={e => setPeriod({...period, startM: e.target.value})}>
-                          {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{m}</option>)}
-                        </select>
-                        <span className="text-slate-400 dark:text-slate-500 text-xs font-medium">月</span>
-                        <span className="text-slate-300 dark:text-slate-600 mx-1">-</span>
-                        <select className="bg-transparent border-none outline-none text-sm font-medium cursor-pointer flex-1 min-w-[50px] text-center" value={period.endY} onChange={e => setPeriod({...period, endY: e.target.value})}>
-                          {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{y}</option>)}
-                        </select>
-                        <span className="text-slate-400 dark:text-slate-500 text-xs font-medium">年</span>
-                        <select className="bg-transparent border-none outline-none text-sm font-medium cursor-pointer flex-1 min-w-[40px] text-center" value={period.endM} onChange={e => setPeriod({...period, endM: e.target.value})}>
-                          {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{m}</option>)}
-                        </select>
-                        <span className="text-slate-400 dark:text-slate-500 text-xs font-medium pr-1">月</span>
-                      </div>
-                    </div>
+                     <div className="space-y-2">
+                       <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.2em] ml-1 opacity-70">交易期間</label>
+                       <div className="flex items-center gap-1 liquid-glass-input rounded-2xl p-1.5 flex-wrap sm:flex-nowrap border-white/40 dark:border-white/10 shadow-sm">
+                         <div className="flex-1 flex items-center bg-white/30 dark:bg-black/20 rounded-lg px-2">
+                           <select className="bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center" value={period.startY} onChange={e => setPeriod({...period, startY: e.target.value})}>
+                             {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{y}</option>)}
+                           </select>
+                           <span className="text-[10px] text-slate-400 font-black uppercase ml-1">Y</span>
+                         </div>
+                         <div className="flex-1 flex items-center bg-white/30 dark:bg-black/20 rounded-lg px-2">
+                           <select className="bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center" value={period.startM} onChange={e => setPeriod({...period, startM: e.target.value})}>
+                             {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{m}</option>)}
+                           </select>
+                           <span className="text-[10px] text-slate-400 font-black uppercase ml-1">M</span>
+                         </div>
+                         <span className="text-slate-300 dark:text-slate-600 mx-1">-</span>
+                         <div className="flex-1 flex items-center bg-white/30 dark:bg-black/20 rounded-lg px-2">
+                           <select className="bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center" value={period.endY} onChange={e => setPeriod({...period, endY: e.target.value})}>
+                             {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{y}</option>)}
+                           </select>
+                           <span className="text-[10px] text-slate-400 font-black uppercase ml-1">Y</span>
+                         </div>
+                         <div className="flex-1 flex items-center bg-white/30 dark:bg-black/20 rounded-lg px-2">
+                           <select className="bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center" value={period.endM} onChange={e => setPeriod({...period, endM: e.target.value})}>
+                             {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{m}</option>)}
+                           </select>
+                           <span className="text-[10px] text-slate-400 font-black uppercase ml-1">M</span>
+                         </div>
+                       </div>
+                     </div>
 
                     {/* Unit Price */}
                     <div className="space-y-1.5">
@@ -1064,18 +1106,18 @@ export default function App() {
             </AnimatePresence>
 
             {/* Row 4: Search Actions */}
-            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-6 gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-4 gap-3 sm:gap-4">
               {/* Upper row on mobile: Advanced & Clear buttons */}
               <div className="flex flex-row gap-2 w-full sm:w-auto">
                 <Button 
                   variant="ghost" 
                   onClick={() => setIsAdvancedSearchOpen(!isAdvancedSearchOpen)}
-                  className={`flex-1 sm:flex-none text-xs sm:text-sm font-bold ${isAdvancedSearchOpen ? 'text-teal-600 dark:text-teal-400 bg-teal-500/5' : 'text-slate-500 dark:text-slate-400'} hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-[1rem] h-10 transition-all gap-2 px-3 sm:px-4 border border-transparent ${isAdvancedSearchOpen ? 'border-teal-500/20 shadow-inner' : ''}`}
+                  className={`flex-1 sm:flex-none text-xs sm:text-sm font-bold ${isAdvancedSearchOpen ? 'text-teal-600 dark:text-teal-400 bg-teal-500/10 dark:bg-teal-500/20' : 'text-slate-600 dark:text-slate-300'} hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-[1.25rem] h-11 transition-all gap-2 px-4 border border-transparent shadow-sm ${isAdvancedSearchOpen ? 'border-teal-500/30 shadow-inner' : ''}`}
                 >
                   <div className="relative">
                     <SlidersHorizontal className="w-4 h-4" />
                     {isAdvancedSearchOpen && (
-                      <motion.div layoutId="search-dot" className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 rounded-full" />
+                      <motion.div layoutId="search-dot" className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.5)] rounded-full" />
                     )}
                   </div>
                   進階篩選
@@ -1086,14 +1128,17 @@ export default function App() {
                   onClick={() => {
                     setSearch("");
                     setDistrict("全部");
-                    setPropertyTypes(["土地"]);
-                    setPeriod({ startY: "101", startM: "1", endY: "115", endM: "12" });
+                    setCityName("台北市");
+                    setPropertyTypes(["房地", "房地(車)", "建物", "車位", "土地"]);
+                    setTypeName("買賣");
+                    setPeriod({ startY: "112", startM: "1", endY: "113", endM: "12" });
                     setUnitPrice({ min: "", max: "", unit: "1" });
                     setArea({ min: "", max: "", unit: "2" });
                     setAge({ min: "", max: "" });
                   }}
-                  className="flex-1 sm:flex-none text-xs sm:text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 border border-transparent hover:border-white/40 dark:hover:border-white/10 hover:bg-white/40 dark:hover:bg-white/10 rounded-[1rem] h-10 font-medium transition-all whitespace-nowrap px-3 sm:px-4"
+                  className="flex-1 sm:flex-none h-11 px-4 rounded-[1.25rem] text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/5 transition-all text-xs sm:text-sm font-bold flex items-center gap-2"
                 >
+                  <Trash2 className="w-4 h-4" />
                   清除篩選
                 </Button>
               </div>
@@ -1163,11 +1208,20 @@ export default function App() {
         </Dialog>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-t-[2.5rem] mx-0 sm:mx-6 border-b-0 shadow-2xl sm:shadow-[0_20px_50px_rgba(0,0,0,0.15)] mt-0 sm:-mt-8 relative z-20 pb-12 overflow-hidden">
-          <div className="px-6 py-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between bg-white/20 dark:bg-white/5 backdrop-blur-md">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">搜尋結果 ({filteredData.length})</span>
+        <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-t-[2.5rem] mx-0 sm:mx-6 border-b-0 shadow-2xl sm:shadow-[0_20px_50px_rgba(0,0,0,0.15)] mt-0 sm:-mt-6 relative z-20 pb-12 overflow-hidden">
+          <div className="px-6 sm:px-8 py-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between bg-white/30 dark:bg-black/20 backdrop-blur-3xl relative overflow-hidden">
+            <div className="absolute inset-y-0 left-0 w-1 bg-teal-500" />
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center border border-teal-500/10">
+                <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.22em] leading-none">搜尋結果</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-1.5 flex items-center gap-2">
+                  <div className="w-1 h-1 rounded-full bg-teal-500" />
+                  目前找到 {filteredData.length} 筆符合條件的成交紀錄
+                </span>
+              </div>
             </div>
             
             <div className="lg:hidden flex items-center bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 rounded-xl p-1">
@@ -1187,19 +1241,30 @@ export default function App() {
           </div>
           
           {loading ? (
-            <div className="p-12 space-y-8 flex flex-col items-center justify-center min-h-[400px]">
-              <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-500/20 p-6 rounded-2xl flex flex-col items-center justify-center animate-pulse shadow-sm max-w-sm w-full">
-                <div className="bg-teal-500/10 dark:bg-teal-500/20 p-4 rounded-full mb-4">
-                  <Database size={48} className="text-teal-600 dark:text-teal-400" />
+            <div className="p-8 sm:p-16 space-y-12 flex flex-col items-center justify-center min-h-[500px]">
+              <div className="relative">
+                <div className="w-24 h-24 rounded-[2rem] bg-teal-500/10 dark:bg-teal-500/20 flex items-center justify-center border border-teal-500/20 shadow-xl overflow-hidden group">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(20,184,166,0.2)_0%,transparent_70%)] animate-pulse" />
+                  <Database size={48} className="text-teal-600 dark:text-teal-400 relative z-10 animate-float-blob" />
                 </div>
-                <span className="text-teal-800 dark:text-teal-300 font-bold text-center text-lg">{robotStatus || "正在擷取開放資料..."}</span>
-                <span className="text-teal-600/70 dark:text-teal-400/60 font-medium text-center text-sm mt-2">即時解析內政部實價登錄開放資料集</span>
+                <motion.div 
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="absolute -inset-2 border-2 border-dashed border-teal-500/20 rounded-[2.5rem]" 
+                />
               </div>
               
-              <div className="w-full max-w-2xl space-y-4 opacity-50">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="flex gap-4">
-                    <Skeleton className="h-12 w-full bg-slate-200/50 dark:bg-slate-800/50 rounded-xl" />
+              <div className="text-center space-y-3 z-10">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{robotStatus || "正在擷取開放資料..."}</h3>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold max-w-sm mx-auto uppercase tracking-widest leading-relaxed">內政部 實價登錄 API 連線中<br/>即時解析開放資料集結構</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-3xl pt-8">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="space-y-3 p-6 liquid-glass-panel rounded-3xl border-transparent shadow-none opacity-40">
+                    <Skeleton className="h-4 w-2/3 bg-slate-200/50 dark:bg-slate-800/50 rounded-full" />
+                    <Skeleton className="h-10 w-full bg-slate-200/50 dark:bg-slate-800/50 rounded-2xl" />
+                    <Skeleton className="h-4 w-1/2 bg-slate-200/50 dark:bg-slate-800/50 rounded-full" />
                   </div>
                 ))}
               </div>
@@ -1245,15 +1310,17 @@ export default function App() {
                       >
                         <TableCell className="text-slate-900 dark:text-slate-100 font-bold font-display pl-8">{item.district}</TableCell>
                         <TableCell className="max-w-[240px]">
-                          <div className="flex items-center gap-2">
-                             <div className="w-6 h-6 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
-                               <MapPin size={12} className="text-teal-600 dark:text-teal-400" />
+                          <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0 border border-teal-500/5 shadow-sm group-hover:bg-teal-500/20 transition-all">
+                               <MapPin size={14} className="text-teal-600 dark:text-teal-400" />
                              </div>
-                             <div className="truncate text-slate-800 dark:text-slate-200 font-bold group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{item.address}</div>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1.5 ml-8">
-                            <span className="text-[9px] text-teal-600/70 dark:text-teal-400/70 font-black tracking-widest uppercase px-1.5 pt-0.5 rounded border border-teal-500/20 leading-none">{item.transactionType}</span>
-                            <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{item.buildingArea} ㎡</span>
+                             <div className="flex flex-col min-w-0">
+                               <div className="truncate text-slate-800 dark:text-slate-200 font-bold group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors leading-tight">{item.address}</div>
+                               <div className="flex items-center gap-2 mt-1">
+                                 <span className="text-[9px] text-teal-600/70 dark:text-teal-400/70 font-black tracking-[0.1em] uppercase px-1.5 py-0.5 rounded-md bg-teal-500/5 border border-teal-500/10 leading-none">{item.transactionType}</span>
+                                 <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{item.buildingArea} ㎡</span>
+                               </div>
+                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm">{formatDate(item.date)}</TableCell>
