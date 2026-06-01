@@ -36,7 +36,9 @@ import {
   ArrowRightCircle,
   RotateCw,
   Moon,
-  Sun
+  Sun,
+  BarChart3,
+  TrendingUp
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { Button } from "@/components/ui/button";
@@ -65,16 +67,18 @@ import {
 } from "@/components/ui/dialog";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { Skeleton } from "@/components/ui/skeleton";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 // Red marker icon generator
-const getRedIcon = (label: string) => new L.DivIcon({
+const getCoralIcon = (label: string) => new L.DivIcon({
   className: 'custom-div-icon',
   html: `<div class="relative group">
-           <div class="w-2.5 h-2.5 bg-red-600 rounded-full border border-white shadow-[0_0_8px_rgba(220,38,38,0.4)] flex items-center justify-center -translate-x-1/2 -translate-y-1/2 hover:scale-150 transition-transform duration-300">
+           <div class="w-2.5 h-2.5 bg-coral-500 rounded-full border border-white shadow-[0_0_8px_rgba(237,111,92,0.4)] flex items-center justify-center -translate-x-1/2 -translate-y-1/2 hover:scale-150 transition-transform duration-300">
              <div class="w-1 h-1 bg-white rounded-full"></div>
            </div>
-           <div class="absolute left-2.5 top-[-10px] whitespace-nowrap bg-red-600/90 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-white/20 pointer-events-none group-hover:scale-110 transition-transform">
+           <div class="absolute left-2.5 top-[-10px] whitespace-nowrap bg-coral-500/90 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-white/20 pointer-events-none group-hover:scale-110 transition-transform">
              ${label}
            </div>
          </div>`,
@@ -84,7 +88,7 @@ const getRedIcon = (label: string) => new L.DivIcon({
 // Fix for default Leaflet icons
 const customIcon = new L.DivIcon({
   className: 'custom-div-icon',
-  html: `<div class="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(239,68,68,0.5)] flex items-center justify-center -translate-x-1/2 -translate-y-1/2 hover:scale-125 transition-transform duration-300">
+  html: `<div class="w-6 h-6 bg-coral-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(237,111,92,0.5)] flex items-center justify-center -translate-x-1/2 -translate-y-1/2 hover:scale-125 transition-transform duration-300">
            <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
          </div>`,
   iconSize: [0, 0],
@@ -118,6 +122,7 @@ interface Transaction {
   parkingPrice: string; // 車位總價元
   remarks: string; // 備註
   id: string; // 編號
+  buildCase?: string; // 建案名稱
   lat?: number;
   lng?: number;
 }
@@ -171,7 +176,7 @@ function MapBoundsManager({ items }: { items: Transaction[] }) {
         const bounds = L.latLngBounds(boundsCoords);
         if (bounds.isValid()) {
           map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-          map.invalidateSize(); // Force redraw after resize or layout shift
+          map.invalidateSize(); // Force redraw after resize or  shift
           lastItemsLength.current = items.length;
           lastValidCount.current = validCount;
           hasFittedInitial.current = true;
@@ -200,7 +205,7 @@ export default function App() {
   const [district, setDistrict] = useState("全部");
   const [search, setSearch] = useState("");
   
-  const [propertyTypes, setPropertyTypes] = useState<string[]>(["土地"]);
+  const [propertyTypes, setPropertyTypes] = useState<string[]>(["房地", "建物", "土地"]);
   const [period, setPeriod] = useState({ startY: "101", startM: "1", endY: "115", endM: "12" });
   const [unitPrice, setUnitPrice] = useState({ min: "", max: "", unit: "1" }); // 1:萬元/坪, 2:元/㎡
   const [area, setArea] = useState({ min: "", max: "", unit: "2" }); // 1:㎡, 2:坪
@@ -225,7 +230,9 @@ export default function App() {
   }, [darkMode]);
 
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [viewMode, setViewMode] = useState<"list" | "map" | "aggregated">("list");
+  const [showChartsMobile, setShowChartsMobile] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [geocodedCount, setGeocodedCount] = useState(0);
   const [totalToGeocode, setTotalToGeocode] = useState(0);
   const [isGeocoding, setIsGeocoding] = useState(false);
@@ -414,6 +421,9 @@ export default function App() {
               // Add a small random jitter (approx 100-200m) so markers don't overlap perfectly
               const jitter = () => (Math.random() - 0.5) * 0.005;
               const jitterLarge = () => (Math.random() - 0.5) * 0.02;
+              
+              const isRent = typeName === "租賃";
+              const isPreSale = typeName === "預售屋";
 
               return {
                 district: districtName,
@@ -435,13 +445,14 @@ export default function App() {
                 bathrooms: row[18],
                 hasPartition: row[19],
                 hasManagement: row[20],
-                totalPrice: row[21],
-                unitPrice: row[22],
-                parkingType: row[23],
-                parkingArea: row[24],
-                parkingPrice: row[25],
-                remarks: row[26],
-                id: row[27] || `item-${index}`,
+                totalPrice: isRent ? row[22] : row[21],
+                unitPrice: isRent ? row[23] : row[22],
+                parkingType: isRent ? row[24] : row[23],
+                parkingArea: isRent ? row[25] : row[24],
+                parkingPrice: isRent ? row[26] : row[25],
+                remarks: isRent ? row[27] : row[26],
+                id: (isRent ? row[28] : row[27]) || `item-${index}`,
+                buildCase: isPreSale ? row[28] : undefined,
                 lat: distInfo?.lat ? distInfo.lat + jitter() : (cityInfo?.lat ? cityInfo.lat + jitterLarge() : undefined),
                 lng: distInfo?.lng ? distInfo.lng + jitter() : (cityInfo?.lng ? cityInfo.lng + jitterLarge() : undefined),
               };
@@ -462,6 +473,8 @@ export default function App() {
           const cityInfo = CITIES.find(c => c.name === cityName);
           const jitter = () => (Math.random() - 0.5) * 0.008;
           const jitterLarge = () => (Math.random() - 0.5) * 0.03;
+          const isRent = typeName === "租賃";
+          const isPreSale = typeName === "預售屋";
 
           return {
             district: districtName,
@@ -483,13 +496,14 @@ export default function App() {
             bathrooms: row[18] || "",
             hasPartition: row[19] || "",
             hasManagement: row[20] || "",
-            totalPrice: row[21] || "",
-            unitPrice: row[22] || "",
-            parkingType: row[23] || "",
-            parkingArea: row[24] || "",
-            parkingPrice: row[25] || "",
-            remarks: row[26] || "",
-            id: String(row[27] || `item-${index}`),
+            totalPrice: isRent ? (row[22] || "") : (row[21] || ""),
+            unitPrice: isRent ? (row[23] || "") : (row[22] || ""),
+            parkingType: isRent ? (row[24] || "") : (row[23] || ""),
+            parkingArea: isRent ? (row[25] || "") : (row[24] || ""),
+            parkingPrice: isRent ? (row[26] || "") : (row[25] || ""),
+            remarks: isRent ? (row[27] || "") : (row[26] || ""),
+            id: String(isRent ? (row[28] || `item-${index}`) : (row[27] || `item-${index}`)),
+            buildCase: isPreSale ? (row[28] || "") : undefined,
             lat: distInfo?.lat ? distInfo.lat + jitter() : (cityInfo?.lat ? cityInfo.lat + jitterLarge() : undefined),
             lng: distInfo?.lng ? distInfo.lng + jitter() : (cityInfo?.lng ? cityInfo.lng + jitterLarge() : undefined),
           };
@@ -531,18 +545,45 @@ export default function App() {
     return ["全部", ...(CITY_DISTRICTS[cityName] || []).map(d => d.name)];
   }, [cityName]);
 
+  const addressSuggestions = useMemo(() => {
+    if (!search || search.trim().length === 0) return [];
+    const validSearch = search.trim();
+    const roads = new Set<string>();
+    
+    data.forEach(item => {
+      if (item.buildCase && item.buildCase.includes(validSearch) && item.buildCase !== validSearch) {
+        roads.add(item.buildCase);
+      }
+      
+      let addr = item.address;
+      if (addr.startsWith(cityName)) addr = addr.slice(cityName.length);
+      if (addr.startsWith(item.district)) addr = addr.slice(item.district.length);
+      
+      const parts = addr.match(/[^路街段巷弄]+[路街段巷弄]/g) || [];
+      let current = "";
+      for (const p of parts) {
+        current += p;
+        if (current.includes(validSearch) && current !== validSearch) {
+          roads.add(current);
+        }
+      }
+    });
+    
+    return Array.from(roads).slice(0, 8);
+  }, [data, search, cityName]);
+
   const filteredData = useMemo(() => {
     let result = data.filter((item) => {
       // Basic Search
-      const matchesSearch = search === "" || item.address.includes(search) || item.district.includes(search) || item.buildingType.includes(search);
+      const matchesSearch = search === "" || item.address.includes(search) || item.district.includes(search) || item.buildingType.includes(search) || (item.buildCase && item.buildCase.includes(search));
       
       // District Filter
       const matchesDistrict = district === "全部" || item.district === district;
 
       // Property Type Filter
       const matchesPropertyType = propertyTypes.length === 0 || propertyTypes.some(pt => {
-        if (pt === "房地") return item.transactionType === "房地(土地+建物)";
-        if (pt === "房地(車)") return item.transactionType === "房地(土地+建物)+車位";
+        if (pt === "房地") return item.transactionType === "房地(土地+建物)" || item.transactionType === "房地";
+        if (pt === "房地(車)") return item.transactionType === "房地(土地+建物)+車位" || item.transactionType.includes("車位");
         return item.transactionType === pt;
       });
 
@@ -631,6 +672,156 @@ export default function App() {
 
     return result;
   }, [data, search, sortConfig, district, propertyTypes, period, unitPrice, area, age, cityName]);
+
+  const priceDistribution = useMemo(() => {
+    if (filteredData.length < 10) return [];
+    
+    // Convert to 萬 (10k)
+    const prices = filteredData.map(d => parseFloat(d.totalPrice) / 10000).filter(p => !isNaN(p));
+    if (prices.length === 0) return [];
+
+    let minP = prices[0];
+    let maxP = prices[0];
+    for (let i = 1; i < prices.length; i++) {
+      if (prices[i] < minP) minP = prices[i];
+      if (prices[i] > maxP) maxP = prices[i];
+    }
+    const min = Math.floor(minP);
+    const max = Math.ceil(maxP);
+    const range = max - min;
+    let step = 100; // default 100萬 bins
+    if (range > 10000) step = 2000;
+    else if (range > 5000) step = 1000;
+    else if (range > 2000) step = 500;
+    else if (range > 1000) step = 200;
+    else if (range > 500) step = 100;
+    else if (range > 200) step = 50;
+    else if (range > 100) step = 25;
+    else if (range > 50) step = 10;
+    else step = 5;
+
+    const bins = new Map<number, number>();
+    prices.forEach(p => {
+      const binStart = Math.floor(p / step) * step;
+      bins.set(binStart, (bins.get(binStart) || 0) + 1);
+    });
+
+    return Array.from(bins.entries())
+      .map(([binStart, count]) => ({ 
+        name: `${binStart}-${binStart + step}萬`, 
+        count, 
+        sortValue: binStart 
+      }))
+      .sort((a, b) => a.sortValue - b.sortValue);
+  }, [filteredData]);
+
+  const priceTrend = useMemo(() => {
+    if (filteredData.length < 10) return [];
+
+    const monthMap = new Map<string, { sum: number, count: number }>();
+    
+    filteredData.forEach(item => {
+      if (item.date && item.date.length >= 6) {
+        const y = item.date.substring(0, item.date.length - 4);
+        const m = item.date.substring(item.date.length - 4, item.date.length - 2);
+        
+        const priceVal = parseFloat(item.unitPrice);
+        if (isNaN(priceVal) || priceVal <= 0) return;
+        
+        // Convert to 萬元/坪. (rawUnitPrice * 3.30578) / 10000
+        const pricePerPing = (priceVal * 3.30578) / 10000;
+        
+        // Let's use simple string format YYY/MM
+        const monthKey = `${y}/${m}`;
+        const current = monthMap.get(monthKey) || { sum: 0, count: 0 };
+        current.sum += pricePerPing;
+        current.count += 1;
+        monthMap.set(monthKey, current);
+      }
+    });
+
+    return Array.from(monthMap.entries())
+      .map(([month, data]) => ({
+         month,
+         avgPrice: Math.round((data.sum / data.count) * 10) / 10,
+         sortKey: parseInt(month.replace('/', ''))
+      }))
+      .sort((a, b) => a.sortKey - b.sortKey);
+  }, [filteredData]);
+
+  const aggregatedPreSaleData = useMemo(() => {
+    if (typeName !== "預售屋" || filteredData.length === 0) return [];
+    
+    const map = new Map<string, {
+      buildCase: string;
+      district: string;
+      count: number;
+      minPrice: number;
+      maxPrice: number;
+      sumPrice: number;
+      minUnitPrice: number;
+      maxUnitPrice: number;
+      sumUnitPrice: number;
+      unitPriceCount: number;
+      lat?: number;
+      lng?: number;
+    }>();
+
+    filteredData.forEach(item => {
+      const bc = item.buildCase || "未知建案";
+      const current = map.get(bc) || {
+        buildCase: bc,
+        district: item.district,
+        count: 0,
+        minPrice: Infinity,
+        maxPrice: -Infinity,
+        sumPrice: 0,
+        minUnitPrice: Infinity,
+        maxUnitPrice: -Infinity,
+        sumUnitPrice: 0,
+        unitPriceCount: 0,
+        lat: item.lat,
+        lng: item.lng
+      };
+
+      current.count += 1;
+      
+      const p = parseFloat(item.totalPrice) || 0;
+      if (p > 0) {
+        if (p < current.minPrice) current.minPrice = p;
+        if (p > current.maxPrice) current.maxPrice = p;
+        current.sumPrice += p;
+      }
+
+      const up = parseFloat(item.unitPrice) || 0;
+      if (up > 0) {
+        // convert to 萬元/坪
+        const upPing = (up * 3.30578) / 10000;
+        if (upPing < current.minUnitPrice) current.minUnitPrice = upPing;
+        if (upPing > current.maxUnitPrice) current.maxUnitPrice = upPing;
+        current.sumUnitPrice += upPing;
+        current.unitPriceCount += 1;
+      }
+
+      // update coordinates if found better ones
+      if (!current.lat && item.lat) {
+        current.lat = item.lat;
+        current.lng = item.lng;
+      }
+
+      map.set(bc, current);
+    });
+
+    return Array.from(map.values())
+      .filter(item => item.count > 0)
+      .map(item => ({
+        ...item,
+        avgPrice: item.sumPrice / item.count,
+        avgUnitPrice: item.unitPriceCount > 0 ? (item.sumUnitPrice / item.unitPriceCount) : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+  }, [filteredData, typeName]);
 
   // Geocoding logic using Nominatim (OpenStreetMap) with fallback & Cache
   useEffect(() => {
@@ -834,9 +1025,9 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-[100dvh] w-full flex flex-col font-sans selection:bg-teal-500/30 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-20 overflow-x-hidden">
+    <div className="relative min-h-[100dvh] w-full flex flex-col font-sans selection:bg-coral-500/30 bg-transparent  text-ink dark:text-slate-100 pb-20 overflow-x-hidden">
       {/* Immersive Mesh Background */}
-      <div className="immersive-bg mesh-gradient opacity-60 dark:opacity-40" />
+      <div className="immersive-bg opacity-100" />
       
       {/* Dynamic Animated Blobs */}
       <div className="immersive-bg">
@@ -847,7 +1038,7 @@ export default function App() {
             scale: [1, 1.2, 1]
           }}
           transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-teal-500/15 dark:bg-teal-600/10 rounded-full blur-[120px]" 
+          className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-coral-500/15 dark:bg-coral-600/10 rounded-full blur-[120px]" 
         />
         <motion.div 
           animate={{ 
@@ -856,7 +1047,7 @@ export default function App() {
             scale: [1.2, 1, 1.2]
           }}
           transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
-          className="absolute bottom-[-10%] right-[-5%] w-[700px] h-[700px] bg-blue-500/15 dark:bg-blue-600/10 rounded-full blur-[140px]" 
+          className="absolute bottom-[-10%] right-[-5%] w-[700px] h-[700px] bg-amber-500/15 dark:bg-amber-600/10 rounded-full blur-[140px]" 
         />
         <motion.div 
           animate={{ 
@@ -870,8 +1061,8 @@ export default function App() {
 
       {/* Glass Ornaments */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: "linear" }} className="absolute top-[12%] left-[8%] opacity-10 dark:opacity-5 text-teal-500"><Sparkles size={64} /></motion.div>
-        <motion.div animate={{ y: [0, 40, 0], opacity: [0.05, 0.15, 0.05] }} transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[45%] right-[12%] text-blue-500"><Compass size={48} /></motion.div>
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: "linear" }} className="absolute top-[12%] left-[8%] opacity-10 dark:opacity-5 text-coral-500"><Sparkles size={64} /></motion.div>
+        <motion.div animate={{ y: [0, 40, 0], opacity: [0.05, 0.15, 0.05] }} transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[45%] right-[12%] text-amber-500"><Compass size={48} /></motion.div>
       </div>
       
       {/* Main Container - Liquid Glass */}
@@ -882,17 +1073,17 @@ export default function App() {
       >
         {/* Header */}
         <div className="p-4 sm:px-8 sm:pt-6 sm:pb-8 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-5 shrink-0 relative overflow-hidden group">
-          <div className="absolute bottom-0 left-0 right-0 h-[px] bg-gradient-to-r from-transparent via-teal-500/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-1000" />
-          <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <div className="absolute bottom-0 left-0 right-0 h-[px] bg-gradient-to-r from-transparent via-coral-500/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-1000" />
+          <div className="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
             <div className="flex items-center gap-5">
               <div className="relative group">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1.5rem] bg-gradient-to-tr from-slate-900 via-teal-800 to-teal-500 shadow-[0_10px_40px_rgba(20,184,166,0.4)] flex items-center justify-center transform group-hover:rotate-12 transition-all duration-500 group-hover:scale-110">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1.5rem] bg-gradient-to-tr from-slate-900 via-coral-800 to-coral-500 shadow-[0_10px_40px_rgba(20,184,166,0.4)] flex items-center justify-center transform group-hover:rotate-12 transition-all duration-500 group-hover:scale-110">
                   <Database className="text-white w-7 h-7 sm:w-8 sm:h-8" />
                 </div>
                 <motion.div 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ delay: 0.5, type: "spring" }}
+                  transition={{ delay: 0.5, ease: "easeOut", duration: 0.5 }}
                   className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-2xl flex items-center justify-center shadow-xl border-2 border-white dark:border-slate-900"
                 >
                   <Sparkles size={14} className="text-white drop-shadow-sm" />
@@ -900,7 +1091,7 @@ export default function App() {
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-200 dark:to-slate-400">
+                  <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-ink dark:text-white">
                     實價登錄查詢
                   </h1>
                   <div className="flex items-center gap-1.5">
@@ -909,7 +1100,7 @@ export default function App() {
                       size="icon"
                       onClick={fetchData} 
                       disabled={loading}
-                      className="w-8 h-8 rounded-full bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 transition-all active:rotate-180 duration-500"
+                      className="w-8 h-8 rounded-full bg-coral-500/10 hover:bg-coral-500/20 text-coral-600 dark:text-coral-400 transition-all active:rotate-180 duration-500"
                       title="重新整理資料"
                     >
                       <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -926,9 +1117,9 @@ export default function App() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-1.5 opacity-80">
-                  <span className="h-px w-6 bg-teal-500/30" />
+                  <span className="h-px w-6 bg-coral-500/30" />
                   <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.3em] flex items-center gap-1.5 leading-none">
-                    <Waves size={10} className="text-teal-500 animate-pulse" />
+                    <Waves size={10} className="text-coral-500 animate-pulse" />
                     Taiwan Real Estate Price Explorer
                   </p>
                 </div>
@@ -939,53 +1130,98 @@ export default function App() {
               <div className="hidden lg:flex items-center bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 rounded-xl p-1 shadow-inner">
                 <button 
                   onClick={() => setViewMode("list")}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "list" ? "bg-teal-500 text-white shadow-md" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"}`}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "list" ? "bg-coral-500 text-white shadow-md" : "text-slate-500 hover:text-ink dark:hover:text-white"}`}
                 >
                   <List size={14} /> 列表視圖
                 </button>
+                {typeName === "預售屋" && (
+                  <button 
+                    onClick={() => setViewMode("aggregated")}
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "aggregated" ? "bg-emerald-500 text-white shadow-md" : "text-slate-500 hover:text-ink dark:hover:text-white"}`}
+                  >
+                    <BarChart3 size={14} /> 建案聚合
+                  </button>
+                )}
                 <button 
                   onClick={() => setViewMode("map")}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "map" ? "bg-teal-500 text-white shadow-md" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"}`}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "map" ? "bg-coral-500 text-white shadow-md" : "text-slate-500 hover:text-ink dark:hover:text-white"}`}
                 >
                   <MapIcon size={14} /> 地圖探索
                 </button>
               </div>
 
-              <div className="hidden sm:flex items-center px-4 py-2 bg-teal-500/10 dark:bg-teal-400/5 border border-teal-500/10 rounded-full backdrop-blur-sm shadow-sm ring-1 ring-white/20">
-                <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse mr-3 shadow-[0_0_12px_rgba(20,184,166,0.8)]"></div>
-                <span className="text-[10px] font-black text-teal-700 dark:text-teal-400 uppercase tracking-[0.2em]">Live</span>
+              <div className="hidden sm:flex items-center px-4 py-2 bg-coral-500/10 dark:bg-coral-400/5 border border-coral-500/10 rounded-full backdrop-blur-sm shadow-sm ring-1 ring-white/20">
+                <div className="w-2 h-2 rounded-full bg-coral-500 animate-pulse mr-3 shadow-[0_0_12px_rgba(20,184,166,0.8)]"></div>
+                <span className="text-[10px] font-bold text-coral-700 dark:text-coral-400 uppercase tracking-[0.2em]">Live</span>
               </div>
             </div>
           </div>
 
+          {/* Quick Access Saved Searches */}
+          <AnimatePresence>
+            {savedSearches.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="max-w-[1600px] mx-auto w-full flex items-center gap-2 overflow-x-auto pb-4 px-2 no-scrollbar"
+              >
+                <div className="flex items-center gap-1.5 mr-1 text-slate-500 dark:text-slate-400">
+                  <Bookmark size={12} className="text-coral-500 shrink-0" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap shrink-0">最近使用：</span>
+                </div>
+                {savedSearches.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => applySavedSearch(s)}
+                    className="group flex items-center gap-2 whitespace-nowrap px-3 py-1.5 bg-white/60 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-700 backdrop-blur-md text-slate-600 dark:text-slate-300 text-xs font-bold rounded-full border border-white/80 dark:border-white/10 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+                  >
+                    {s.name}
+                    <div 
+                      onClick={(e) => { e.stopPropagation(); deleteSavedSearch(s.id); }} 
+                      className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:!bg-coral-500 hover:text-white transition-all scale-75 group-hover:scale-100 overflow-hidden"
+                    >
+                      <X size={10} />
+                    </div>
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Filters Grid */}
-          <div className="max-w-7xl mx-auto w-full flex flex-col gap-4 liquid-glass-panel p-5 sm:px-7 sm:py-6 rounded-[2rem] shadow-2xl">
+          <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-4 liquid-glass-panel p-5 sm:px-7 sm:py-6 rounded-[2rem] shadow-2xl">
             
             {/* Row 1: Location & Search */}
             <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-4 items-end">
               <div className="space-y-2 col-span-1 sm:w-36">
                 <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">縣市</label>
                 <select className="w-full liquid-glass-input h-11 px-3 rounded-[1rem] outline-none text-sm font-bold shadow-sm" value={cityName} onChange={e => { setCityName(e.target.value); setDistrict("全部"); }}>
-                  {CITIES.map(c => <option key={c.name} value={c.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{c.name}</option>)}
+                  {CITIES.map(c => <option key={c.name} value={c.name} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{c.name}</option>)}
                 </select>
               </div>
               <div className="space-y-2 col-span-1 sm:w-36">
                 <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">鄉鎮市</label>
                 <select className="w-full liquid-glass-input h-11 px-3 rounded-[1rem] outline-none text-sm font-bold shadow-sm" value={district} onChange={e => setDistrict(e.target.value)}>
-                  {uniqueDistricts.map(d => <option key={d} value={d} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{d}</option>)}
+                  {uniqueDistricts.map(d => <option key={d} value={d} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{d}</option>)}
                 </select>
               </div>
               <div className="space-y-2 col-span-1 sm:w-36">
                 <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">類型</label>
-                <select className="w-full liquid-glass-input h-11 px-3 rounded-[1rem] outline-none text-xs sm:text-sm font-bold shadow-sm" value={typeName} onChange={e => setTypeName(e.target.value)}>
-                  {TRANSACTION_TYPES.map(t => <option key={t.name} value={t.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{t.name.replace("租賃", "租")}</option>)}
+                <select className="w-full liquid-glass-input h-11 px-3 rounded-[1rem] outline-none text-xs sm:text-sm font-bold shadow-sm" value={typeName} onChange={e => {
+                  const newType = e.target.value;
+                  setTypeName(newType);
+                  if (newType === "預售屋") setViewMode("aggregated");
+                  else setViewMode("list");
+                }}>
+                  {TRANSACTION_TYPES.map(t => <option key={t.name} value={t.name} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{t.name.replace("租賃", "租")}</option>)}
                 </select>
               </div>
               <div className="space-y-2 col-span-3 sm:flex-1 sm:min-w-[240px]">
                 <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">門牌 / 社區名稱 / 地段</label>
-                <div className="relative group">
+                <div className="relative group z-30">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Search className="w-4 h-4 text-slate-400 group-focus-within:text-teal-500 group-focus-within:scale-110 transition-all duration-300" />
+                    <Search className="w-4 h-4 text-slate-400 group-focus-within:text-coral-500 group-focus-within:scale-110 transition-all duration-300" />
                   </div>
                   <input 
                     type="text"
@@ -993,14 +1229,41 @@ export default function App() {
                     className="w-full pl-11 liquid-glass-input h-11 rounded-[1rem] outline-none text-sm font-bold placeholder:text-slate-400 shadow-sm"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   />
+                  
+                  {/* Autocomplete Dropdown */}
+                  <AnimatePresence>
+                    {showSuggestions && addressSuggestions.length > 0 && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        className="absolute top-12 left-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden"
+                      >
+                        {addressSuggestions.map(suggestion => (
+                          <div 
+                            key={suggestion}
+                            className="px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-coral-500/10 hover:text-coral-600 dark:hover:text-coral-400 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors"
+                            onClick={() => {
+                              setSearch(suggestion);
+                              setShowSuggestions(false);
+                            }}
+                          >
+                            {suggestion}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             </div>
 
             {/* Row 2: Property Types */}
             <div className="flex flex-wrap gap-3 items-center py-4 border-y border-white/20 dark:border-white/10">
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.2em] mr-2 opacity-70">標的種類</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] mr-2 opacity-70">標的種類</span>
               {["房地", "房地(車)", "建物", "車位", "土地"].map(pt => (
                 <label key={pt} className="relative cursor-pointer group">
                   <input type="checkbox" className="sr-only peer" 
@@ -1010,7 +1273,7 @@ export default function App() {
                       else setPropertyTypes(propertyTypes.filter(p => p !== pt));
                     }}
                   />
-                  <div className="px-4 py-1.5 rounded-xl border border-white/60 dark:border-white/20 bg-white/40 dark:bg-white/10 text-xs font-bold text-slate-600 dark:text-slate-400 peer-checked:bg-teal-500 dark:peer-checked:bg-teal-400 peer-checked:text-white dark:peer-checked:text-slate-950 peer-checked:border-teal-500 dark:peer-checked:border-teal-400 peer-checked:shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-all hover:border-teal-500/40 peer-checked:scale-105 active:scale-95">
+                  <div className="px-4 py-1.5 rounded-xl border border-white/60 dark:border-white/20 bg-white/40 dark:bg-white/10 text-xs font-bold text-slate-600 dark:text-slate-400 peer-checked:bg-coral-500 dark:peer-checked:bg-coral-400 peer-checked:text-white dark:peer-checked:text-slate-950 peer-checked:border-coral-500 dark:peer-checked:border-coral-400 peer-checked:shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-all hover:border-coral-500/40 peer-checked:scale-105 active:scale-95">
                     {pt}
                   </div>
                 </label>
@@ -1021,83 +1284,86 @@ export default function App() {
             <AnimatePresence>
               {isAdvancedSearchOpen && (
                 <motion.div
-                  initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                  animate={{ height: "auto", opacity: 1, marginTop: 16 }}
-                  exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                  className="overflow-hidden"
+                  initial={{ height: 0, opacity: 0, y: -10 }}
+                  animate={{ height: "auto", opacity: 1, y: 0 }}
+                  exit={{ height: 0, opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="overflow-hidden mt-2"
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-2">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-5 sm:p-7 bg-white/30 dark:bg-slate-900/40 backdrop-blur-2xl border border-white/60 dark:border-white/10 rounded-[2rem] shadow-[0_16px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.4)] mb-2 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent dark:from-white/5" />
+
                     {/* Period */}
-                     <div className="space-y-2">
-                       <label className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.2em] ml-1 opacity-70">交易期間</label>
-                       <div className="flex items-center gap-1 liquid-glass-input rounded-2xl p-1.5 flex-wrap sm:flex-nowrap border-white/40 dark:border-white/10 shadow-sm">
-                         <div className="flex-1 flex items-center bg-white/30 dark:bg-black/20 rounded-lg px-2">
-                           <select className="bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center" value={period.startY} onChange={e => setPeriod({...period, startY: e.target.value})}>
-                             {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{y}</option>)}
+                     <div className="space-y-2 relative z-10">
+                       <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-2 opacity-80">交易期間</label>
+                       <div className="flex items-center gap-1 liquid-glass-input rounded-2xl p-1.5 flex-wrap sm:flex-nowrap border-white/50 dark:border-white/10 shadow-sm">
+                         <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
+                           <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.startY} onChange={e => setPeriod({...period, startY: e.target.value})}>
+                             {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{y}</option>)}
                            </select>
-                           <span className="text-[10px] text-slate-400 font-black uppercase ml-1">Y</span>
+                           <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">Y</span>
                          </div>
-                         <div className="flex-1 flex items-center bg-white/30 dark:bg-black/20 rounded-lg px-2">
-                           <select className="bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center" value={period.startM} onChange={e => setPeriod({...period, startM: e.target.value})}>
-                             {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{m}</option>)}
+                         <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
+                           <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.startM} onChange={e => setPeriod({...period, startM: e.target.value})}>
+                             {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{m}</option>)}
                            </select>
-                           <span className="text-[10px] text-slate-400 font-black uppercase ml-1">M</span>
+                           <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">M</span>
                          </div>
-                         <span className="text-slate-300 dark:text-slate-600 mx-1">-</span>
-                         <div className="flex-1 flex items-center bg-white/30 dark:bg-black/20 rounded-lg px-2">
-                           <select className="bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center" value={period.endY} onChange={e => setPeriod({...period, endY: e.target.value})}>
-                             {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{y}</option>)}
+                         <span className="text-slate-400 dark:text-slate-600 font-bold shrink-0">-</span>
+                         <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
+                           <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.endY} onChange={e => setPeriod({...period, endY: e.target.value})}>
+                             {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{y}</option>)}
                            </select>
-                           <span className="text-[10px] text-slate-400 font-black uppercase ml-1">Y</span>
+                           <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">Y</span>
                          </div>
-                         <div className="flex-1 flex items-center bg-white/30 dark:bg-black/20 rounded-lg px-2">
-                           <select className="bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center" value={period.endM} onChange={e => setPeriod({...period, endM: e.target.value})}>
-                             {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{m}</option>)}
+                         <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
+                           <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.endM} onChange={e => setPeriod({...period, endM: e.target.value})}>
+                             {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{m}</option>)}
                            </select>
-                           <span className="text-[10px] text-slate-400 font-black uppercase ml-1">M</span>
+                           <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">M</span>
                          </div>
                        </div>
                      </div>
 
                     {/* Unit Price */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest ml-1 drop-shadow-sm">單價</label>
-                        <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                          <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="up_unit" checked={unitPrice.unit==="1"} onChange={()=>setUnitPrice({...unitPrice, unit:"1"})} className="accent-teal-500"/> 萬元/坪</label>
-                          <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="up_unit" checked={unitPrice.unit==="2"} onChange={()=>setUnitPrice({...unitPrice, unit:"2"})} className="accent-teal-500"/> 元/㎡</label>
+                    <div className="space-y-2 relative z-10">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-2 opacity-80">單價</label>
+                        <div className="flex items-center gap-3 text-xs font-bold text-slate-500 dark:text-slate-400 bg-white/40 dark:bg-black/20 px-3 py-1 rounded-full border border-white/50 dark:border-white/10 shadow-sm">
+                          <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"><input type="radio" name="up_unit" checked={unitPrice.unit==="1"} onChange={()=>setUnitPrice({...unitPrice, unit:"1"})} className="accent-coral-500 w-3.5 h-3.5"/> 萬元/坪</label>
+                          <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"><input type="radio" name="up_unit" checked={unitPrice.unit==="2"} onChange={()=>setUnitPrice({...unitPrice, unit:"2"})} className="accent-coral-500 w-3.5 h-3.5"/> 元/㎡</label>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <input type="number" placeholder="最小值" className="w-full liquid-glass-input h-10 px-3 rounded-[0.85rem] outline-none text-sm font-medium" value={unitPrice.min} onChange={e=>setUnitPrice({...unitPrice, min: e.target.value})} />
-                        <span className="text-slate-400/50">-</span>
-                        <input type="number" placeholder="最大值" className="w-full liquid-glass-input h-10 px-3 rounded-[0.85rem] outline-none text-sm font-medium" value={unitPrice.max} onChange={e=>setUnitPrice({...unitPrice, max: e.target.value})} />
+                      <div className="flex items-center gap-2">
+                        <input type="number" placeholder="最小值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={unitPrice.min} onChange={e=>setUnitPrice({...unitPrice, min: e.target.value})} />
+                        <span className="text-slate-400/50 font-bold">-</span>
+                        <input type="number" placeholder="最大值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={unitPrice.max} onChange={e=>setUnitPrice({...unitPrice, max: e.target.value})} />
                       </div>
                     </div>
 
                     {/* Area */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest ml-1 drop-shadow-sm">面積</label>
-                        <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                          <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="a_unit" checked={area.unit==="1"} onChange={()=>setArea({...area, unit:"1"})} className="accent-teal-500"/> ㎡</label>
-                          <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="a_unit" checked={area.unit==="2"} onChange={()=>setArea({...area, unit:"2"})} className="accent-teal-500"/> 坪</label>
+                    <div className="space-y-2 relative z-10">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-2 opacity-80">面積</label>
+                        <div className="flex items-center gap-3 text-xs font-bold text-slate-500 dark:text-slate-400 bg-white/40 dark:bg-black/20 px-3 py-1 rounded-full border border-white/50 dark:border-white/10 shadow-sm">
+                          <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"><input type="radio" name="a_unit" checked={area.unit==="1"} onChange={()=>setArea({...area, unit:"1"})} className="accent-coral-500 w-3.5 h-3.5"/> ㎡</label>
+                          <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"><input type="radio" name="a_unit" checked={area.unit==="2"} onChange={()=>setArea({...area, unit:"2"})} className="accent-coral-500 w-3.5 h-3.5"/> 坪</label>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <input type="number" placeholder="最小值" className="w-full liquid-glass-input h-10 px-3 rounded-[0.85rem] outline-none text-sm font-medium" value={area.min} onChange={e=>setArea({...area, min: e.target.value})} />
-                        <span className="text-slate-400/50">-</span>
-                        <input type="number" placeholder="最大值" className="w-full liquid-glass-input h-10 px-3 rounded-[0.85rem] outline-none text-sm font-medium" value={area.max} onChange={e=>setArea({...area, max: e.target.value})} />
+                      <div className="flex items-center gap-2">
+                        <input type="number" placeholder="最小值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={area.min} onChange={e=>setArea({...area, min: e.target.value})} />
+                        <span className="text-slate-400/50 font-bold">-</span>
+                        <input type="number" placeholder="最大值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={area.max} onChange={e=>setArea({...area, max: e.target.value})} />
                       </div>
                     </div>
 
                     {/* Age */}
-                    <div className="space-y-1.5 flex flex-col justify-end">
-                      <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest ml-1 drop-shadow-sm">屋齡 (年)</label>
-                      <div className="flex items-center gap-1.5">
-                        <input type="number" placeholder="最小值" className="w-full liquid-glass-input h-10 px-3 rounded-[0.85rem] outline-none text-sm font-medium" value={age.min} onChange={e=>setAge({...age, min: e.target.value})} />
-                        <span className="text-slate-400/50">-</span>
-                        <input type="number" placeholder="最大值" className="w-full liquid-glass-input h-10 px-3 rounded-[0.85rem] outline-none text-sm font-medium" value={age.max} onChange={e=>setAge({...age, max: e.target.value})} />
+                    <div className="space-y-2 flex flex-col justify-end lg:pb-[2px] relative z-10">
+                      <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-2 opacity-80">屋齡 (年)</label>
+                      <div className="flex items-center gap-2">
+                        <input type="number" placeholder="最小值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={age.min} onChange={e=>setAge({...age, min: e.target.value})} />
+                        <span className="text-slate-400/50 font-bold">-</span>
+                        <input type="number" placeholder="最大值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={age.max} onChange={e=>setAge({...age, max: e.target.value})} />
                       </div>
                     </div>
                   </div>
@@ -1112,12 +1378,12 @@ export default function App() {
                 <Button 
                   variant="ghost" 
                   onClick={() => setIsAdvancedSearchOpen(!isAdvancedSearchOpen)}
-                  className={`flex-1 sm:flex-none text-xs sm:text-sm font-bold ${isAdvancedSearchOpen ? 'text-teal-600 dark:text-teal-400 bg-teal-500/10 dark:bg-teal-500/20' : 'text-slate-600 dark:text-slate-300'} hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-[1.25rem] h-11 transition-all gap-2 px-4 border border-transparent shadow-sm ${isAdvancedSearchOpen ? 'border-teal-500/30 shadow-inner' : ''}`}
+                  className={`flex-1 sm:flex-none text-xs sm:text-sm font-bold ${isAdvancedSearchOpen ? 'text-coral-600 dark:text-coral-400 bg-coral-500/10 dark:bg-coral-500/20' : 'text-slate-600 dark:text-slate-300'} hover:text-coral-700 hover:bg-coral-50 dark:hover:bg-coral-900/30 rounded-[1.25rem] h-11 transition-all gap-2 px-4 border border-transparent shadow-sm ${isAdvancedSearchOpen ? 'border-coral-500/30 shadow-inner' : ''}`}
                 >
                   <div className="relative">
                     <SlidersHorizontal className="w-4 h-4" />
                     {isAdvancedSearchOpen && (
-                      <motion.div layoutId="search-dot" className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.5)] rounded-full" />
+                      <motion.div Id="search-dot" className="absolute -top-1 -right-1 w-2 h-2 bg-coral-500 shadow-[0_0_8px_rgba(20,184,166,0.5)] rounded-full" />
                     )}
                   </div>
                   進階篩選
@@ -1136,7 +1402,7 @@ export default function App() {
                     setArea({ min: "", max: "", unit: "2" });
                     setAge({ min: "", max: "" });
                   }}
-                  className="flex-1 sm:flex-none h-11 px-4 rounded-[1.25rem] text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/5 transition-all text-xs sm:text-sm font-bold flex items-center gap-2"
+                  className="flex-1 sm:flex-none h-11 px-4 rounded-[1.25rem] text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-coral-500/5 transition-all text-xs sm:text-sm font-bold flex items-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
                   清除篩選
@@ -1144,42 +1410,27 @@ export default function App() {
               </div>
 
               {/* Search execution group */}
-              <div className="flex items-center gap-1 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+                <Button
+                  onClick={() => setIsSavingSearch(true)}
+                  variant="ghost"
+                  className="flex-1 sm:flex-none bg-coral-500/10 hover:bg-coral-500/20 text-coral-600 dark:text-coral-400 border border-coral-500/20 rounded-[1.25rem] h-11 px-4 text-xs font-bold transition-all shadow-sm"
+                  title="儲存目前的搜尋設定"
+                >
+                  <Bookmark size={14} className="mr-1.5" />
+                  儲存條件
+                </Button>
                 <Button 
                   onClick={fetchData} 
                   disabled={loading}
-                  className="flex-1 sm:flex-none liquid-glass-button-primary rounded-l-[1rem] rounded-r-none px-4 sm:px-6 h-10 border-r border-white/20 whitespace-nowrap"
+                  className="flex-1 sm:flex-none liquid-glass-button-primary rounded-[1.25rem] px-8 h-11 whitespace-nowrap shadow-md text-sm font-bold"
                 >
                   <Search className="w-4 h-4 mr-2" />
-                  {loading ? "處理中..." : "查詢"}
-                </Button>
-                <Button
-                  onClick={() => setIsSavingSearch(true)}
-                  className="shrink-0 liquid-glass-button-primary rounded-r-[1rem] rounded-l-none h-10 px-3"
-                  title="儲存此搜尋設定"
-                >
-                  <Bookmark size={16} />
+                  {loading ? "處理中..." : "開始查詢"}
                 </Button>
               </div>
             </div>
           </div>
-
-          {/* Quick Access Saved Searches */}
-          {savedSearches.length > 0 && (
-            <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 px-4 no-scrollbar">
-              <span className="text-[10px] text-slate-400 font-bold uppercase whitespace-nowrap">我的最愛：</span>
-              {savedSearches.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => applySavedSearch(s)}
-                  className="group flex items-center gap-2 whitespace-nowrap px-3 py-1 bg-white/40 dark:bg-black/40 hover:bg-teal-500/10 text-slate-600 dark:text-slate-400 text-[10px] font-bold rounded-full border border-white/40 dark:border-white/10 transition-all"
-                >
-                  {s.name}
-                  <X size={10} onClick={(e) => { e.stopPropagation(); deleteSavedSearch(s.id); }} className="opacity-0 group-hover:opacity-100 hover:text-red-500" />
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Save Search Modal */}
@@ -1187,7 +1438,7 @@ export default function App() {
           <DialogContent className="sm:max-w-[400px] rounded-[2rem] border-none shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                <Bookmark className="text-teal-500" /> 儲存目前搜尋設定
+                <Bookmark className="text-coral-500" /> 儲存目前搜尋設定
               </DialogTitle>
             </DialogHeader>
             <div className="p-4 space-y-4">
@@ -1201,7 +1452,7 @@ export default function App() {
               />
               <div className="pt-2 flex justify-end gap-3">
                 <Button variant="ghost" onClick={() => setIsSavingSearch(false)} className="rounded-xl font-bold">取消</Button>
-                <Button onClick={saveCurrentSearch} disabled={!newSearchName.trim()} className="bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold px-6">儲存設定</Button>
+                <Button onClick={saveCurrentSearch} disabled={!newSearchName.trim()} className="bg-coral-600 hover:bg-coral-500 text-white rounded-xl font-bold px-6">儲存設定</Button>
               </div>
             </div>
           </DialogContent>
@@ -1210,15 +1461,15 @@ export default function App() {
         {/* Content */}
         <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-t-[2.5rem] mx-0 sm:mx-6 border-b-0 shadow-2xl sm:shadow-[0_20px_50px_rgba(0,0,0,0.15)] mt-0 sm:-mt-6 relative z-20 pb-12 overflow-hidden">
           <div className="px-6 sm:px-8 py-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between bg-white/30 dark:bg-black/20 backdrop-blur-3xl relative overflow-hidden">
-            <div className="absolute inset-y-0 left-0 w-1 bg-teal-500" />
+            <div className="absolute inset-y-0 left-0 w-1 bg-coral-500" />
             <div className="flex items-center gap-3 relative z-10">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center border border-teal-500/10">
-                <Filter className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+              <div className="w-10 h-10 rounded-xl bg-coral-500/10 flex items-center justify-center border border-coral-500/10">
+                <Filter className="w-5 h-5 text-coral-600 dark:text-coral-400" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.22em] leading-none">搜尋結果</span>
+                <span className="text-xs font-bold text-ink dark:text-white uppercase tracking-[0.22em] leading-none">搜尋結果</span>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-1.5 flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-teal-500" />
+                  <div className="w-1 h-1 rounded-full bg-coral-500" />
                   目前找到 {filteredData.length} 筆符合條件的成交紀錄
                 </span>
               </div>
@@ -1227,13 +1478,21 @@ export default function App() {
             <div className="lg:hidden flex items-center bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 rounded-xl p-1">
               <button 
                 onClick={() => setViewMode("list")}
-                className={`p-2 rounded-lg transition-all ${viewMode === "list" ? "bg-teal-500 text-white shadow-md" : "text-slate-400"}`}
+                className={`p-2 rounded-lg transition-all ${viewMode === "list" ? "bg-coral-500 text-white shadow-md" : "text-slate-400"}`}
               >
                 <List size={16} />
               </button>
+              {typeName === "預售屋" && (
+                <button 
+                  onClick={() => setViewMode("aggregated")}
+                  className={`p-2 rounded-lg transition-all ${viewMode === "aggregated" ? "bg-emerald-500 text-white shadow-md" : "text-slate-400"}`}
+                >
+                  <BarChart3 size={16} />
+                </button>
+              )}
               <button 
                 onClick={() => setViewMode("map")}
-                className={`p-2 rounded-lg transition-all ${viewMode === "map" ? "bg-teal-500 text-white shadow-md" : "text-slate-400"}`}
+                className={`p-2 rounded-lg transition-all ${viewMode === "map" ? "bg-coral-500 text-white shadow-md" : "text-slate-400"}`}
               >
                 <MapIcon size={16} />
               </button>
@@ -1243,19 +1502,19 @@ export default function App() {
           {loading ? (
             <div className="p-8 sm:p-16 space-y-12 flex flex-col items-center justify-center min-h-[500px]">
               <div className="relative">
-                <div className="w-24 h-24 rounded-[2rem] bg-teal-500/10 dark:bg-teal-500/20 flex items-center justify-center border border-teal-500/20 shadow-xl overflow-hidden group">
+                <div className="w-24 h-24 rounded-[2rem] bg-coral-500/10 dark:bg-coral-500/20 flex items-center justify-center border border-coral-500/20 shadow-xl overflow-hidden group">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(20,184,166,0.2)_0%,transparent_70%)] animate-pulse" />
-                  <Database size={48} className="text-teal-600 dark:text-teal-400 relative z-10 animate-float-blob" />
+                  <Database size={48} className="text-coral-600 dark:text-coral-400 relative z-10 animate-float-blob" />
                 </div>
                 <motion.div 
                   animate={{ rotate: 360 }}
                   transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                  className="absolute -inset-2 border-2 border-dashed border-teal-500/20 rounded-[2.5rem]" 
+                  className="absolute -inset-2 border-2 border-dashed border-coral-500/20 rounded-[2.5rem]" 
                 />
               </div>
               
               <div className="text-center space-y-3 z-10">
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{robotStatus || "正在擷取開放資料..."}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-ink dark:text-white tracking-tight">{robotStatus || "正在擷取開放資料..."}</h3>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold max-w-sm mx-auto uppercase tracking-widest leading-relaxed">內政部 實價登錄 API 連線中<br/>即時解析開放資料集結構</p>
               </div>
 
@@ -1269,10 +1528,201 @@ export default function App() {
                 ))}
               </div>
             </div>
-          ) : viewMode === "list" ? (
-            <div className="flex-1 min-h-[300px]">
+          ) : viewMode === "aggregated" && typeName === "預售屋" ? (
+            <div className="flex-1 min-h-[300px] flex flex-col p-4 sm:p-6 overflow-x-auto">
               <Table className="min-w-[800px]">
                 <TableHeader className="sticky top-0 bg-white/40 dark:bg-black/30 backdrop-blur-3xl z-10 border-b border-white/20 dark:border-white/10">
+                  <TableRow className="border-none hover:bg-transparent">
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest pl-6">建案名稱/社區</TableHead>
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">區域</TableHead>
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">成交件數</TableHead>
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">平均單價</TableHead>
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">單價區間</TableHead>
+                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">總價區間</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <AnimatePresence mode="wait">
+                  <motion.tbody
+                    key={`aggregated-${search}-${typeName}-${unitPrice.min}-${unitPrice.max}-${period.startY}-${period.startM}-${period.endY}-${period.endM}`}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    variants={{
+                      hidden: { opacity: 0 },
+                      visible: { 
+                        opacity: 1,
+                        transition: { staggerChildren: 0.03 }
+                      }
+                    }}
+                    className="[&_tr:last-child]:border-0"
+                  >
+                    {aggregatedPreSaleData.map((item) => (
+                      <motion.tr 
+                        key={item.buildCase + item.district}
+                        variants={{
+                          hidden: { opacity: 0, y: 10 },
+                          visible: { opacity: 1, y: 0, transition: { ease: "easeOut", duration: 0.4 } }
+                        }}
+                        className="group hover:bg-white/60 dark:hover:bg-slate-800/60 border-b border-slate-200/50 dark:border-slate-800/50 cursor-pointer"
+                        onClick={() => {
+                          setSearch(item.buildCase);
+                          setViewMode("list");
+                        }}
+                      >
+                        <TableCell className="pl-6 font-bold text-ink/90 dark:text-slate-200 truncate max-w-[200px]">
+                          {item.buildCase}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-[10px]">
+                            {item.district}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-slate-700 dark:text-slate-300 font-mono font-medium">
+                          {item.count} 筆
+                        </TableCell>
+                        <TableCell className="text-right text-coral-600 dark:text-coral-400 font-mono font-bold">
+                          {(Math.round(item.avgUnitPrice * 10) / 10).toFixed(1)} 萬/坪
+                        </TableCell>
+                        <TableCell className="text-right text-slate-500 font-mono text-xs">
+                          {(Math.round(item.minUnitPrice * 10) / 10).toFixed(1)} ~ {(Math.round(item.maxUnitPrice * 10) / 10).toFixed(1)} 萬
+                        </TableCell>
+                        <TableCell className="text-right text-slate-500 font-mono text-xs">
+                          {(item.minPrice / 10000).toFixed(0)} ~ {(item.maxPrice / 10000).toFixed(0)} 萬
+                        </TableCell>
+                      </motion.tr>
+                    ))}
+                  </motion.tbody>
+                </AnimatePresence>
+              </Table>
+            </div>
+          ) : viewMode === "list" ? (
+            <div className="flex-1 min-h-[300px] flex flex-col">
+              {!loading && (priceDistribution.length > 0 || priceTrend.length > 0) && (
+                <div className="flex flex-col gap-4 mx-4 sm:mx-6 mt-6 mb-2">
+                  <div className="lg:hidden">
+                    <Button 
+                      variant="outline" 
+                      className="w-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border-white/60 dark:border-white/10 rounded-2xl h-12 font-bold shadow-sm flex items-center justify-between"
+                      onClick={() => setShowChartsMobile(!showChartsMobile)}
+                    >
+                      <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                        <BarChart3 className="w-4 h-4 text-coral-600 dark:text-coral-400" />
+                        市場分析圖表
+                      </span>
+                      <motion.div animate={{ rotate: showChartsMobile ? 180 : 0 }}>
+                        <ArrowUpDown className="w-4 h-4 text-slate-500" />
+                      </motion.div>
+                    </Button>
+                  </div>
+                  <div className={`grid-cols-1 lg:grid-cols-2 gap-4 ${!showChartsMobile ? 'hidden lg:grid' : 'grid'}`}>
+                  {priceTrend.length > 0 && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/60 dark:border-white/10 shadow-xl rounded-3xl"
+                    >
+                      <div className="flex items-center gap-2 mb-4 px-2">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                          <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">成交單價走勢</span>
+                      </div>
+                      <div className="h-[140px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={priceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748b" strokeOpacity={0.15} />
+                            <XAxis 
+                              dataKey="month" 
+                              tickLine={false} 
+                              axisLine={false} 
+                              tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
+                              dy={10}
+                            />
+                            <YAxis 
+                              domain={['dataMin - 5', 'dataMax + 5']}
+                              tickLine={false} 
+                              axisLine={false} 
+                              tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} 
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.7)', 
+                                borderRadius: '16px', 
+                                border: '1px solid rgba(255, 255, 255, 0.5)',
+                                boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                                backdropFilter: 'blur(20px)',
+                                color: '#0f172a'
+                              }}
+                              itemStyle={{ color: '#4f46e5', fontWeight: '900' }}
+                              labelStyle={{ color: '#64748b', fontWeight: '900', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}
+                              formatter={(value) => [`${value} 萬/坪`, '平均單價']}
+                            />
+                            <Area type="monotone" name="平均單價" dataKey="avgPrice" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {priceDistribution.length > 0 && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/60 dark:border-white/10 shadow-xl rounded-3xl"
+                    >
+                      <div className="flex items-center gap-2 mb-4 px-2">
+                        <div className="w-8 h-8 rounded-xl bg-coral-500/10 flex items-center justify-center border border-coral-500/20">
+                          <BarChart3 className="w-4 h-4 text-coral-600 dark:text-coral-400" />
+                        </div>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">成交總價分布</span>
+                      </div>
+                      <div className="h-[140px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={priceDistribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748b" strokeOpacity={0.15} />
+                            <XAxis 
+                              dataKey="name" 
+                              tickLine={false} 
+                              axisLine={false} 
+                              tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
+                              dy={10}
+                            />
+                            <YAxis 
+                              tickLine={false} 
+                              axisLine={false} 
+                              tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} 
+                            />
+                            <Tooltip 
+                              cursor={{ fill: '#14b8a6', opacity: 0.1 }}
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.7)', 
+                                borderRadius: '16px', 
+                                border: '1px solid rgba(255, 255, 255, 0.5)',
+                                boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                                backdropFilter: 'blur(20px)',
+                                color: '#0f172a'
+                              }}
+                              itemStyle={{ color: '#0d9488', fontWeight: '900' }}
+                              labelStyle={{ color: '#64748b', fontWeight: '900', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}
+                            />
+                            <Bar name="案件數" dataKey="count" fill="#2dd4bf" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </motion.div>
+                  )}
+                  </div>
+                </div>
+              )}
+              <div className="overflow-x-auto w-full">
+                <Table className="min-w-[800px]">
+                  <TableHeader className="sticky top-0 bg-white/40 dark:bg-black/30 backdrop-blur-3xl z-10 border-b border-white/20 dark:border-white/10">
                   <TableRow className="border-none hover:bg-transparent">
                     <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest pl-8">
                       <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 dark:text-slate-500 p-0 h-auto font-bold rounded-lg text-[10px]" onClick={() => handleSort("district")}>
@@ -1280,6 +1730,9 @@ export default function App() {
                       </Button>
                     </TableHead>
                     <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">位置/社區</TableHead>
+                    {typeName === "預售屋" && (
+                      <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">建案名稱</TableHead>
+                    )}
                     <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">
                       <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 dark:text-slate-500 p-0 h-auto font-bold rounded-lg text-[10px]" onClick={() => handleSort("date")}>
                         交易日期 <ArrowUpDown className="ml-1 w-3 h-3 opacity-50" />
@@ -1295,34 +1748,51 @@ export default function App() {
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  <AnimatePresence mode="popLayout">
-                    {filteredData.map((item, idx) => (
+                <AnimatePresence mode="wait">
+                  <motion.tbody
+                    key={`${search}-${unitPrice.min}-${unitPrice.max}-${period.startY}-${period.startM}-${period.endY}-${period.endM}-${typeName}-${propertyTypes.join(",")}-${sortConfig?.key}-${sortConfig?.direction}`}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    variants={{
+                      hidden: { opacity: 0 },
+                      visible: { 
+                        opacity: 1,
+                        transition: { staggerChildren: 0.03 }
+                      }
+                    }}
+                    className="[&_tr:last-child]:border-0"
+                  >
+                    {filteredData.map((item) => (
                       <motion.tr 
-                        layout
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.3, delay: Math.min(idx * 0.03, 0.5) }}
+                        variants={{
+                          hidden: { opacity: 0, y: 10 },
+                          visible: { opacity: 1, y: 0, transition: { ease: "easeOut", duration: 0.4 } }
+                        }}
                         key={item.id} 
                         className="border-b border-white/20 dark:border-white/5 hover:bg-white/50 dark:hover:bg-white/5 cursor-pointer group transition-all"
                         onClick={() => setSelectedItem(item)}
                       >
-                        <TableCell className="text-slate-900 dark:text-slate-100 font-bold font-display pl-8">{item.district}</TableCell>
+                        <TableCell className="text-ink dark:text-slate-100 font-bold font-display pl-8">{item.district}</TableCell>
                         <TableCell className="max-w-[240px]">
                           <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0 border border-teal-500/5 shadow-sm group-hover:bg-teal-500/20 transition-all">
-                               <MapPin size={14} className="text-teal-600 dark:text-teal-400" />
+                             <div className="w-8 h-8 rounded-xl bg-coral-500/10 flex items-center justify-center shrink-0 border border-coral-500/5 shadow-sm group-hover:bg-coral-500/20 transition-all">
+                               <MapPin size={14} className="text-coral-600 dark:text-coral-400" />
                              </div>
                              <div className="flex flex-col min-w-0">
-                               <div className="truncate text-slate-800 dark:text-slate-200 font-bold group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors leading-tight">{item.address}</div>
+                               <div className="truncate text-ink/90 dark:text-slate-200 font-bold group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-tight">{item.address}</div>
                                <div className="flex items-center gap-2 mt-1">
-                                 <span className="text-[9px] text-teal-600/70 dark:text-teal-400/70 font-black tracking-[0.1em] uppercase px-1.5 py-0.5 rounded-md bg-teal-500/5 border border-teal-500/10 leading-none">{item.transactionType}</span>
+                                 <span className="text-[9px] text-coral-600/70 dark:text-coral-400/70 font-bold tracking-[0.1em] uppercase px-1.5 py-0.5 rounded-md bg-coral-500/5 border border-coral-500/10 leading-none">{item.transactionType}</span>
                                  <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{item.buildingArea} ㎡</span>
                                </div>
                              </div>
                           </div>
                         </TableCell>
+                        {typeName === "預售屋" && (
+                          <TableCell className="text-ink dark:text-slate-100 font-bold whitespace-nowrap">
+                            {item.buildCase || "-"}
+                          </TableCell>
+                        )}
                         <TableCell className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm">{formatDate(item.date)}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="bg-white/40 dark:bg-white/5 text-slate-600 dark:text-slate-300 border-white/60 dark:border-white/10 font-bold px-2 py-0 h-6">
@@ -1330,28 +1800,29 @@ export default function App() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="text-slate-900 dark:text-white font-display font-black tracking-tighter text-xl">
+                          <div className="text-ink dark:text-white font-display font-bold tracking-tighter text-xl">
                             {formatPrice(item.totalPrice)}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="inline-flex flex-col items-end px-3 py-1 bg-white/40 dark:bg-white/5 rounded-xl border border-white/60 dark:border-white/10 group-hover:border-teal-500/30 transition-all">
-                            <div className="text-slate-900 dark:text-white font-mono font-black text-sm">
+                          <div className="inline-flex flex-col items-end px-3 py-1 bg-white/40 dark:bg-white/5 rounded-xl border border-white/60 dark:border-white/10 group-hover:border-coral-500/30 transition-all">
+                            <div className="text-ink dark:text-white font-mono font-bold text-sm">
                               {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-"}
                             </div>
-                            <div className="text-[8px] text-slate-500 dark:text-slate-500 font-black uppercase tracking-widest mt-0.5 leading-none">萬元/坪</div>
+                            <div className="text-[8px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5 leading-none">萬元/坪</div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="w-8 h-8 rounded-full bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all group-hover:scale-110">
-                            <ChevronRight className="w-4 h-4 text-teal-500" />
+                            <ChevronRight className="w-4 h-4 text-coral-500" />
                           </div>
                         </TableCell>
                       </motion.tr>
                     ))}
-                  </AnimatePresence>
-                </TableBody>
+                  </motion.tbody>
+                </AnimatePresence>
               </Table>
+              </div>
               {filteredData.length === 0 && !loading && !error && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -1359,7 +1830,7 @@ export default function App() {
                   className="flex flex-col items-center justify-center py-32 text-slate-500/50 dark:text-slate-400/50"
                 >
                   <div className="w-24 h-24 rounded-3xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center mb-6 shadow-inner relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 to-transparent group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-coral-500/10 to-transparent group-hover:opacity-100 transition-opacity" />
                     <motion.div
                       animate={{ 
                         rotate: [0, 10, -10, 10, 0],
@@ -1367,10 +1838,10 @@ export default function App() {
                       }}
                       transition={{ duration: 5, repeat: Infinity }}
                     >
-                      <Compass className="w-10 h-10 opacity-50 text-teal-600/50 relative z-10" />
+                      <Compass className="w-10 h-10 opacity-50 text-coral-600/50 relative z-10" />
                     </motion.div>
                   </div>
-                  <p className="font-display font-bold text-xl tracking-tight text-slate-800 dark:text-slate-200">還沒找到藏寶圖？</p>
+                  <p className="font-display font-bold text-xl tracking-tight text-ink/90 dark:text-slate-200">還沒找到藏寶圖？</p>
                   <p className="text-sm mt-2 font-medium opacity-60">嘗試放寬您的篩選條件或更改關鍵字</p>
                 </motion.div>
               )}
@@ -1380,14 +1851,14 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex flex-col items-center justify-center py-24 px-6 text-red-500/80 dark:text-red-400/80"
                 >
-                  <div className="w-20 h-20 rounded-2xl bg-red-100/50 dark:bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-8 shadow-sm">
+                  <div className="w-20 h-20 rounded-2xl bg-coral-100/50 dark:bg-coral-500/10 border border-red-500/20 flex items-center justify-center mb-8 shadow-sm">
                     <X className="w-10 h-10 opacity-60" />
                   </div>
                   <p className="text-2xl font-display font-extrabold mb-3 tracking-tight text-red-700 dark:text-red-400">數據連線中斷</p>
                   <p className="text-sm opacity-70 max-w-sm text-center font-medium leading-relaxed mb-10">{error}</p>
                   <Button 
                     variant="outline" 
-                    className="rounded-2xl px-12 h-12 liquid-glass-button border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-500/5 font-bold shadow-xl shadow-red-500/5 transition-all active:scale-95"
+                    className="rounded-2xl px-12 h-12 liquid-glass-button border-red-500/30 text-red-700 dark:text-red-400 hover:bg-coral-500/5 font-bold shadow-xl shadow-red-500/5 transition-all active:scale-95"
                     onClick={fetchData}
                   >
                     重新初始化掃描
@@ -1396,7 +1867,7 @@ export default function App() {
               )}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 relative min-h-[500px] sm:min-h-[600px]">
+            <div className="flex-1 flex flex-col bg-transparent  relative min-h-[500px] sm:min-h-[600px]">
               {filteredData.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8">
                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
@@ -1426,43 +1897,49 @@ export default function App() {
                     {/* Automatic bounds manager */}
                     <MapBoundsManager items={filteredData} />
 
-                    {filteredData.map((item) => {
-                      const lat = typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat;
-                      const lng = typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng;
-                      
-                      if (!lat || !lng || lat === 0) return null;
+                    <MarkerClusterGroup
+                      chunkedLoading
+                      maxClusterRadius={50}
+                      spiderfyOnMaxZoom={true}
+                    >
+                      {filteredData.map((item) => {
+                        const lat = typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat;
+                        const lng = typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng;
+                        
+                        if (!lat || !lng || lat === 0) return null;
 
-                      // Extract "section" from address if possible (e.g., "信義段")
-                      let label = item.district;
-                      const sectionMatch = item.address.match(/([^路街巷]+段)/);
-                      if (sectionMatch) {
-                        label = sectionMatch[1].length > 6 ? item.district : sectionMatch[1];
-                      }
+                        // Extract "section" from address if possible (e.g., "信義段")
+                        let label = item.district;
+                        const sectionMatch = item.address.match(/([^路街巷]+段)/);
+                        if (sectionMatch) {
+                          label = sectionMatch[1].length > 6 ? item.district : sectionMatch[1];
+                        }
 
-                      return (
-                        <Marker 
-                          key={item.id} 
-                          position={[lat, lng]} 
-                          icon={getRedIcon(label)}
-                          eventHandlers={{
-                            click: () => setSelectedItem(item),
-                          }}
-                        >
-                            <Popup className="custom-popup">
-                            <div className="p-1">
-                              <div className="flex items-center gap-1.5 mb-1 border-b border-slate-100 pb-1">
-                                <span className="bg-red-100 text-red-600 text-[9px] font-bold px-1 rounded">{label}</span>
-                                <p className="font-bold text-slate-900 text-xs truncate">{item.address}</p>
+                        return (
+                          <Marker 
+                            key={item.id} 
+                            position={[lat, lng]} 
+                            icon={getCoralIcon(label)}
+                            eventHandlers={{
+                              click: () => setSelectedItem(item),
+                            }}
+                          >
+                              <Popup className="custom-popup">
+                              <div className="p-1">
+                                <div className="flex items-center gap-1.5 mb-1 border-b border-slate-100 pb-1">
+                                  <span className="bg-coral-100 text-coral-600 text-[9px] font-bold px-1 rounded">{label}</span>
+                                  <p className="font-bold text-ink text-xs truncate">{item.address}</p>
+                                </div>
+                                <div className="flex flex-col gap-0.5">
+                                  <p className="text-coral-600 font-bold text-sm">{formatPrice(item.totalPrice)}</p>
+                                  <p className="text-[10px] text-slate-500 font-medium">{item.buildingType} | {item.buildingArea} ㎡</p>
+                                </div>
                               </div>
-                              <div className="flex flex-col gap-0.5">
-                                <p className="text-red-600 font-black text-sm">{formatPrice(item.totalPrice)}</p>
-                                <p className="text-[10px] text-slate-500 font-medium">{item.buildingType} | {item.buildingArea} ㎡</p>
-                              </div>
-                            </div>
-                          </Popup>
-                        </Marker>
-                      );
-                    })}
+                            </Popup>
+                          </Marker>
+                        );
+                      })}
+                    </MarkerClusterGroup>
                   </MapContainer>
                 </div>
               )}
@@ -1472,18 +1949,18 @@ export default function App() {
                 {isGeocoding && (
                   <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3 px-4 rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 w-48 transition-all animate-in fade-in slide-in-from-bottom-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                      <div className="w-2 h-2 rounded-full bg-coral-500 animate-pulse" />
                       <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">精準校正中...</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <motion.div 
-                          className="h-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.5)]"
+                          className="h-full bg-coral-500 shadow-[0_0_8px_rgba(20,184,166,0.5)]"
                           initial={{ width: 0 }}
                           animate={{ width: `${(geocodedCount / (totalToGeocode || 1)) * 100}%` }}
                         />
                       </div>
-                      <span className="text-[10px] font-mono font-bold text-teal-600 dark:text-teal-400">{geocodedCount}/{totalToGeocode}</span>
+                      <span className="text-[10px] font-mono font-bold text-coral-600 dark:text-coral-400">{geocodedCount}/{totalToGeocode}</span>
                     </div>
                     <p className="text-[8px] text-slate-400 mt-2 font-medium leading-tight">使用免費 Nominatim 引擎<br/>正在獲取精準經緯度</p>
                   </div>
@@ -1499,16 +1976,16 @@ export default function App() {
             <span className="font-medium">資料來源：內政部實價登錄</span>
             <span className="font-medium">更新頻率：每 10 日</span>
             {dataSource && (
-              <Badge variant="outline" className="text-[10px] text-teal-600 dark:text-teal-300 border-teal-200 dark:border-teal-800 bg-white/50 dark:bg-black/50 shadow-sm font-bold">
+              <Badge variant="outline" className="text-[10px] text-coral-600 dark:text-coral-300 border-coral-200 dark:border-coral-800 bg-white/50 dark:bg-black/50 shadow-sm font-bold">
                 官方即時資料
               </Badge>
             )}
-            <span className="text-slate-800 dark:text-slate-200 font-bold">當前顯示：{filteredData.length} 筆</span>
+            <span className="text-ink/90 dark:text-slate-200 font-bold">當前顯示：{filteredData.length} 筆</span>
           </div>
           <div className="flex items-center gap-2 font-medium">
             <div className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-coral-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-coral-500"></span>
             </div>
             <span className="hidden sm:inline">系統連線正常</span>
           </div>
@@ -1523,32 +2000,32 @@ export default function App() {
               {/* Premium Dialog Header */}
               <div className="p-7 sm:p-10 bg-white/20 dark:bg-black/30 backdrop-blur-xl relative overflow-hidden shrink-0">
                 <div className="absolute inset-0 mesh-gradient opacity-20 dark:opacity-30" />
-                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-teal-500/50 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-coral-500/50 to-transparent" />
                 
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                       <Badge className="bg-teal-500/20 text-teal-600 dark:text-teal-300 border-teal-500/30 font-black tracking-widest text-[10px] uppercase py-0.5 px-3 rounded-full">{selectedItem.district}</Badge>
+                       <Badge className="bg-coral-500/20 text-coral-600 dark:text-coral-300 border-coral-500/30 font-bold tracking-widest text-[10px] uppercase py-0.5 px-3 rounded-full">{selectedItem.district}</Badge>
                        <Badge variant="outline" className="text-slate-500 border-white/10 text-[10px] font-bold px-2 py-0.5 rounded-full">{selectedItem.id}</Badge>
                     </div>
-                    <h2 className="text-2xl sm:text-4xl font-display font-black text-slate-900 dark:text-white tracking-tight leading-tight max-w-xl">
+                    <h2 className="text-2xl sm:text-4xl font-display font-bold text-ink dark:text-white tracking-tight leading-tight max-w-xl">
                       {selectedItem.address}
                     </h2>
                     <div className="flex flex-wrap items-center gap-4 text-xs">
                       <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold bg-white/30 dark:bg-white/5 px-3 py-1.5 rounded-full border border-white/20 dark:border-white/5">
-                        <Calendar size={14} className="text-teal-500" />
+                        <Calendar size={14} className="text-coral-500" />
                         {formatDate(selectedItem.date)} 交易紀錄
                       </div>
                       <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold bg-white/30 dark:bg-white/5 px-3 py-1.5 rounded-full border border-white/20 dark:border-white/5">
-                        <MapPin size={14} className="text-teal-500" />
+                        <MapPin size={14} className="text-coral-500" />
                         {cityName}
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col items-start sm:items-end bg-teal-500/10 dark:bg-teal-500/20 backdrop-blur-3xl p-4 sm:p-6 rounded-3xl border border-teal-500/20 shadow-[0_0_30px_rgba(20,184,166,0.1)]">
-                    <div className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-black tracking-[0.2em] mb-1.5 opacity-70">官方登錄成交價</div>
-                    <div className="text-3xl sm:text-5xl font-display font-black text-teal-600 dark:text-teal-400 tracking-tighter drop-shadow-[0_0_15px_rgba(45,212,191,0.3)]">
+                  <div className="flex flex-col items-start sm:items-end bg-coral-500/10 dark:bg-coral-500/20 backdrop-blur-3xl p-4 sm:p-6 rounded-3xl border border-coral-500/20 shadow-[0_0_30px_rgba(20,184,166,0.1)]">
+                    <div className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-[0.2em] mb-1.5 opacity-70">官方登錄成交價</div>
+                    <div className="text-3xl sm:text-5xl font-display font-bold text-coral-600 dark:text-coral-400 tracking-tighter drop-shadow-[0_0_15px_rgba(45,212,191,0.3)]">
                       {formatPrice(selectedItem.totalPrice)}
                     </div>
                   </div>
@@ -1560,8 +2037,8 @@ export default function App() {
                   {/* High Density Stats Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                     {[
-                      { icon: <DollarSign size={20} />, label: "單價/坪", value: selectedItem.unitPrice ? `${(parseFloat(selectedItem.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-", sub: "實價登錄單價", color: "text-teal-500", bg: "bg-teal-500/5" },
-                      { icon: <Maximize2 size={20} />, label: "建物面積", value: `${selectedItem.buildingArea || selectedItem.area || "0"} ㎡`, sub: `約 ${(parseFloat(selectedItem.buildingArea || selectedItem.area || "0") * 0.3025).toFixed(2)} 坪`, color: "text-blue-500", bg: "bg-blue-500/5" },
+                      { icon: <DollarSign size={20} />, label: "單價/坪", value: selectedItem.unitPrice ? `${(parseFloat(selectedItem.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-", sub: "實價登錄單價", color: "text-coral-500", bg: "bg-coral-500/5" },
+                      { icon: <Maximize2 size={20} />, label: "建物面積", value: `${selectedItem.buildingArea || selectedItem.area || "0"} ㎡`, sub: `約 ${(parseFloat(selectedItem.buildingArea || selectedItem.area || "0") * 0.3025).toFixed(2)} 坪`, color: "text-amber-500", bg: "bg-amber-500/5" },
                       { icon: <Layers size={20} />, label: "移轉層次", value: selectedItem.floor ? `${selectedItem.floor}F` : "土地", sub: `總樓層 ${selectedItem.totalFloor || "-"}F`, color: "text-purple-500", bg: "bg-purple-500/5" },
                       { icon: <Clock size={20} />, label: "屋齡", value: (() => {
                         if (!selectedItem.completionDate) return "新成屋";
@@ -1579,11 +2056,11 @@ export default function App() {
                         className={`liquid-glass-input p-5 sm:p-6 rounded-[2rem] border-white/40 dark:border-white/10 shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-all`}
                       >
                          <div className={`absolute -right-2 -top-2 p-6 opacity-5 group-hover:opacity-10 transition-opacity ${stat.color} rotate-12`}>{stat.icon}</div>
-                         <div className="text-[10px] font-black tracking-widest text-slate-500 dark:text-slate-400 uppercase mb-3 flex items-center gap-2">
+                         <div className="text-[10px] font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase mb-3 flex items-center gap-2">
                            <div className={`w-6 h-6 rounded-lg ${stat.bg} flex items-center justify-center ${stat.color}`}>{stat.icon}</div>
                            {stat.label}
                          </div>
-                         <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{stat.value}</div>
+                         <div className="text-2xl font-bold text-ink dark:text-white tracking-tight">{stat.value}</div>
                          {stat.sub && <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-2 opacity-60 tracking-wide">{stat.sub}</div>}
                       </motion.div>
                     ))}
@@ -1592,7 +2069,7 @@ export default function App() {
                   {/* Map Preview */}
                   <div className="space-y-3">
                     <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm flex items-center gap-2">
-                       <MapIcon size={12} className="text-teal-500" /> 地理位置
+                       <MapIcon size={12} className="text-coral-500" /> 地理位置
                     </h3>
                     <div className="h-[200px] sm:h-[250px] w-full liquid-glass rounded-[1.5rem] overflow-hidden border border-white/40 dark:border-white/10 shadow-inner relative isolate">
                        {selectedItem.lat && selectedItem.lng && selectedItem.lat !== 0 ? (
@@ -1634,10 +2111,11 @@ export default function App() {
                       </div>
                     </div>
 
-                    {(selectedItem.buildingType || selectedItem.mainUse) ? (
+                    {(selectedItem.buildingType || selectedItem.mainUse || selectedItem.buildCase) ? (
                       <div className="space-y-3 relative">
                         <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm">建物資訊</h3>
                         <div className="liquid-glass rounded-[1.5rem] overflow-hidden divide-y divide-white/20 dark:divide-white/10 border-white/80 dark:border-white/10">
+                          {selectedItem.buildCase && <DetailRow label="建案名稱" value={selectedItem.buildCase} />}
                           <DetailRow label="建物型態" value={selectedItem.buildingType || "無"} />
                           <DetailRow label="移轉層次" value={selectedItem.floor ? `${selectedItem.floor} / ${selectedItem.totalFloor}` : "-"} />
                           <DetailRow label="主要用途" value={selectedItem.mainUse || "-"} />
@@ -1692,9 +2170,9 @@ export default function App() {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between p-4 px-5 text-sm hover:bg-teal-500/5 transition-all group">
-      <span className="text-slate-500 dark:text-slate-400 font-bold group-hover:text-teal-600 transition-colors uppercase text-[10px] tracking-widest">{label}</span>
-      <span className="text-slate-900 dark:text-slate-100 font-black tracking-tight">{value || "-"}</span>
+    <div className="flex items-center justify-between p-4 px-5 text-sm hover:bg-coral-500/5 transition-all group">
+      <span className="text-slate-500 dark:text-slate-400 font-bold group-hover:text-coral-600 transition-colors uppercase text-[10px] tracking-widest">{label}</span>
+      <span className="text-ink dark:text-slate-100 font-bold tracking-tight">{value || "-"}</span>
     </div>
   );
 }

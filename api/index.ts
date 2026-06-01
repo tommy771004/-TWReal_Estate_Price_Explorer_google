@@ -37,7 +37,7 @@ app.post("/api/proxy-search", async (req, res) => {
     });
     
     const workbook = xlsx.read(buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0]; // 只需要 第一個 sheet，例如不動產買賣
+    const sheetName = workbook.SheetNames.find((s: string) => s.includes("買賣") || s.includes("租賃")) || workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const jsonData: any[][] = xlsx.utils.sheet_to_json(sheet, { header: 1 });
     
