@@ -42,7 +42,10 @@ import {
   Bed,
   Sofa,
   Bath,
-  ChevronLeft
+  ChevronLeft,
+  ArrowDown,
+  ArrowUp,
+  Heart
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
@@ -340,6 +343,33 @@ export default function App() {
   });
   const [isSavingSearch, setIsSavingSearch] = useState(false);
   const [newSearchName, setNewSearchName] = useState("");
+  
+  const [favorites, setFavorites] = useState<Transaction[]>(() => {
+    try {
+      const saved = localStorage.getItem('explorer_favorites');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [showFavorites, setShowFavorites] = useState(false);
+
+  const toggleFavorite = (item: Transaction, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    setFavorites(prev => {
+      const exists = prev.some(f => f.id === item.id);
+      let updated;
+      if (exists) {
+        updated = prev.filter(f => f.id !== item.id);
+      } else {
+        updated = [item, ...prev];
+      }
+      localStorage.setItem('explorer_favorites', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   const saveCurrentSearch = () => {
     if (!newSearchName.trim()) return;
@@ -643,6 +673,40 @@ export default function App() {
       isFetchingRef.current = false;
     };
   }, []); // Only on mount
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsAdvancedSearchOpen(false);
+        setIsLocationModalOpen(false);
+        setSelectedItem(null);
+        setIsSavingSearch(false);
+        setShowSuggestions(false);
+        setShowFavorites(false);
+      }
+      
+      if (e.key === 'Enter') {
+        const activeTag = document.activeElement?.tagName.toLowerCase();
+        if (activeTag === 'button') return; // Do not conflict with default button 'Enter' click behavior
+        
+        if (isSavingSearch) {
+          saveCurrentSearch();
+          return;
+        }
+
+        if (isLocationModalOpen) return;
+        if (selectedItem) return;
+        
+        // Always close suggestions on enter, trigger a fresh search
+        setShowSuggestions(false);
+        fetchData();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fetchData, isSavingSearch, isLocationModalOpen, selectedItem, saveCurrentSearch]);
 
   const uniqueDistricts = useMemo(() => {
     return ["全部", ...(CITY_DISTRICTS[cityName] || []).map(d => d.name)];
@@ -1194,21 +1258,21 @@ export default function App() {
         className="relative w-full flex-1 flex flex-col z-10"
       >
         {/* Header */}
-        <div className="p-4 sm:px-8 sm:pt-6 sm:pb-8 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-5 shrink-0 relative overflow-hidden group">
+        <div className="p-4 sm:px-8 sm:pt-4 sm:pb-4 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-3 shrink-0 relative overflow-hidden group">
           <div className="absolute bottom-0 left-0 right-0 h-[px] bg-gradient-to-r from-transparent via-coral-500/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-1000" />
-          <div className="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-            <div className="flex items-center gap-5">
+          <div className="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+            <div className="flex items-center gap-4">
               <div className="relative group">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1.5rem] bg-gradient-to-tr from-slate-900 via-coral-800 to-coral-500 shadow-[0_10px_40px_rgba(20,184,166,0.4)] flex items-center justify-center transform group-hover:rotate-12 transition-all duration-500 group-hover:scale-110">
-                  <Database className="text-white w-7 h-7 sm:w-8 sm:h-8" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-[1.5rem] bg-gradient-to-tr from-slate-900 via-coral-800 to-coral-500 shadow-[0_10px_40px_rgba(20,184,166,0.4)] flex items-center justify-center transform group-hover:rotate-12 transition-all duration-500 group-hover:scale-110">
+                  <Database className="text-white w-6 h-6 sm:w-7 sm:h-7" />
                 </div>
                 <motion.div 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.5, ease: "easeOut", duration: 0.5 }}
-                  className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-2xl flex items-center justify-center shadow-xl border-2 border-white dark:border-slate-900"
+                  className="absolute -top-3 -right-3 w-7 h-7 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-2xl flex items-center justify-center shadow-xl border-2 border-white dark:border-slate-900"
                 >
-                  <Sparkles size={14} className="text-white drop-shadow-sm" />
+                  <Sparkles size={12} className="text-white drop-shadow-sm" />
                 </motion.div>
               </div>
               <div className="flex flex-col">
@@ -1216,7 +1280,59 @@ export default function App() {
                   <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-ink dark:text-white">
                     實價登錄查詢
                   </h1>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 relative">
+                    <Button 
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowFavorites(!showFavorites)}
+                      className={`w-8 h-8 rounded-full transition-all shadow-sm relative ${showFavorites ? 'bg-red-500/10 text-red-500' : 'bg-slate-500/10 hover:bg-red-500/10 text-slate-600 dark:text-slate-400 hover:text-red-500'}`}
+                      title="我的最愛"
+                    >
+                      <Heart size={14} className={favorites.length > 0 ? 'fill-current' : ''} />
+                      {favorites.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[8px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900">
+                          {favorites.length}
+                        </span>
+                      )}
+                    </Button>
+
+                    <AnimatePresence>
+                      {showFavorites && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute top-10 right-0 w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[400px]"
+                        >
+                          <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                              <Heart size={12} className="text-red-500 fill-current" /> 我的收藏
+                            </span>
+                          </div>
+                          <div className="overflow-y-auto p-2 flex flex-col gap-1.5 [scrollbar-width:none]">
+                            {favorites.length === 0 ? (
+                              <div className="py-6 text-center text-xs font-medium text-slate-400">目前沒有收藏任何物件</div>
+                            ) : (
+                              favorites.map(f => (
+                                <div key={f.id} className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer flex justify-between items-start gap-2" onClick={() => setSelectedItem(f)}>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{f.address}</span>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[10px] text-slate-500">{f.district}</span>
+                                      {f.unitPrice && <span className="text-[10px] font-bold text-coral-500">{(parseFloat(f.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪</span>}
+                                    </div>
+                                  </div>
+                                  <button onClick={(e) => toggleFavorite(f, e)} className="p-1 text-slate-300 hover:text-red-500 transition-colors">
+                                    <Heart size={12} className="fill-current" />
+                                  </button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
                     <Button 
                       variant="ghost"
                       size="icon"
@@ -1238,9 +1354,9 @@ export default function App() {
                     </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-1.5 opacity-80">
+                <div className="flex items-center gap-2 mt-1 opacity-80">
                   <span className="h-px w-6 bg-coral-500/30" />
-                  <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.3em] flex items-center gap-1.5 leading-none">
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.3em] flex items-center gap-1.5 leading-none">
                     <Waves size={10} className="text-coral-500 animate-pulse" />
                     Taiwan Real Estate Price Explorer
                   </p>
@@ -1312,7 +1428,7 @@ export default function App() {
           </AnimatePresence>
 
           {/* Filters Grid */}
-          <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-3 sm:gap-5 liquid-glass-panel p-4 sm:px-7 sm:py-6 rounded-[2rem] shadow-2xl">
+          <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-2 sm:gap-4 liquid-glass-panel p-3 sm:px-6 sm:py-4 rounded-[2rem] shadow-2xl">
             
             {/* Top Row: Location & Search */}
             <div className="flex flex-col sm:flex-row gap-4 z-40">
@@ -1871,28 +1987,37 @@ export default function App() {
                       ref={sortScrollRef}
                       className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden whitespace-nowrap px-8 py-1 scroll-smooth w-full"
                     >
+                      <button
+                        onClick={() => setSortConfig(null)}
+                        className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap shrink-0 flex items-center gap-1.5 ${!sortConfig ? 'bg-coral-500/10 dark:bg-coral-500/20 text-coral-600 dark:text-coral-400 border-coral-500/30 shadow-sm shadow-coral-500/10' : 'bg-white/60 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border-ink/5 dark:border-white/10 hover:border-slate-300 dark:hover:border-slate-700'}`}
+                      >
+                        預設
+                      </button>
                       {[
-                        { value: "", label: "預設" },
-                        { value: "date-desc", label: "日期 (近到遠)" },
-                        { value: "date-asc", label: "日期 (遠到近)" },
-                        { value: "totalPrice-desc", label: "總價 (高到低)" },
-                        { value: "totalPrice-asc", label: "總價 (低到高)" },
-                        { value: "unitPrice-desc", label: "單價 (高到低)" },
-                        { value: "unitPrice-asc", label: "單價 (低到高)" }
+                        { key: "date", label: "日期" },
+                        { key: "totalPrice", label: "總價" },
+                        { key: "unitPrice", label: "單價" }
                       ].map(opt => {
-                        const currentVal = sortConfig ? `${String(sortConfig.key)}-${sortConfig.direction}` : "";
-                        const isSelected = currentVal === opt.value;
+                        const isSelected = sortConfig?.key === opt.key;
+                        const direction = isSelected ? sortConfig.direction : null;
                         return (
                           <button
-                            key={opt.value}
+                            key={opt.key}
                             onClick={() => {
-                              if (!opt.value) { setSortConfig(null); return; }
-                              const [k, d] = opt.value.split("-");
-                              setSortConfig({ key: k as any, direction: d as any });
+                              if (isSelected) {
+                                setSortConfig({ key: opt.key as any, direction: direction === 'desc' ? 'asc' : 'desc' });
+                              } else {
+                                setSortConfig({ key: opt.key as any, direction: 'desc' });
+                              }
                             }}
-                            className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap shrink-0 flex items-center gap-1.5 ${isSelected ? 'bg-coral-500/10 dark:bg-coral-500/20 text-coral-600 dark:text-coral-400 border-coral-500/30 shadow-sm shadow-coral-500/10' : 'bg-white/60 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border-ink/5 dark:border-white/10 hover:border-slate-300 dark:hover:border-slate-700'}`}
+                            className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap shrink-0 flex items-center gap-1 ${isSelected ? 'bg-coral-500/10 dark:bg-coral-500/20 text-coral-600 dark:text-coral-400 border-coral-500/30 shadow-sm shadow-coral-500/10' : 'bg-white/60 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border-ink/5 dark:border-white/10 hover:border-slate-300 dark:hover:border-slate-700'}`}
                           >
                             {opt.label}
+                            {isSelected ? (
+                              direction === 'desc' ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />
+                            ) : (
+                              <ArrowUpDown className="w-3.5 h-3.5 opacity-40 text-slate-400 dark:text-slate-500" />
+                            )}
                           </button>
                         );
                       })}
@@ -1922,6 +2047,21 @@ export default function App() {
                         {/* Interactive Left Indicator line */}
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-coral-500/0 group-hover:bg-coral-500 transition-colors duration-300" />
                         
+                        <button
+                          onClick={(e) => toggleFavorite(item, e)}
+                          className={`absolute top-2.5 right-2.5 sm:top-3 sm:right-3 p-1.5 rounded-full transition-all z-10 ${
+                            favorites.some(f => f.id === item.id)
+                              ? 'text-red-500 bg-red-500/10'
+                              : 'text-slate-300 dark:text-slate-600 hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <Heart 
+                            size={16} 
+                            className={favorites.some(f => f.id === item.id) ? 'fill-current' : ''} 
+                            strokeWidth={2.5} 
+                          />
+                        </button>
+
                         {/* Content Grid */}
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-[80px_1fr_minmax(110px,auto)] gap-2 sm:gap-3 items-center pl-1 sm:pl-2">
                           
@@ -1953,21 +2093,21 @@ export default function App() {
                             <h3 className="text-[15px] sm:text-[16px] font-bold text-ink dark:text-slate-50 truncate group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-snug">
                               {item.address}
                             </h3>
-                            <div className="text-[11px] font-bold text-slate-400/80 mt-1 flex items-center gap-2">
-                              <span>建坪 {item.buildingArea} ㎡</span>
+                            <div className="text-[11px] font-bold mt-1.5 flex flex-wrap items-center gap-1.5">
+                              <span className="flex items-center gap-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-[6px]">
+                                <Maximize2 className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.buildingArea} ㎡</span>
+                              </span>
                               {item.floor && (
-                                <>
-                                  <span className="w-1 h-1 rounded flex-shrink-0 bg-slate-300 dark:bg-slate-700" />
-                                  <span>{item.floor}{item.totalFloor ? ` / ${item.totalFloor}` : ''} 樓</span>
-                                </>
+                                <span className="flex items-center gap-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 px-1.5 py-0.5 rounded-[6px]">
+                                  <Layers className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.floor}{item.totalFloor ? ` / ${item.totalFloor}` : ''}</span>
+                                </span>
                               )}
                               {item.rooms && item.rooms !== '0' && (
                                 <>
-                                  <span className="w-1 h-1 rounded flex-shrink-0 bg-slate-300 dark:bg-slate-700" />
-                                  <div className="flex items-center gap-2 ml-0.5 text-slate-500 dark:text-slate-400">
-                                    <span className="flex items-center gap-1"><Bed className="w-3 h-3" />{item.rooms}</span>
-                                    {item.halls && item.halls !== '0' && <span className="flex items-center gap-1"><Sofa className="w-3 h-3" />{item.halls}</span>}
-                                    {item.bathrooms && item.bathrooms !== '0' && <span className="flex items-center gap-1"><Bath className="w-3 h-3" />{item.bathrooms}</span>}
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="flex items-center gap-1 bg-coral-500/10 text-coral-600 dark:text-coral-400 px-1.5 py-0.5 rounded-[6px]"><Bed className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.rooms}</span></span>
+                                    {item.halls && item.halls !== '0' && <span className="flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-[6px]"><Sofa className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.halls}</span></span>}
+                                    {item.bathrooms && item.bathrooms !== '0' && <span className="flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-[6px]"><Bath className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.bathrooms}</span></span>}
                                   </div>
                                 </>
                               )}
@@ -1975,7 +2115,7 @@ export default function App() {
                           </div>
 
                           {/* Price Block */}
-                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-800 pt-3 sm:pt-0 pl-1 sm:pl-4 mt-2 sm:mt-0 relative sm:h-full">
+                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-800 pt-3 sm:pt-0 pl-1 sm:pl-4 sm:pr-8 mt-2 sm:mt-0 relative sm:h-full">
                             <div className="flex flex-col items-start sm:items-end sm:flex-1 sm:justify-start">
                               <div className="text-[11px] font-bold text-slate-400 mb-0.5 sm:mb-1">
                                  {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : <span className="opacity-0">-</span>}
@@ -2185,9 +2325,16 @@ export default function App() {
                                   <span className="bg-coral-100 text-coral-600 text-[9px] font-bold px-1 rounded">{label}</span>
                                   <p className="font-bold text-ink text-xs truncate">{item.address}</p>
                                 </div>
-                                <div className="flex flex-col gap-0.5">
-                                  <p className="text-coral-600 font-bold text-sm">{formatPrice(item.totalPrice)}</p>
-                                  <p className="text-[10px] text-slate-500 font-medium">{item.buildingType} | {item.buildingArea} ㎡</p>
+                                <div className="flex flex-col gap-1 mt-1">
+                                  <p className="text-coral-600 font-bold text-sm leading-none">{formatPrice(item.totalPrice)}</p>
+                                  <p className="text-[10px] text-slate-500 font-medium leading-none">{item.buildingType} | {item.buildingArea} ㎡</p>
+                                  {(item.rooms && item.rooms !== '0') && (
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <span className="flex items-center gap-0.5 bg-coral-500/10 text-coral-600 px-1 py-0.5 rounded text-[8px] font-bold"><Bed className="w-2.5 h-2.5" />{item.rooms}</span>
+                                      {item.halls && item.halls !== '0' && <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-600 px-1 py-0.5 rounded text-[8px] font-bold"><Sofa className="w-2.5 h-2.5" />{item.halls}</span>}
+                                      {item.bathrooms && item.bathrooms !== '0' && <span className="flex items-center gap-0.5 bg-blue-500/10 text-blue-600 px-1 py-0.5 rounded text-[8px] font-bold"><Bath className="w-2.5 h-2.5" />{item.bathrooms}</span>}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </Popup>
@@ -2474,7 +2621,15 @@ export default function App() {
                           <DetailRow label="主要用途" value={selectedItem.mainUse || "-"} />
                           <DetailRow label="主要建材" value={selectedItem.material || "-"} />
                           <DetailRow label="建築完成日" value={formatDate(selectedItem.completionDate)} />
-                          <DetailRow label="現況格局" value={selectedItem.rooms ? `${selectedItem.rooms} 房 / ${selectedItem.halls} 廳 / ${selectedItem.bathrooms} 衛` : "-"} />
+                          <DetailRow label="現況格局" value={
+                            (selectedItem.rooms || selectedItem.halls || selectedItem.bathrooms) ? (
+                              <div className="flex items-center gap-2">
+                                {selectedItem.rooms && selectedItem.rooms !== '0' && <span className="flex items-center gap-1 bg-coral-500/10 dark:bg-coral-900/30 text-coral-600 dark:text-coral-400 px-2 py-0.5 rounded-full"><Bed className="w-3.5 h-3.5" /> {selectedItem.rooms} <span className="text-[10px] opacity-70">房</span></span>}
+                                {selectedItem.halls && selectedItem.halls !== '0' && <span className="flex items-center gap-1 bg-amber-500/10 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full"><Sofa className="w-3.5 h-3.5" /> {selectedItem.halls} <span className="text-[10px] opacity-70">廳</span></span>}
+                                {selectedItem.bathrooms && selectedItem.bathrooms !== '0' && <span className="flex items-center gap-1 bg-blue-500/10 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full"><Bath className="w-3.5 h-3.5" /> {selectedItem.bathrooms} <span className="text-[10px] opacity-70">衛</span></span>}
+                              </div>
+                            ) : "-"
+                          } />
                           <DetailRow label="管理組織" value={selectedItem.hasManagement || "-"} />
                         </div>
                       </div>
@@ -2521,7 +2676,7 @@ export default function App() {
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between p-4 px-5 text-sm hover:bg-coral-500/5 transition-all group">
       <span className="text-slate-500 dark:text-slate-400 font-bold group-hover:text-coral-600 transition-colors uppercase text-[10px] tracking-widest">{label}</span>
