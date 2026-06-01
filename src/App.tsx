@@ -38,9 +38,14 @@ import {
   Moon,
   Sun,
   BarChart3,
-  TrendingUp
+  TrendingUp,
+  Bed,
+  Sofa,
+  Bath,
+  ChevronLeft
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
+import { LocationSelectionModal } from "./components/LocationSelectionModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -142,6 +147,91 @@ interface SavedSearch {
   timestamp: number;
 }
 
+// Facilities Overlay using Overpass API
+function FacilitiesOverlay({ show }: { show: boolean }) {
+  const map = useMap();
+  const [facilities, setFacilities] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!show) {
+      setFacilities([]);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchFacilities = async () => {
+      try {
+        const bounds = map.getBounds();
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
+        const query = `
+          [out:json][timeout:15];
+          (
+            node["amenity"="school"](${sw.lat},${sw.lng},${ne.lat},${ne.lng});
+            node["station"="subway"](${sw.lat},${sw.lng},${ne.lat},${ne.lng});
+            node["public_transport"="station"](${sw.lat},${sw.lng},${ne.lat},${ne.lng});
+          );
+          out center;
+        `;
+        const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (isMounted) setFacilities(data.elements || []);
+      } catch (e) {
+        console.error("Failed to fetch facilities", e);
+      }
+    };
+
+    fetchFacilities();
+    
+    // throttle fetching to avoid API spam when moving map
+    let timeout: NodeJS.Timeout;
+    const onMoveEnd = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(fetchFacilities, 1000);
+    };
+    
+    map.on('moveend', onMoveEnd);
+    return () => {
+      isMounted = false;
+      map.off('moveend', onMoveEnd);
+      clearTimeout(timeout);
+    };
+  }, [show, map]);
+
+  if (!show || facilities.length === 0) return null;
+
+  return (
+    <>
+      {facilities.map((f, i) => {
+        const lat = f.lat || f.center?.lat;
+        const lon = f.lon || f.center?.lon;
+        if (!lat || !lon) return null;
+        
+        const isSchool = f.tags?.amenity === 'school';
+        const name = f.tags?.name || (isSchool ? '學校' : '捷運/車站');
+        
+        return (
+          <Marker 
+            key={`facility-${f.id}-${i}`} 
+            position={[lat, lon]}
+            icon={new L.DivIcon({
+              className: 'custom-facility-icon',
+              html: `<div class="w-6 h-6 ${isSchool ? 'bg-amber-500' : 'bg-blue-500'} rounded-full border-2 border-white shadow-md flex items-center justify-center text-white text-[10px] font-bold">${isSchool ? '學' : '站'}</div>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            })}
+          >
+            <Popup className="custom-popup">
+              <div className="p-1 font-bold text-sm tracking-widest">{name}</div>
+            </Popup>
+          </Marker>
+        );
+      })}
+    </>
+  );
+}
+
 // Map center and bounds tracking component
 function MapBoundsManager({ items }: { items: Transaction[] }) {
   const map = useMap();
@@ -231,6 +321,8 @@ export default function App() {
 
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map" | "aggregated">("list");
+  const [mapLayer, setMapLayer] = useState<"default" | "satellite" | "landmark">("default");
+  const [showFacilities, setShowFacilities] = useState(false);
   const [showChartsMobile, setShowChartsMobile] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [geocodedCount, setGeocodedCount] = useState(0);
@@ -316,14 +408,25 @@ export default function App() {
   
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [robotStatus, setRobotStatus] = useState("");
   const [selectedItem, setSelectedItem] = useState<Transaction | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: "asc" | "desc" } | null>(null);
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
   const [error, setError] = useState<string | null>(null);
   const isFetchingRef = React.useRef(false);
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const robotTimeoutsRef = React.useRef<NodeJS.Timeout[]>([]);
+  const sortScrollRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollSort = (direction: 'left' | 'right') => {
+    if (sortScrollRef.current) {
+      const scrollAmount = 200;
+      sortScrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const YEARS = Array.from({ length: 15 }, (_, i) => (101 + i).toString());
   const MONTHS = Array.from({ length: 12 }, (_, i) => (1 + i).toString());
@@ -673,6 +776,16 @@ export default function App() {
     return result;
   }, [data, search, sortConfig, district, propertyTypes, period, unitPrice, area, age, cityName]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortConfig, district, propertyTypes, period, unitPrice, area, age, cityName]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredData.slice(start, start + itemsPerPage);
+  }, [filteredData, currentPage, itemsPerPage]);
+
   const priceDistribution = useMemo(() => {
     if (filteredData.length < 10) return [];
     
@@ -1009,7 +1122,8 @@ export default function App() {
     const p = parseFloat(price);
     if (isNaN(p)) return price;
     if (p >= 10000) {
-      return `${(p / 10000).toFixed(2)} 萬`;
+      const wan = p / 10000;
+      return `${wan % 1 === 0 ? wan : parseFloat(wan.toFixed(2))} 萬`;
     }
     return `${p} 元`;
   };
@@ -1026,6 +1140,14 @@ export default function App() {
 
   return (
     <div className="relative min-h-[100dvh] w-full flex flex-col font-sans selection:bg-coral-500/30 bg-transparent  text-ink dark:text-slate-100 pb-20 overflow-x-hidden">
+      <LocationSelectionModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        cityName={cityName}
+        setCityName={setCityName}
+        district={district}
+        setDistrict={setDistrict}
+      />
       {/* Immersive Mesh Background */}
       <div className="immersive-bg opacity-100" />
       
@@ -1190,94 +1312,110 @@ export default function App() {
           </AnimatePresence>
 
           {/* Filters Grid */}
-          <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-4 liquid-glass-panel p-5 sm:px-7 sm:py-6 rounded-[2rem] shadow-2xl">
+          <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-3 sm:gap-5 liquid-glass-panel p-4 sm:px-7 sm:py-6 rounded-[2rem] shadow-2xl">
             
-            {/* Row 1: Location & Search */}
-            <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-4 items-end">
-              <div className="space-y-2 col-span-1 sm:w-36">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">縣市</label>
-                <select className="w-full liquid-glass-input h-11 px-3 rounded-[1rem] outline-none text-sm font-bold shadow-sm" value={cityName} onChange={e => { setCityName(e.target.value); setDistrict("全部"); }}>
-                  {CITIES.map(c => <option key={c.name} value={c.name} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{c.name}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2 col-span-1 sm:w-36">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">鄉鎮市</label>
-                <select className="w-full liquid-glass-input h-11 px-3 rounded-[1rem] outline-none text-sm font-bold shadow-sm" value={district} onChange={e => setDistrict(e.target.value)}>
-                  {uniqueDistricts.map(d => <option key={d} value={d} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{d}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2 col-span-1 sm:w-36">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">類型</label>
-                <select className="w-full liquid-glass-input h-11 px-3 rounded-[1rem] outline-none text-xs sm:text-sm font-bold shadow-sm" value={typeName} onChange={e => {
-                  const newType = e.target.value;
-                  setTypeName(newType);
-                  if (newType === "預售屋") setViewMode("aggregated");
-                  else setViewMode("list");
-                }}>
-                  {TRANSACTION_TYPES.map(t => <option key={t.name} value={t.name} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{t.name.replace("租賃", "租")}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2 col-span-3 sm:flex-1 sm:min-w-[240px]">
-                <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-70">門牌 / 社區名稱 / 地段</label>
-                <div className="relative group z-30">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Search className="w-4 h-4 text-slate-400 group-focus-within:text-coral-500 group-focus-within:scale-110 transition-all duration-300" />
+            {/* Top Row: Location & Search */}
+            <div className="flex flex-col sm:flex-row gap-4 z-40">
+              <button
+                onClick={() => setIsLocationModalOpen(true)}
+                className="liquid-glass-input h-[52px] px-4 sm:px-5 rounded-[1rem] flex items-center justify-between gap-3 hover:border-coral-500/50 hover:shadow-md transition-all sm:w-[220px] shrink-0 outline-none text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-coral-500/10 flex items-center justify-center shrink-0">
+                    <MapPin size={16} className="text-coral-500" />
                   </div>
-                  <input 
-                    type="text"
-                    placeholder="輸入關鍵字查詢..." 
-                    className="w-full pl-11 liquid-glass-input h-11 rounded-[1rem] outline-none text-sm font-bold placeholder:text-slate-400 shadow-sm"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    onFocus={() => setShowSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  />
-                  
-                  {/* Autocomplete Dropdown */}
-                  <AnimatePresence>
-                    {showSuggestions && addressSuggestions.length > 0 && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 5 }}
-                        className="absolute top-12 left-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden"
-                      >
-                        {addressSuggestions.map(suggestion => (
-                          <div 
-                            key={suggestion}
-                            className="px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-coral-500/10 hover:text-coral-600 dark:hover:text-coral-400 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors"
-                            onClick={() => {
-                              setSearch(suggestion);
-                              setShowSuggestions(false);
-                            }}
-                          >
-                            {suggestion}
-                          </div>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <div className="flex flex-col items-start gap-0.5 justify-center">
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-none mt-0.5">選擇區域</span>
+                    <span className="font-bold text-ink dark:text-white text-[15px] leading-none mb-0.5 mt-0.5 truncate max-w-[120px]">{cityName} {district !== "全部" ? `· ${district}` : ''}</span>
+                  </div>
                 </div>
+                <ArrowUpDown className="w-3 h-3 opacity-30 shrink-0" />
+              </button>
+
+              <div className="relative group flex-1">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="w-4 h-4 text-slate-400 group-focus-within:text-coral-500 group-focus-within:scale-110 transition-all duration-300" />
+                </div>
+                <input 
+                  type="text"
+                  placeholder="輸入關鍵字查詢..." 
+                  className="w-full pl-11 liquid-glass-input h-[52px] rounded-[1rem] outline-none text-sm font-bold placeholder:text-slate-400 shadow-sm"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                />
+                
+                {/* Autocomplete Dropdown */}
+                <AnimatePresence>
+                  {showSuggestions && addressSuggestions.length > 0 && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 5 }}
+                      className="absolute top-[calc(100%+8px)] left-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] overflow-hidden py-2"
+                    >
+                      {addressSuggestions.map(suggestion => (
+                        <div 
+                          key={suggestion}
+                          className="px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-coral-500/10 hover:text-coral-600 dark:hover:text-coral-400 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors"
+                          onClick={() => {
+                            setSearch(suggestion);
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          {suggestion}
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 
-            {/* Row 2: Property Types */}
-            <div className="flex flex-wrap gap-3 items-center py-4 border-y border-white/20 dark:border-white/10">
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] mr-2 opacity-70">標的種類</span>
-              {["房地", "房地(車)", "建物", "車位", "土地"].map(pt => (
-                <label key={pt} className="relative cursor-pointer group">
-                  <input type="checkbox" className="sr-only peer" 
-                    checked={propertyTypes.includes(pt)}
-                    onChange={(e) => {
-                      if (e.target.checked) setPropertyTypes([...propertyTypes, pt]);
-                      else setPropertyTypes(propertyTypes.filter(p => p !== pt));
-                    }}
-                  />
-                  <div className="px-4 py-1.5 rounded-xl border border-white/60 dark:border-white/20 bg-white/40 dark:bg-white/10 text-xs font-bold text-slate-600 dark:text-slate-400 peer-checked:bg-coral-500 dark:peer-checked:bg-coral-400 peer-checked:text-white dark:peer-checked:text-slate-950 peer-checked:border-coral-500 dark:peer-checked:border-coral-400 peer-checked:shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-all hover:border-coral-500/40 peer-checked:scale-105 active:scale-95">
-                    {pt}
-                  </div>
-                </label>
-              ))}
+            {/* Tags Row: Type & Property Types */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 sm:items-center">
+              
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-80">交易型態</span>
+                <div className="flex bg-white/40 dark:bg-black/20 p-1.5 rounded-[1rem] shadow-inner border border-white/60 dark:border-white/5">
+                  {TRANSACTION_TYPES.map(t => (
+                    <button 
+                      key={t.name}
+                      onClick={() => {
+                        setTypeName(t.name);
+                        if (t.name === "預售屋") setViewMode("aggregated");
+                        else setViewMode("list");
+                      }}
+                      className={`px-4 xl:px-6 h-9 font-bold text-xs sm:text-[13px] rounded-xl transition-all ${typeName === t.name ? 'bg-white dark:bg-slate-800 text-coral-600 dark:text-coral-400 shadow-sm border border-slate-100 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    >
+                      {t.name.replace("租賃", "租")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="w-full sm:w-px h-px sm:h-10 bg-white/40 dark:bg-white/5" />
+
+              <div className="flex flex-col gap-2 w-full min-w-0">
+                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-80 shrink-0">標的種類</span>
+                 <div className="flex flex-nowrap sm:flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x">
+                   {["房地", "房地(車)", "建物", "車位", "土地"].map(pt => (
+                      <label key={pt} className="relative cursor-pointer group shrink-0 snap-start">
+                        <input type="checkbox" className="sr-only peer" 
+                          checked={propertyTypes.includes(pt)}
+                          onChange={(e) => {
+                            if (e.target.checked) setPropertyTypes([...propertyTypes, pt]);
+                            else setPropertyTypes(propertyTypes.filter(p => p !== pt));
+                          }}
+                        />
+                        <div className="px-2.5 sm:px-3 xl:px-4 h-[44px] flex items-center justify-center rounded-[1rem] border border-white/60 dark:border-white/10 bg-white/40 dark:bg-slate-800/50 text-[12px] sm:text-[13px] font-bold text-slate-500 dark:text-slate-400 peer-checked:bg-coral-500/10 dark:peer-checked:bg-coral-900/30 peer-checked:text-coral-600 dark:peer-checked:text-coral-400 peer-checked:border-coral-300 dark:peer-checked:border-coral-500/30 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm hover:-translate-y-[1px] active:translate-y-0 whitespace-nowrap">
+                          {pt}
+                        </div>
+                      </label>
+                   ))}
+                 </div>
+              </div>
             </div>
 
             {/* Row 3: Advanced Filters */}
@@ -1372,7 +1510,7 @@ export default function App() {
             </AnimatePresence>
 
             {/* Row 4: Search Actions */}
-            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-4 gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-2 sm:mt-4 gap-3 sm:gap-4">
               {/* Upper row on mobile: Advanced & Clear buttons */}
               <div className="flex flex-row gap-2 w-full sm:w-auto">
                 <Button 
@@ -1720,109 +1858,206 @@ export default function App() {
                   </div>
                 </div>
               )}
-              <div className="overflow-x-auto w-full">
-                <Table className="min-w-[800px]">
-                  <TableHeader className="sticky top-0 bg-white/40 dark:bg-black/30 backdrop-blur-3xl z-10 border-b border-white/20 dark:border-white/10">
-                  <TableRow className="border-none hover:bg-transparent">
-                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest pl-8">
-                      <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 dark:text-slate-500 p-0 h-auto font-bold rounded-lg text-[10px]" onClick={() => handleSort("district")}>
-                        地區 <ArrowUpDown className="ml-1 w-3 h-3 opacity-50" />
-                      </Button>
-                    </TableHead>
-                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">位置/社區</TableHead>
-                    {typeName === "預售屋" && (
-                      <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">建案名稱</TableHead>
-                    )}
-                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">
-                      <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 dark:text-slate-500 p-0 h-auto font-bold rounded-lg text-[10px]" onClick={() => handleSort("date")}>
-                        交易日期 <ArrowUpDown className="ml-1 w-3 h-3 opacity-50" />
-                      </Button>
-                    </TableHead>
-                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">型態</TableHead>
-                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">
-                      <Button variant="ghost" className="hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 dark:text-slate-500 p-0 h-auto ml-auto font-bold rounded-lg text-[10px]" onClick={() => handleSort("totalPrice")}>
-                        總價 <ArrowUpDown className="ml-1 w-3 h-3 opacity-50" />
-                      </Button>
-                    </TableHead>
-                    <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">單價/坪</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <AnimatePresence mode="wait">
-                  <motion.tbody
-                    key={`${search}-${unitPrice.min}-${unitPrice.max}-${period.startY}-${period.startM}-${period.endY}-${period.endM}-${typeName}-${propertyTypes.join(",")}-${sortConfig?.key}-${sortConfig?.direction}`}
-                    initial="hidden"
-                    animate="visible"
-                    exit="hidden"
-                    variants={{
-                      hidden: { opacity: 0 },
-                      visible: { 
-                        opacity: 1,
-                        transition: { staggerChildren: 0.03 }
-                      }
-                    }}
-                    className="[&_tr:last-child]:border-0"
-                  >
-                    {filteredData.map((item) => (
-                      <motion.tr 
-                        variants={{
-                          hidden: { opacity: 0, y: 10 },
-                          visible: { opacity: 1, y: 0, transition: { ease: "easeOut", duration: 0.4 } }
-                        }}
-                        key={item.id} 
-                        className="border-b border-white/20 dark:border-white/5 hover:bg-white/50 dark:hover:bg-white/5 cursor-pointer group transition-all"
+              <div className="w-full flex flex-col min-w-0">
+                <div className="px-4 sm:px-6 mb-4 w-full min-w-0">
+                  <div className="flex items-center gap-2 relative w-full max-w-full">
+                    <button 
+                      onClick={() => scrollSort('left')}
+                      className="absolute left-0 z-10 w-8 h-full flex items-center justify-center bg-gradient-to-r from-white dark:from-slate-900 to-transparent focus:outline-none"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-slate-500 hover:text-coral-500 transition-colors bg-white/50 dark:bg-slate-900/50 rounded-full shadow-sm" />
+                    </button>
+                    <div 
+                      ref={sortScrollRef}
+                      className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden whitespace-nowrap px-8 py-1 scroll-smooth w-full"
+                    >
+                      {[
+                        { value: "", label: "預設" },
+                        { value: "date-desc", label: "日期 (近到遠)" },
+                        { value: "date-asc", label: "日期 (遠到近)" },
+                        { value: "totalPrice-desc", label: "總價 (高到低)" },
+                        { value: "totalPrice-asc", label: "總價 (低到高)" },
+                        { value: "unitPrice-desc", label: "單價 (高到低)" },
+                        { value: "unitPrice-asc", label: "單價 (低到高)" }
+                      ].map(opt => {
+                        const currentVal = sortConfig ? `${String(sortConfig.key)}-${sortConfig.direction}` : "";
+                        const isSelected = currentVal === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            onClick={() => {
+                              if (!opt.value) { setSortConfig(null); return; }
+                              const [k, d] = opt.value.split("-");
+                              setSortConfig({ key: k as any, direction: d as any });
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap shrink-0 flex items-center gap-1.5 ${isSelected ? 'bg-coral-500/10 dark:bg-coral-500/20 text-coral-600 dark:text-coral-400 border-coral-500/30 shadow-sm shadow-coral-500/10' : 'bg-white/60 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border-ink/5 dark:border-white/10 hover:border-slate-300 dark:hover:border-slate-700'}`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button 
+                      onClick={() => scrollSort('right')}
+                      className="absolute right-0 z-10 w-8 h-full flex items-center justify-center bg-gradient-to-l from-white dark:from-slate-900 to-transparent focus:outline-none"
+                    >
+                      <ChevronRight className="w-4 h-4 text-slate-500 hover:text-coral-500 transition-colors bg-white/50 dark:bg-slate-900/50 rounded-full shadow-sm" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 px-4 sm:px-6 pb-2">
+                  <AnimatePresence mode="popLayout">
+                    {paginatedData.map((item, idx) => (
+                      <motion.div
+                        layout
+                        initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                        transition={{ duration: 0.3, delay: Math.min(idx * 0.03, 0.3), ease: [0.23, 1, 0.32, 1] }}
+                        key={item.id}
                         onClick={() => setSelectedItem(item)}
+                        className="group relative bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl border border-ink/5 dark:border-white/10 rounded-2xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 transition-all cursor-pointer overflow-hidden"
                       >
-                        <TableCell className="text-ink dark:text-slate-100 font-bold font-display pl-8">{item.district}</TableCell>
-                        <TableCell className="max-w-[240px]">
-                          <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-xl bg-coral-500/10 flex items-center justify-center shrink-0 border border-coral-500/5 shadow-sm group-hover:bg-coral-500/20 transition-all">
-                               <MapPin size={14} className="text-coral-600 dark:text-coral-400" />
-                             </div>
-                             <div className="flex flex-col min-w-0">
-                               <div className="truncate text-ink/90 dark:text-slate-200 font-bold group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-tight">{item.address}</div>
-                               <div className="flex items-center gap-2 mt-1">
-                                 <span className="text-[9px] text-coral-600/70 dark:text-coral-400/70 font-bold tracking-[0.1em] uppercase px-1.5 py-0.5 rounded-md bg-coral-500/5 border border-coral-500/10 leading-none">{item.transactionType}</span>
-                                 <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{item.buildingArea} ㎡</span>
-                               </div>
-                             </div>
-                          </div>
-                        </TableCell>
-                        {typeName === "預售屋" && (
-                          <TableCell className="text-ink dark:text-slate-100 font-bold whitespace-nowrap">
-                            {item.buildCase || "-"}
-                          </TableCell>
-                        )}
-                        <TableCell className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm">{formatDate(item.date)}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-white/40 dark:bg-white/5 text-slate-600 dark:text-slate-300 border-white/60 dark:border-white/10 font-bold px-2 py-0 h-6">
-                            {item.buildingType.split("(")[0] || "土地"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="text-ink dark:text-white font-display font-bold tracking-tighter text-xl">
-                            {formatPrice(item.totalPrice)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="inline-flex flex-col items-end px-3 py-1 bg-white/40 dark:bg-white/5 rounded-xl border border-white/60 dark:border-white/10 group-hover:border-coral-500/30 transition-all">
-                            <div className="text-ink dark:text-white font-mono font-bold text-sm">
-                              {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-"}
+                        {/* Interactive Left Indicator line */}
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-coral-500/0 group-hover:bg-coral-500 transition-colors duration-300" />
+                        
+                        {/* Content Grid */}
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-[80px_1fr_minmax(110px,auto)] gap-2 sm:gap-3 items-center pl-1 sm:pl-2">
+                          
+                          {/* Date Block */}
+                          <div className="flex sm:flex-col items-center sm:items-start justify-between border-b sm:border-y-0 border-slate-100 dark:border-slate-800 pb-2 sm:pb-0">
+                            <div className="text-xl sm:text-[22px] leading-none font-display font-black text-ink dark:text-white tracking-tighter">
+                              {formatDate(item.date).replace(/-/g, '.')}
                             </div>
-                            <div className="text-[8px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5 leading-none">萬元/坪</div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-8 h-8 rounded-full bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all group-hover:scale-110">
-                            <ChevronRight className="w-4 h-4 text-coral-500" />
+
+                          {/* Info Tags & Address */}
+                          <div className="flex flex-col justify-center min-w-0 py-0.5">
+                            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                               <span className="px-1.5 py-0.5 rounded-[4px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[9px] font-black tracking-widest uppercase border border-slate-200/60 dark:border-slate-700/60 shadow-sm leading-none">
+                                 {item.district}
+                               </span>
+                               <span className="px-1.5 py-0.5 rounded-[4px] bg-coral-50 dark:bg-coral-500/10 text-coral-600 dark:text-coral-400 text-[9px] font-black tracking-widest uppercase border border-coral-100 dark:border-coral-500/20 shadow-sm leading-none">
+                                 {item.buildingType.split("(")[0] || "土地"}
+                               </span>
+                               <span className="px-1.5 py-0.5 rounded-[4px] bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-black tracking-widest uppercase border border-amber-100 dark:border-amber-500/20 shadow-sm leading-none">
+                                 {item.transactionType}
+                               </span>
+                               {typeName === "預售屋" && item.buildCase && (
+                                 <span className="px-1.5 py-0.5 rounded-[4px] bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black tracking-widest uppercase border border-emerald-100 dark:border-emerald-500/20 shadow-sm leading-none truncate max-w-[150px]">
+                                   建案: {item.buildCase}
+                                 </span>
+                               )}
+                            </div>
+                            <h3 className="text-[15px] sm:text-[16px] font-bold text-ink dark:text-slate-50 truncate group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-snug">
+                              {item.address}
+                            </h3>
+                            <div className="text-[11px] font-bold text-slate-400/80 mt-1 flex items-center gap-2">
+                              <span>建坪 {item.buildingArea} ㎡</span>
+                              {item.floor && (
+                                <>
+                                  <span className="w-1 h-1 rounded flex-shrink-0 bg-slate-300 dark:bg-slate-700" />
+                                  <span>{item.floor}{item.totalFloor ? ` / ${item.totalFloor}` : ''} 樓</span>
+                                </>
+                              )}
+                              {item.rooms && item.rooms !== '0' && (
+                                <>
+                                  <span className="w-1 h-1 rounded flex-shrink-0 bg-slate-300 dark:bg-slate-700" />
+                                  <div className="flex items-center gap-2 ml-0.5 text-slate-500 dark:text-slate-400">
+                                    <span className="flex items-center gap-1"><Bed className="w-3 h-3" />{item.rooms}</span>
+                                    {item.halls && item.halls !== '0' && <span className="flex items-center gap-1"><Sofa className="w-3 h-3" />{item.halls}</span>}
+                                    {item.bathrooms && item.bathrooms !== '0' && <span className="flex items-center gap-1"><Bath className="w-3 h-3" />{item.bathrooms}</span>}
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </TableCell>
-                      </motion.tr>
+
+                          {/* Price Block */}
+                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-800 pt-3 sm:pt-0 pl-1 sm:pl-4 mt-2 sm:mt-0 relative sm:h-full">
+                            <div className="flex flex-col items-start sm:items-end sm:flex-1 sm:justify-start">
+                              <div className="text-[11px] font-bold text-slate-400 mb-0.5 sm:mb-1">
+                                 {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : <span className="opacity-0">-</span>}
+                              </div>
+                              <div className="flex items-baseline gap-1.5">
+                                 <span className="text-[11px] font-bold text-slate-400">總價</span>
+                                 <span className="text-xl sm:text-2xl leading-none font-display font-black text-red-500 tracking-tighter">
+                                   {formatPrice(item.totalPrice)}
+                                 </span>
+                              </div>
+                            </div>
+                            <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               className="h-8 px-3 text-xs bg-coral-500/10 text-coral-600 hover:bg-coral-500/20 hover:text-coral-700 dark:bg-coral-900/30 dark:text-coral-400 dark:hover:bg-coral-900/50 flex-shrink-0 sm:self-end self-center rounded-lg font-bold tracking-widest uppercase transition-all group-hover:bg-coral-500 justify-center group-hover:text-white"
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 setSelectedItem(item);
+                               }}
+                            >
+                               詳情 <ChevronRight className="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform" />
+                            </Button>
+                          </div>
+
+                        </div>
+                      </motion.div>
                     ))}
-                  </motion.tbody>
-                </AnimatePresence>
-              </Table>
+                  </AnimatePresence>
+                </div>
               </div>
+
+              {filteredData.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-4 mt-4 px-4 sm:px-6 mb-8">
+                  <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
+                    <span>每頁顯示</span>
+                    <select
+                      className="bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-coral-500/50"
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                    <span>筆，共 {filteredData.length} 筆</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/60 dark:bg-slate-800/60 disabled:opacity-50"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    >
+                      上一頁
+                    </Button>
+                    <div className="flex items-center gap-1 mx-2">
+                      <span className="text-sm font-bold text-ink dark:text-white">
+                        {currentPage}
+                      </span>
+                      <span className="text-sm text-slate-400">
+                        / {totalPages}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/60 dark:bg-slate-800/60 disabled:opacity-50"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    >
+                      下一頁
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {filteredData.length === 0 && !loading && !error && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -1889,13 +2124,33 @@ export default function App() {
                     scrollWheelZoom={true}
                     key={`map-container-${cityName}-${district}`}
                   >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    
+                    {mapLayer === 'default' && (
+                      <TileLayer
+                        key="default-layer"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                    )}
+                    {mapLayer === 'satellite' && (
+                      <TileLayer
+                        key="satellite-layer"
+                        attribution='&copy; Esri, Maxar, Earthstar Geographics'
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                      />
+                    )}
+                    {mapLayer === 'landmark' && (
+                      <TileLayer
+                        key="landmark-layer"
+                        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                      />
+                    )}
+
                     {/* Automatic bounds manager */}
                     <MapBoundsManager items={filteredData} />
+                    
+                    {/* Facilities layer */}
+                    <FacilitiesOverlay show={showFacilities} />
 
                     <MarkerClusterGroup
                       chunkedLoading
@@ -1945,7 +2200,39 @@ export default function App() {
               )}
               
               {/* Map UI Overlays */}
-              <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-[1000]">
+              <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-[1000] items-end">
+                {/* Map Controls */}
+                <div className="flex items-center gap-2">
+                  <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-white/20 dark:border-white/10 flex items-center justify-between pointer-events-auto">
+                    <button
+                      onClick={() => setMapLayer('default')}
+                      className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${mapLayer === 'default' ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      標準
+                    </button>
+                    <button
+                      onClick={() => setMapLayer('satellite')}
+                      className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${mapLayer === 'satellite' ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      衛星圖
+                    </button>
+                    <button
+                      onClick={() => setMapLayer('landmark')}
+                      className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${mapLayer === 'landmark' ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      地標圖
+                    </button>
+                  </div>
+                  
+                  <button
+                    onClick={() => setShowFacilities(!showFacilities)}
+                    className={`h-[36px] px-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 dark:border-white/10 flex items-center gap-1.5 text-[11px] font-bold transition-all pointer-events-auto ${showFacilities ? 'text-coral-600 dark:text-coral-400 bg-coral-50/90 dark:bg-coral-900/40 border-coral-200' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50'}`}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${showFacilities ? 'bg-coral-500' : 'bg-slate-300'}`} />
+                    周邊設施
+                  </button>
+                </div>
+
                 {isGeocoding && (
                   <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3 px-4 rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 w-48 transition-all animate-in fade-in slide-in-from-bottom-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -1968,6 +2255,49 @@ export default function App() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* About & FAQ Section */}
+        <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-10 py-8 px-4 sm:px-7 pb-24 mt-4">
+          <div className="flex flex-col gap-4">
+            <h2 className="text-2xl font-black text-ink dark:text-white opacity-90 tracking-tight">關於實價登錄查詢</h2>
+            <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-4xl text-sm sm:text-[15px]">
+              實價登錄查詢是一個免費的台灣房地產實價登錄查詢工具，整合內政部實價登錄資料，提供即時房價、坪數、樓層資訊以及歷史交易紀錄。不需註冊即可搜尋任意區域的所有交易紀錄，並透過地圖模式了解周邊設施與地理位置。
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <h2 className="text-2xl font-black text-ink dark:text-white opacity-90 tracking-tight">常見問題 FAQ</h2>
+            <div className="flex flex-col gap-3 max-w-4xl">
+              <details className="group bg-white/60 dark:bg-slate-800/60 rounded-xl border border-ink/5 dark:border-white/10 overflow-hidden shadow-sm">
+                <summary className="list-none [&::-webkit-details-marker]:hidden font-bold text-[15px] text-slate-700 dark:text-slate-200 p-4 sm:px-6 cursor-pointer select-none flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors">
+                  這個網站是免費的嗎？
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-open:rotate-90 transition-transform" />
+                </summary>
+                <div className="p-4 sm:px-6 pt-0 text-sm text-slate-500 dark:text-slate-400 font-medium border-t border-slate-100 dark:border-white/5 mt-2 pt-4 leading-relaxed">
+                  是的，這個網站完全免費提供大家查詢使用，旨在提供更友善、直覺的實價登錄查詢體驗。
+                </div>
+              </details>
+              <details className="group bg-white/60 dark:bg-slate-800/60 rounded-xl border border-ink/5 dark:border-white/10 overflow-hidden shadow-sm">
+                <summary className="list-none [&::-webkit-details-marker]:hidden font-bold text-[15px] text-slate-700 dark:text-slate-200 p-4 sm:px-6 cursor-pointer select-none flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors">
+                  資料來源與更新頻率為何？
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-open:rotate-90 transition-transform" />
+                </summary>
+                <div className="p-4 sm:px-6 pt-0 text-sm text-slate-500 dark:text-slate-400 font-medium border-t border-slate-100 dark:border-white/5 mt-2 pt-4 leading-relaxed">
+                  資料來源為內政部不動產交易實價查詢服務網的開放資料。更新頻率依據官方發布時程，通常為每月 3 次（約每 10 天更新一次）。
+                </div>
+              </details>
+              <details className="group bg-white/60 dark:bg-slate-800/60 rounded-xl border border-ink/5 dark:border-white/10 overflow-hidden shadow-sm">
+                <summary className="list-none [&::-webkit-details-marker]:hidden font-bold text-[15px] text-slate-700 dark:text-slate-200 p-4 sm:px-6 cursor-pointer select-none flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors">
+                  為什麼地圖上有些物件的定位不準確？
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-open:rotate-90 transition-transform" />
+                </summary>
+                <div className="p-4 sm:px-6 pt-0 text-sm text-slate-500 dark:text-slate-400 font-medium border-t border-slate-100 dark:border-white/5 mt-2 pt-4 leading-relaxed">
+                  由於政府開放資料為了保護隱私，門牌號碼多半有區間遮蔽（例如：中正路1~30號），因此系統無法取得精確座標，這類地址會盡量定位在該路段附近。詳細位置請參考卡片內的門牌資訊。
+                </div>
+              </details>
+            </div>
+          </div>
         </div>
 
         {/* Footer Info */}
@@ -2071,21 +2401,44 @@ export default function App() {
                     <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm flex items-center gap-2">
                        <MapIcon size={12} className="text-coral-500" /> 地理位置
                     </h3>
-                    <div className="h-[200px] sm:h-[250px] w-full liquid-glass rounded-[1.5rem] overflow-hidden border border-white/40 dark:border-white/10 shadow-inner relative isolate">
+                    <div className="h-[200px] sm:h-[250px] w-full liquid-glass rounded-[1.5rem] overflow-hidden border border-white/40 dark:border-white/10 shadow-inner relative isolate group">
                        {selectedItem.lat && selectedItem.lng && selectedItem.lat !== 0 ? (
-                         <MapContainer 
-                           center={[selectedItem.lat, selectedItem.lng]} 
-                           zoom={16} 
-                           className="w-full h-full z-0"
-                           zoomControl={false}
-                           attributionControl={false}
-                         >
-                           <TileLayer
-                             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                           />
-                           <Marker position={[selectedItem.lat, selectedItem.lng]} icon={customIcon} />
-                           <MapController center={[selectedItem.lat, selectedItem.lng]} />
-                         </MapContainer>
+                         <>
+                           <MapContainer 
+                             center={[selectedItem.lat, selectedItem.lng]} 
+                             zoom={16} 
+                             className="w-full h-full z-0"
+                             zoomControl={false}
+                             attributionControl={false}
+                           >
+                             <TileLayer
+                               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                             />
+                             <Marker position={[selectedItem.lat, selectedItem.lng]} icon={customIcon} />
+                             <MapController center={[selectedItem.lat, selectedItem.lng]} />
+                           </MapContainer>
+                           
+                           <div className="absolute bottom-3 right-3 z-[1000] flex flex-col sm:flex-row gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                             <a 
+                               href={`https://www.google.com/maps/search/?api=1&query=${selectedItem.lat},${selectedItem.lng}`}
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               className="px-3 py-1.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 shadow-xl flex items-center gap-1.5 hover:-translate-y-0.5 transition-transform"
+                             >
+                               <MapPin className="w-3 h-3 text-blue-500" />
+                               Google Maps
+                             </a>
+                             <a 
+                               href={`https://maps.apple.com/?q=${selectedItem.lat},${selectedItem.lng}`}
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               className="px-3 py-1.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 shadow-xl flex items-center gap-1.5 hover:-translate-y-0.5 transition-transform"
+                             >
+                               <MapPin className="w-3 h-3 text-slate-800 dark:text-white" />
+                               Apple Maps
+                             </a>
+                           </div>
+                         </>
                        ) : selectedItem.lat === 0 ? (
                          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100/50 dark:bg-slate-900/50 p-4 text-center">
                             <MapPin className="w-8 h-8 text-slate-400 mb-2" />
