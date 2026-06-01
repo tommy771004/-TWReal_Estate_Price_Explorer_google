@@ -323,6 +323,7 @@ export default function App() {
   }, [darkMode]);
 
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "map" | "aggregated">("list");
   const [mapLayer, setMapLayer] = useState<"default" | "satellite" | "landmark">("default");
   const [showFacilities, setShowFacilities] = useState(false);
@@ -473,6 +474,9 @@ export default function App() {
     setGeocodedCount(0);
     setIsGeocoding(false);
     setRobotStatus("準備擷取開放資料...");
+    if (window.innerWidth < 768) {
+      setIsSearchExpanded(false);
+    }
 
     robotTimeoutsRef.current.forEach(clearTimeout);
     robotTimeoutsRef.current = [];
@@ -707,6 +711,17 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [fetchData, isSavingSearch, isLocationModalOpen, selectedItem, saveCurrentSearch]);
+
+  // Handle resize for search panel
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768 && !isSearchExpanded) {
+        setIsSearchExpanded(true);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSearchExpanded]);
 
   const uniqueDistricts = useMemo(() => {
     return ["全部", ...(CITY_DISTRICTS[cityName] || []).map(d => d.name)];
@@ -1427,8 +1442,40 @@ export default function App() {
             )}
           </AnimatePresence>
 
+          {/* Mobile Collapsed State */}
+          <AnimatePresence>
+            {!isSearchExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                className="max-w-[1600px] mx-auto w-full md:hidden flex items-center justify-between liquid-glass-panel px-5 py-3 rounded-2xl shadow-xl cursor-pointer hover:bg-white/40 active:scale-[0.98] transition-all overflow-hidden mb-2"
+                onClick={() => setIsSearchExpanded(true)}
+              >
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <MapPin size={14} className="text-coral-500" />
+                  <span className="font-bold text-sm truncate max-w-[150px] sm:max-w-none">{cityName} {district !== "全部" ? `· ${district}` : ''}</span>
+                  {search && <span className="text-xs opacity-70 truncate max-w-[80px]">"{search}"</span>}
+                </div>
+                <div className="flex items-center gap-1.5 text-coral-500 font-bold text-[10px] bg-coral-500/10 px-2.5 py-1.5 rounded-lg shrink-0">
+                  <Filter size={12} /> 展開條件
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Filters Grid */}
-          <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-2 sm:gap-4 liquid-glass-panel p-3 sm:px-6 sm:py-4 rounded-[2rem] shadow-2xl">
+          <AnimatePresence initial={false}>
+            {isSearchExpanded && (
+              <motion.div 
+                initial={window.innerWidth < 768 ? { height: 0, opacity: 0 } : false}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={window.innerWidth < 768 ? { height: 0, opacity: 0 } : false}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }} // smooth ease-out (like Apple)
+                className="max-w-[1600px] mx-auto w-full z-10 overflow-hidden"
+              >
+                <div className="flex flex-col gap-2 sm:gap-4 liquid-glass-panel p-3 sm:px-6 sm:py-4 rounded-[2rem] shadow-2xl mx-1 mb-2 sm:mb-4 mt-1 sm:mt-0">
             
             {/* Top Row: Location & Search */}
             <div className="flex flex-col sm:flex-row gap-4 z-40">
@@ -1490,9 +1537,9 @@ export default function App() {
             </div>
 
             {/* Tags Row: Type & Property Types */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 sm:items-center">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
               
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-80">交易型態</span>
                 <div className="flex bg-white/40 dark:bg-black/20 p-1.5 rounded-[1rem] shadow-inner border border-white/60 dark:border-white/5">
                   {TRANSACTION_TYPES.map(t => (
@@ -1511,9 +1558,9 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="w-full sm:w-px h-px sm:h-10 bg-white/40 dark:bg-white/5" />
+              <div className="w-full sm:w-px h-px sm:h-10 bg-white/40 dark:bg-white/5 mx-0 sm:mx-2" />
 
-              <div className="flex flex-col gap-2 w-full min-w-0">
+              <div className="flex flex-col gap-1.5 w-full min-w-0">
                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-80 shrink-0">標的種類</span>
                  <div className="flex flex-nowrap sm:flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x">
                    {["房地", "房地(車)", "建物", "車位", "土地"].map(pt => (
@@ -1626,7 +1673,7 @@ export default function App() {
             </AnimatePresence>
 
             {/* Row 4: Search Actions */}
-            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-2 sm:mt-4 gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-1 sm:mt-2 gap-3 sm:gap-4">
               {/* Upper row on mobile: Advanced & Clear buttons */}
               <div className="flex flex-row gap-2 w-full sm:w-auto">
                 <Button 
@@ -1684,7 +1731,10 @@ export default function App() {
                 </Button>
               </div>
             </div>
-          </div>
+               </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Save Search Modal */}
