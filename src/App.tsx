@@ -74,6 +74,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { syncSeoMetadata } from "./lib/seo";
+import { parseSelectionFromUrl, buildSelectionSearch } from "./lib/urlState";
 import type { Transaction } from "./types/real-estate";
 
 const ResultsCharts = lazy(() => import("./components/ResultsCharts"));
@@ -107,9 +108,10 @@ const FEATURED_QUERY_INTENTS = [
 ];
 
 export default function App() {
-  const [cityName, setCityName] = useState("臺北市");
-  const [typeName, setTypeName] = useState("買賣");
-  const [district, setDistrict] = useState("全部");
+  const initialSelection = parseSelectionFromUrl();
+  const [cityName, setCityName] = useState(initialSelection.cityName);
+  const [typeName, setTypeName] = useState(initialSelection.typeName);
+  const [district, setDistrict] = useState(initialSelection.district);
   const [search, setSearch] = useState("");
   
   const [propertyTypes, setPropertyTypes] = useState<string[]>(["房地", "建物", "土地"]);
@@ -139,6 +141,18 @@ export default function App() {
   useEffect(() => {
     syncSeoMetadata({ cityName, district, typeName });
   }, [cityName, district, typeName]);
+
+  // Reflect the city / type / district selection in the URL so it is shareable
+  // and indexable (?city=...&type=...). replaceState avoids polluting history.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const search = buildSelectionSearch({ cityName, typeName, district });
+    const nextUrl = `${window.location.pathname}${search}${window.location.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, [cityName, typeName, district]);
 
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(true);
@@ -1240,9 +1254,6 @@ export default function App() {
                 <h3 id="featured-cities" className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
                   熱門查詢城市
                 </h3>
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-                  快速切換
-                </span>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -1554,7 +1565,7 @@ export default function App() {
                   onClick={() => {
                     setSearch("");
                     setDistrict("全部");
-                    setCityName("台北市");
+                    setCityName("臺北市");
                     setPropertyTypes(["房地", "房地(車)", "建物", "車位", "土地"]);
                     setTypeName("買賣");
                     setPeriod({ startY: "112", startM: "1", endY: "113", endM: "12" });

@@ -1,3 +1,5 @@
+import { buildSelectionSearch } from "./urlState";
+
 const SITE_NAME = "實價登錄查詢";
 const SITE_ALT_NAME = "Taiwan Real Estate Price Explorer";
 const DEFAULT_DESCRIPTION =
@@ -122,10 +124,10 @@ export const syncSeoMetadata = (input: SeoInput) => {
   }
 
   const { title, description, keywords } = buildSeoCopy(input);
-  const canonicalUrl = buildAbsoluteUrl("/");
+  const selectionSearch = buildSelectionSearch(input);
+  const canonicalUrl = buildAbsoluteUrl(`/${selectionSearch}`);
   const imageUrl = buildAbsoluteUrl("/og-image.svg");
   const origin = getSiteOrigin();
-  const verificationToken = getTrimmedEnv(import.meta.env.VITE_GOOGLE_SITE_VERIFICATION);
 
   document.title = title;
   document.documentElement.lang = "zh-Hant-TW";
@@ -167,13 +169,6 @@ export const syncSeoMetadata = (input: SeoInput) => {
     content: imageUrl,
   });
   upsertLinkTag("canonical", canonicalUrl);
-
-  if (verificationToken) {
-    upsertMetaTag('meta[name="google-site-verification"]', {
-      name: "google-site-verification",
-      content: verificationToken,
-    });
-  }
 
   if (!origin) {
     return;

@@ -2,6 +2,8 @@ import express from "express";
 import type { Request } from "express";
 import https from "https";
 import xlsx from "xlsx";
+import { CITIES, TRANSACTION_TYPES } from "../src/constants";
+import { buildSelectionSearch } from "../src/lib/urlState";
 
 const app = express();
 app.use(express.json());
@@ -49,17 +51,34 @@ app.get("/robots.txt", (req, res) => {
 
 app.get("/sitemap.xml", (req, res) => {
   const origin = getSiteOrigin(req);
-  const homepageUrl = `${origin}/`;
   const lastmod = new Date().toISOString();
+
+  // Homepage + one entry per city × transaction type. The query strings mirror
+  // buildSelectionSearch() exactly, so each <loc> matches the page's canonical URL.
+  const urls: { loc: string; priority: string }[] = [{ loc: `${origin}/`, priority: "1.0" }];
+
+  for (const city of CITIES) {
+    for (const type of TRANSACTION_TYPES) {
+      const search = buildSelectionSearch({ cityName: city.name, typeName: type.name });
+      if (!search) continue; // default combo === homepage, already added
+      urls.push({ loc: `${origin}/${search}`, priority: "0.8" });
+    }
+  }
+
+  const body = urls
+    .map(
+      ({ loc, priority }) => `  <url>
+    <loc>${escapeXml(loc)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>${priority}</priority>
+  </url>`
+    )
+    .join("\n");
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${escapeXml(homepageUrl)}</loc>
-    <lastmod>${lastmod}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
+${body}
 </urlset>`;
 
   res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
