@@ -1,0 +1,45 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" rx="36" fill="#0F172A"/>
+  <rect x="36" y="36" width="1128" height="558" rx="28" fill="url(#bg)"/>
+  <rect x="86" y="106" width="444" height="418" rx="28" fill="#0F172A" fill-opacity="0.28" stroke="#F8FAFC" stroke-opacity="0.12"/>
+  <rect x="136" y="156" width="168" height="168" rx="30" fill="#F97316" fill-opacity="0.18"/>
+  <path d="M220 183L277 225V307C277 314.732 270.732 321 263 321H177C169.268 321 163 314.732 163 307V225L220 183Z" fill="#F8FAFC"/>
+  <path d="M189 262H251V321H189V262Z" fill="#0F172A" fill-opacity="0.18"/>
+  <circle cx="221" cy="238" r="16" fill="#FB923C"/>
+  <rect x="136" y="352" width="344" height="18" rx="9" fill="#F8FAFC" fill-opacity="0.9"/>
+  <rect x="136" y="390" width="286" height="18" rx="9" fill="#E2E8F0" fill-opacity="0.78"/>
+  <rect x="136" y="428" width="236" height="18" rx="9" fill="#CBD5E1" fill-opacity="0.72"/>
+
+  <rect x="598" y="120" width="498" height="130" rx="24" fill="#FFFFFF" fill-opacity="0.12" stroke="#FFFFFF" stroke-opacity="0.08"/>
+  <rect x="598" y="278" width="498" height="84" rx="24" fill="#FFFFFF" fill-opacity="0.1" stroke="#FFFFFF" stroke-opacity="0.08"/>
+  <rect x="598" y="390" width="498" height="148" rx="24" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.08"/>
+
+  <text x="598" y="182" fill="#F8FAFC" font-family="'Noto Sans TC', 'PingFang TC', sans-serif" font-size="64" font-weight="700">
+    實價登錄查詢
+  </text>
+  <text x="598" y="226" fill="#E2E8F0" font-family="'Noto Sans TC', 'PingFang TC', sans-serif" font-size="28" font-weight="500">
+    台灣房價地圖與成交紀錄工具
+  </text>
+
+  <text x="632" y="329" fill="#F8FAFC" font-family="'Noto Sans TC', 'PingFang TC', sans-serif" font-size="28" font-weight="600">
+    即時查詢買賣、預售屋與租賃資料
+  </text>
+
+  <text x="632" y="442" fill="#F8FAFC" font-family="'Noto Sans TC', 'PingFang TC', sans-serif" font-size="26" font-weight="600">
+    內政部開放資料整合
+  </text>
+  <text x="632" y="486" fill="#E2E8F0" font-family="'Noto Sans TC', 'PingFang TC', sans-serif" font-size="24" font-weight="500">
+    總價、單價、坪數、屋齡與地圖檢視
+  </text>
+  <text x="632" y="526" fill="#CBD5E1" font-family="'Noto Sans TC', 'PingFang TC', sans-serif" font-size="22" font-weight="500">
+    適用 Google Search 與 Search Console 提交
+  </text>
+
+  <defs>
+    <linearGradient id="bg" x1="76" y1="80" x2="1118" y2="570" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E293B"/>
+      <stop offset="0.5" stop-color="#10213C"/>
+      <stop offset="1" stop-color="#3B1D1D"/>
+    </linearGradient>
+  </defs>
+</svg>

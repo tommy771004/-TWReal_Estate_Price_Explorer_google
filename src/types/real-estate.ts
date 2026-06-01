@@ -1,0 +1,31 @@
+export interface Transaction {
+  district: string;
+  transactionType: string;
+  address: string;
+  area: string;
+  zoning: string;
+  date: string;
+  content: string;
+  floor: string;
+  totalFloor: string;
+  buildingType: string;
+  mainUse: string;
+  material: string;
+  completionDate: string;
+  buildingArea: string;
+  rooms: string;
+  halls: string;
+  bathrooms: string;
+  hasPartition: string;
+  hasManagement: string;
+  totalPrice: string;
+  unitPrice: string;
+  parkingType: string;
+  parkingArea: string;
+  parkingPrice: string;
+  remarks: string;
+  id: string;
+  buildCase?: string;
+  lat?: number | string;
+  lng?: number | string;
+}

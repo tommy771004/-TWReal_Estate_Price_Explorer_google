@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { Suspense, lazy, useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import Papa from "papaparse";
 import { 
@@ -38,7 +38,6 @@ import {
   Moon,
   Sun,
   BarChart3,
-  TrendingUp,
   Bed,
   Sofa,
   Bath,
@@ -73,67 +72,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { syncSeoMetadata } from "./lib/seo";
+import type { Transaction } from "./types/real-estate";
 
-// Red marker icon generator
-const getCoralIcon = (label: string) => new L.DivIcon({
-  className: 'custom-div-icon',
-  html: `<div class="relative group">
-           <div class="w-2.5 h-2.5 bg-coral-500 rounded-full border border-white shadow-[0_0_8px_rgba(237,111,92,0.4)] flex items-center justify-center -translate-x-1/2 -translate-y-1/2 hover:scale-150 transition-transform duration-300">
-             <div class="w-1 h-1 bg-white rounded-full"></div>
-           </div>
-           <div class="absolute left-2.5 top-[-10px] whitespace-nowrap bg-coral-500/90 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-white/20 pointer-events-none group-hover:scale-110 transition-transform">
-             ${label}
-           </div>
-         </div>`,
-  iconSize: [0, 0],
-});
-
-// Fix for default Leaflet icons
-const customIcon = new L.DivIcon({
-  className: 'custom-div-icon',
-  html: `<div class="w-6 h-6 bg-coral-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(237,111,92,0.5)] flex items-center justify-center -translate-x-1/2 -translate-y-1/2 hover:scale-125 transition-transform duration-300">
-           <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
-         </div>`,
-  iconSize: [0, 0],
-  iconAnchor: [0, 0]
-});
-
-interface Transaction {
-  district: string; // 鄉鎮市區
-  transactionType: string; // 交易標的
-  address: string; // 土地位置建物門牌
-  area: string; // 土地移轉總面積平方公尺
-  zoning: string; // 都市土地使用分區
-  date: string; // 交易年月日
-  content: string; // 交易筆棟數
-  floor: string; // 移轉層次
-  totalFloor: string; // 總樓層數
-  buildingType: string; // 建物型態
-  mainUse: string; // 主要用途
-  material: string; // 主要建材
-  completionDate: string; // 建築完成年月
-  buildingArea: string; // 建物移轉總面積平方公尺
-  rooms: string; // 建物現況格局-房
-  halls: string; // 建物現況格局-廳
-  bathrooms: string; // 建物現況格局-衛
-  hasPartition: string; // 建物現況格局-隔間
-  hasManagement: string; // 有無管理組織
-  totalPrice: string; // 總價元
-  unitPrice: string; // 單價元/平方公尺
-  parkingType: string; // 車位類別
-  parkingArea: string; // 車位移轉總面積平方公尺
-  parkingPrice: string; // 車位總價元
-  remarks: string; // 備註
-  id: string; // 編號
-  buildCase?: string; // 建案名稱
-  lat?: number;
-  lng?: number;
-}
+const ResultsCharts = lazy(() => import("./components/ResultsCharts"));
+const ResultsMap = lazy(() => import("./components/MapViews"));
+const TransactionMapPreview = lazy(() =>
+  import("./components/MapViews").then((module) => ({ default: module.TransactionMapPreview }))
+);
 
 interface SavedSearch {
   id: string;
@@ -150,147 +97,14 @@ interface SavedSearch {
   timestamp: number;
 }
 
-// Facilities Overlay using Overpass API
-function FacilitiesOverlay({ show }: { show: boolean }) {
-  const map = useMap();
-  const [facilities, setFacilities] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!show) {
-      setFacilities([]);
-      return;
-    }
-
-    let isMounted = true;
-    const fetchFacilities = async () => {
-      try {
-        const bounds = map.getBounds();
-        const sw = bounds.getSouthWest();
-        const ne = bounds.getNorthEast();
-        const query = `
-          [out:json][timeout:15];
-          (
-            node["amenity"="school"](${sw.lat},${sw.lng},${ne.lat},${ne.lng});
-            node["station"="subway"](${sw.lat},${sw.lng},${ne.lat},${ne.lng});
-            node["public_transport"="station"](${sw.lat},${sw.lng},${ne.lat},${ne.lng});
-          );
-          out center;
-        `;
-        const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (isMounted) setFacilities(data.elements || []);
-      } catch (e) {
-        console.error("Failed to fetch facilities", e);
-      }
-    };
-
-    fetchFacilities();
-    
-    // throttle fetching to avoid API spam when moving map
-    let timeout: NodeJS.Timeout;
-    const onMoveEnd = () => {
-      clearTimeout(timeout);
-      timeout = setTimeout(fetchFacilities, 1000);
-    };
-    
-    map.on('moveend', onMoveEnd);
-    return () => {
-      isMounted = false;
-      map.off('moveend', onMoveEnd);
-      clearTimeout(timeout);
-    };
-  }, [show, map]);
-
-  if (!show || facilities.length === 0) return null;
-
-  return (
-    <>
-      {facilities.map((f, i) => {
-        const lat = f.lat || f.center?.lat;
-        const lon = f.lon || f.center?.lon;
-        if (!lat || !lon) return null;
-        
-        const isSchool = f.tags?.amenity === 'school';
-        const name = f.tags?.name || (isSchool ? '學校' : '捷運/車站');
-        
-        return (
-          <Marker 
-            key={`facility-${f.id}-${i}`} 
-            position={[lat, lon]}
-            icon={new L.DivIcon({
-              className: 'custom-facility-icon',
-              html: `<div class="w-6 h-6 ${isSchool ? 'bg-amber-500' : 'bg-blue-500'} rounded-full border-2 border-white shadow-md flex items-center justify-center text-white text-[10px] font-bold">${isSchool ? '學' : '站'}</div>`,
-              iconSize: [24, 24],
-              iconAnchor: [12, 12]
-            })}
-          >
-            <Popup className="custom-popup">
-              <div className="p-1 font-bold text-sm tracking-widest">{name}</div>
-            </Popup>
-          </Marker>
-        );
-      })}
-    </>
-  );
-}
-
-// Map center and bounds tracking component
-function MapBoundsManager({ items }: { items: Transaction[] }) {
-  const map = useMap();
-  const lastItemsLength = useRef<number>(0);
-  const lastValidCount = useRef<number>(0);
-  const hasFittedInitial = useRef<boolean>(false);
-  
-  useEffect(() => {
-    const validItems = items.filter(item => {
-      const lat = typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat;
-      const lng = typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng;
-      return lat && lng && lat !== 0;
-    });
-    const validCount = validItems.length;
-
-    if (validCount === 0) {
-      hasFittedInitial.current = false;
-      return;
-    }
-
-    if (
-      items.length !== lastItemsLength.current || 
-      validCount > lastValidCount.current ||
-      !hasFittedInitial.current
-    ) {
-      try {
-        const boundsCoords = validItems.map(item => {
-          const lat = typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat!;
-          const lng = typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng!;
-          return [lat, lng] as [number, number];
-        });
-        const bounds = L.latLngBounds(boundsCoords);
-        if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-          map.invalidateSize(); // Force redraw after resize or  shift
-          lastItemsLength.current = items.length;
-          lastValidCount.current = validCount;
-          hasFittedInitial.current = true;
-        }
-      } catch (e) {
-        console.warn("Could not calculate map bounds", e);
-      }
-    }
-  }, [items, map]);
-
-  return null;
-}
-
-// Single item center sync
-function MapController({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, 16);
-  }, [center, map]);
-  return null;
-}
+const FEATURED_CITY_NAMES = ["臺北市", "新北市", "桃園市", "臺中市", "臺南市", "高雄市"] as const;
+const FEATURED_QUERY_INTENTS = [
+  "實價登錄查詢",
+  "台灣房價地圖",
+  "預售屋成交紀錄",
+  "租賃實價登錄",
+  "社區成交單價",
+];
 
 export default function App() {
   const [cityName, setCityName] = useState("臺北市");
@@ -321,6 +135,10 @@ export default function App() {
       localStorage.setItem('explorer_theme', 'light');
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    syncSeoMetadata({ cityName, district, typeName });
+  }, [cityName, district, typeName]);
 
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(true);
@@ -1410,6 +1228,47 @@ export default function App() {
             </div>
           </div>
 
+          <div className="max-w-[1600px] mx-auto w-full grid gap-6 px-1 pt-1 pb-2 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)]">
+            <section aria-labelledby="search-intent-overview" className="flex flex-col gap-3">
+              
+
+
+            </section>
+
+            <section aria-labelledby="search-intent-overview" className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3">
+                <h3 id="featured-cities" className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                  熱門查詢城市
+                </h3>
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+                  快速切換
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {FEATURED_CITY_NAMES.map((featuredCity) => (
+                  <button
+                    key={featuredCity}
+                    onClick={() => {
+                      setCityName(featuredCity);
+                      setDistrict("全部");
+                      setIsSearchExpanded(true);
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all ${
+                      cityName === featuredCity
+                        ? "border-coral-400/60 bg-coral-500/12 text-coral-700 dark:text-coral-400"
+                        : "border-white/60 dark:border-white/10 bg-white/45 dark:bg-slate-900/35 text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    {featuredCity}
+                  </button>
+                ))}
+              </div>
+
+              
+            </section>
+          </div>
+
           {/* Quick Access Saved Searches */}
           <AnimatePresence>
             {savedSearches.length > 0 && (
@@ -1902,127 +1761,21 @@ export default function App() {
           ) : viewMode === "list" ? (
             <div className="flex-1 min-h-[300px] flex flex-col">
               {!loading && (priceDistribution.length > 0 || priceTrend.length > 0) && (
-                <div className="flex flex-col gap-4 mx-4 sm:mx-6 mt-6 mb-2">
-                  <div className="lg:hidden">
-                    <Button 
-                      variant="outline" 
-                      className="w-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border-white/60 dark:border-white/10 rounded-2xl h-12 font-bold shadow-sm flex items-center justify-between"
-                      onClick={() => setShowChartsMobile(!showChartsMobile)}
-                    >
-                      <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                        <BarChart3 className="w-4 h-4 text-coral-600 dark:text-coral-400" />
-                        市場分析圖表
-                      </span>
-                      <motion.div animate={{ rotate: showChartsMobile ? 180 : 0 }}>
-                        <ArrowUpDown className="w-4 h-4 text-slate-500" />
-                      </motion.div>
-                    </Button>
-                  </div>
-                  <div className={`grid-cols-1 lg:grid-cols-2 gap-4 ${!showChartsMobile ? 'hidden lg:grid' : 'grid'}`}>
-                  {priceTrend.length > 0 && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/60 dark:border-white/10 shadow-xl rounded-3xl"
-                    >
-                      <div className="flex items-center gap-2 mb-4 px-2">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                          <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">成交單價走勢</span>
-                      </div>
-                      <div className="h-[140px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={priceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748b" strokeOpacity={0.15} />
-                            <XAxis 
-                              dataKey="month" 
-                              tickLine={false} 
-                              axisLine={false} 
-                              tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
-                              dy={10}
-                            />
-                            <YAxis 
-                              domain={['dataMin - 5', 'dataMax + 5']}
-                              tickLine={false} 
-                              axisLine={false} 
-                              tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} 
-                            />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'rgba(255, 255, 255, 0.7)', 
-                                borderRadius: '16px', 
-                                border: '1px solid rgba(255, 255, 255, 0.5)',
-                                boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                                backdropFilter: 'blur(20px)',
-                                color: '#0f172a'
-                              }}
-                              itemStyle={{ color: '#4f46e5', fontWeight: '900' }}
-                              labelStyle={{ color: '#64748b', fontWeight: '900', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}
-                              formatter={(value) => [`${value} 萬/坪`, '平均單價']}
-                            />
-                            <Area type="monotone" name="平均單價" dataKey="avgPrice" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {priceDistribution.length > 0 && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/60 dark:border-white/10 shadow-xl rounded-3xl"
-                    >
-                      <div className="flex items-center gap-2 mb-4 px-2">
-                        <div className="w-8 h-8 rounded-xl bg-coral-500/10 flex items-center justify-center border border-coral-500/20">
-                          <BarChart3 className="w-4 h-4 text-coral-600 dark:text-coral-400" />
-                        </div>
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">成交總價分布</span>
-                      </div>
-                      <div className="h-[140px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={priceDistribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748b" strokeOpacity={0.15} />
-                            <XAxis 
-                              dataKey="name" 
-                              tickLine={false} 
-                              axisLine={false} 
-                              tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
-                              dy={10}
-                            />
-                            <YAxis 
-                              tickLine={false} 
-                              axisLine={false} 
-                              tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} 
-                            />
-                            <Tooltip 
-                              cursor={{ fill: '#14b8a6', opacity: 0.1 }}
-                              contentStyle={{ 
-                                backgroundColor: 'rgba(255, 255, 255, 0.7)', 
-                                borderRadius: '16px', 
-                                border: '1px solid rgba(255, 255, 255, 0.5)',
-                                boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                                backdropFilter: 'blur(20px)',
-                                color: '#0f172a'
-                              }}
-                              itemStyle={{ color: '#0d9488', fontWeight: '900' }}
-                              labelStyle={{ color: '#64748b', fontWeight: '900', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}
-                            />
-                            <Bar name="案件數" dataKey="count" fill="#2dd4bf" radius={[6, 6, 0, 0]} maxBarSize={48} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </motion.div>
-                  )}
-                  </div>
-                </div>
+                <Suspense
+                  fallback={
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mx-4 sm:mx-6 mt-6 mb-2">
+                      <Skeleton className="h-[220px] rounded-3xl bg-white/40 dark:bg-slate-900/40" />
+                      <Skeleton className="h-[220px] rounded-3xl bg-white/40 dark:bg-slate-900/40" />
+                    </div>
+                  }
+                >
+                  <ResultsCharts
+                    priceDistribution={priceDistribution}
+                    priceTrend={priceTrend}
+                    showChartsMobile={showChartsMobile}
+                    onToggleCharts={() => setShowChartsMobile(!showChartsMobile)}
+                  />
+                </Suspense>
               )}
               <div className="w-full flex flex-col min-w-0">
                 <div className="px-4 sm:px-6 mb-4 w-full min-w-0">
@@ -2292,179 +2045,101 @@ export default function App() {
               )}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col bg-transparent  relative min-h-[500px] sm:min-h-[600px]">
-              {filteredData.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-8">
-                   <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
-                     <Search className="text-slate-400" size={32} />
-                   </div>
-                   <p className="text-slate-500 font-bold">目前沒有可顯示的搜尋結果</p>
+            <Suspense
+              fallback={
+                <div className="p-4 sm:p-6">
+                  <Skeleton className="h-[540px] rounded-[2rem] bg-white/40 dark:bg-slate-900/40" />
                 </div>
-              ) : (
-                <div className="flex-1 relative">
-                  <MapContainer 
-                    center={(() => {
-                      const cityInfo = CITIES.find(c => c.name === cityName);
-                      const districtInfo = (CITY_DISTRICTS[cityName] || []).find(d => d.name === district);
-                      if (districtInfo?.lat) return [districtInfo.lat, districtInfo.lng] as [number, number];
-                      return cityInfo?.lat ? [cityInfo.lat, cityInfo.lng] as [number, number] : [25.0330, 121.5654] as [number, number];
-                    })()} 
-                    zoom={district !== "全部" ? 14 : 12} 
-                    className="w-full h-full z-0 absolute inset-0"
-                    scrollWheelZoom={true}
-                    key={`map-container-${cityName}-${district}`}
-                  >
-                    {mapLayer === 'default' && (
-                      <TileLayer
-                        key="default-layer"
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                    )}
-                    {mapLayer === 'satellite' && (
-                      <TileLayer
-                        key="satellite-layer"
-                        attribution='&copy; Esri, Maxar, Earthstar Geographics'
-                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                      />
-                    )}
-                    {mapLayer === 'landmark' && (
-                      <TileLayer
-                        key="landmark-layer"
-                        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                      />
-                    )}
-
-                    {/* Automatic bounds manager */}
-                    <MapBoundsManager items={filteredData} />
-                    
-                    {/* Facilities layer */}
-                    <FacilitiesOverlay show={showFacilities} />
-
-                    <MarkerClusterGroup
-                      chunkedLoading
-                      maxClusterRadius={50}
-                      spiderfyOnMaxZoom={true}
-                    >
-                      {filteredData.map((item) => {
-                        const lat = typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat;
-                        const lng = typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng;
-                        
-                        if (!lat || !lng || lat === 0) return null;
-
-                        // Extract "section" from address if possible (e.g., "信義段")
-                        let label = item.district;
-                        const sectionMatch = item.address.match(/([^路街巷]+段)/);
-                        if (sectionMatch) {
-                          label = sectionMatch[1].length > 6 ? item.district : sectionMatch[1];
-                        }
-
-                        return (
-                          <Marker 
-                            key={item.id} 
-                            position={[lat, lng]} 
-                            icon={getCoralIcon(label)}
-                            eventHandlers={{
-                              click: () => setSelectedItem(item),
-                            }}
-                          >
-                              <Popup className="custom-popup">
-                              <div className="p-1">
-                                <div className="flex items-center gap-1.5 mb-1 border-b border-slate-100 pb-1">
-                                  <span className="bg-coral-100 text-coral-600 text-[9px] font-bold px-1 rounded">{label}</span>
-                                  <p className="font-bold text-ink text-xs truncate">{item.address}</p>
-                                </div>
-                                <div className="flex flex-col gap-1 mt-1">
-                                  <p className="text-coral-600 font-bold text-sm leading-none">{formatPrice(item.totalPrice)}</p>
-                                  <p className="text-[10px] text-slate-500 font-medium leading-none">{item.buildingType} | {item.buildingArea} ㎡</p>
-                                  {(item.rooms && item.rooms !== '0') && (
-                                    <div className="flex items-center gap-1 mt-0.5">
-                                      <span className="flex items-center gap-0.5 bg-coral-500/10 text-coral-600 px-1 py-0.5 rounded text-[8px] font-bold"><Bed className="w-2.5 h-2.5" />{item.rooms}</span>
-                                      {item.halls && item.halls !== '0' && <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-600 px-1 py-0.5 rounded text-[8px] font-bold"><Sofa className="w-2.5 h-2.5" />{item.halls}</span>}
-                                      {item.bathrooms && item.bathrooms !== '0' && <span className="flex items-center gap-0.5 bg-blue-500/10 text-blue-600 px-1 py-0.5 rounded text-[8px] font-bold"><Bath className="w-2.5 h-2.5" />{item.bathrooms}</span>}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </Popup>
-                          </Marker>
-                        );
-                      })}
-                    </MarkerClusterGroup>
-                  </MapContainer>
-                </div>
-              )}
-              
-              {/* Map UI Overlays */}
-              <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-[1000] items-end">
-                {/* Map Controls */}
-                <div className="flex items-center gap-2">
-                  <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-white/20 dark:border-white/10 flex items-center justify-between pointer-events-auto">
-                    <button
-                      onClick={() => setMapLayer('default')}
-                      className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${mapLayer === 'default' ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      標準
-                    </button>
-                    <button
-                      onClick={() => setMapLayer('satellite')}
-                      className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${mapLayer === 'satellite' ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      衛星圖
-                    </button>
-                    <button
-                      onClick={() => setMapLayer('landmark')}
-                      className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${mapLayer === 'landmark' ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      地標圖
-                    </button>
-                  </div>
-                  
-                  <button
-                    onClick={() => setShowFacilities(!showFacilities)}
-                    className={`h-[36px] px-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 dark:border-white/10 flex items-center gap-1.5 text-[11px] font-bold transition-all pointer-events-auto ${showFacilities ? 'text-coral-600 dark:text-coral-400 bg-coral-50/90 dark:bg-coral-900/40 border-coral-200' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50'}`}
-                  >
-                    <div className={`w-2 h-2 rounded-full ${showFacilities ? 'bg-coral-500' : 'bg-slate-300'}`} />
-                    周邊設施
-                  </button>
-                </div>
-
-                {isGeocoding && (
-                  <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3 px-4 rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 w-48 transition-all animate-in fade-in slide-in-from-bottom-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 rounded-full bg-coral-500 animate-pulse" />
-                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">精準校正中...</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <motion.div 
-                          className="h-full bg-coral-500 shadow-[0_0_8px_rgba(20,184,166,0.5)]"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(geocodedCount / (totalToGeocode || 1)) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-mono font-bold text-coral-600 dark:text-coral-400">{geocodedCount}/{totalToGeocode}</span>
-                    </div>
-                    <p className="text-[8px] text-slate-400 mt-2 font-medium leading-tight">使用免費 Nominatim 引擎<br/>正在獲取精準經緯度</p>
-                  </div>
-                )}
-              </div>
-            </div>
+              }
+            >
+              <ResultsMap
+                cityName={cityName}
+                district={district}
+                filteredData={filteredData}
+                formatPrice={formatPrice}
+                geocodedCount={geocodedCount}
+                isGeocoding={isGeocoding}
+                mapLayer={mapLayer}
+                onMapLayerChange={setMapLayer}
+                onSelectItem={setSelectedItem}
+                onToggleFacilities={() => setShowFacilities(!showFacilities)}
+                showFacilities={showFacilities}
+                totalToGeocode={totalToGeocode}
+              />
+            </Suspense>
           )}
         </div>
 
         {/* About & FAQ Section */}
         <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-10 py-8 px-4 sm:px-7 pb-24 mt-4">
-          <div className="flex flex-col gap-4">
-            <h2 className="text-2xl font-black text-ink dark:text-white opacity-90 tracking-tight">關於實價登錄查詢</h2>
-            <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-4xl text-sm sm:text-[15px]">
-              實價登錄查詢是一個免費的台灣房地產實價登錄查詢工具，整合內政部實價登錄資料，提供即時房價、坪數、樓層資訊以及歷史交易紀錄。不需註冊即可搜尋任意區域的所有交易紀錄，並透過地圖模式了解周邊設施與地理位置。
-            </p>
-          </div>
+          <section className="flex flex-col gap-4" aria-labelledby="search-coverage">
+              
+              <div className="flex flex-wrap gap-2">
+                {FEATURED_QUERY_INTENTS.map((intent) => (
+                  <span
+                    key={intent}
+                    className="inline-flex items-center rounded-full border border-white/60 dark:border-white/10 bg-white/45 dark:bg-slate-900/35 px-3 py-1.5 text-[11px] font-bold tracking-wide text-slate-600 dark:text-slate-300"
+                  >
+                    {intent}
+                  </span>
+                ))}
+              </div>
+               <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-coral-700 dark:text-coral-400">
+                  台灣房價查詢
+                </span>
+                <span className="h-px w-8 bg-coral-500/30" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  實價登錄
+                </span>
+              </div>
 
-          <div className="flex flex-col gap-4">
-            <h2 className="text-2xl font-black text-ink dark:text-white opacity-90 tracking-tight">常見問題 FAQ</h2>
+              <div className="flex flex-col gap-2 max-w-4xl">
+                <h2 id="search-intent-overview" className="text-lg sm:text-[1.45rem] font-black tracking-tight text-ink dark:text-white">
+                  台灣實價登錄查詢與房價地圖
+                </h2>
+                <p className="text-sm sm:text-[15px] leading-relaxed font-medium text-slate-600 dark:text-slate-300 max-w-3xl">
+                  查詢臺北市、新北市、桃園市、臺中市、臺南市、高雄市與全台各縣市的實價登錄成交紀錄，
+                  支援買賣、預售屋與租賃資料，並可依總價、單價、坪數、屋齡與地圖位置快速篩選。
+                </p>
+              </div>
+            <h2 id="search-coverage" className="text-2xl font-black text-ink dark:text-white opacity-90 tracking-tight">
+              可查詢的實價登錄範圍
+            </h2>
+            <div className="grid gap-4 lg:grid-cols-3">
+              {[
+                {
+                  title: "查城市與行政區",
+                  body: "支援全台縣市與行政區切換，可快速比較不同生活圈、區域房價與成交紀錄。",
+                },
+                {
+                  title: "查買賣、預售屋、租賃",
+                  body: "同一個查詢介面即可切換住宅買賣、預售屋成交與租賃資料，不必分站重找。",
+                },
+                {
+                  title: "查單價、總價與坪數",
+                  body: "可依總價、單價、坪數、屋齡與關鍵字做條件過濾，搭配地圖檢視更快找到目標區域。",
+                },
+              ].map((item) => (
+                <div key={item.title} className="rounded-2xl border border-white/50 dark:border-white/10 bg-white/45 dark:bg-slate-900/25 px-5 py-5">
+                  <h3 className="text-sm font-black tracking-tight text-ink dark:text-white">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed font-medium text-slate-500 dark:text-slate-400">
+                    {item.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-4" aria-labelledby="about-real-estate-search">
+            <h2 id="about-real-estate-search" className="text-2xl font-black text-ink dark:text-white opacity-90 tracking-tight">關於實價登錄查詢</h2>
+            <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-4xl text-sm sm:text-[15px]">
+              實價登錄查詢是一個免費的台灣房地產實價登錄查詢工具，整合內政部實價登錄開放資料，提供買賣、預售屋與租賃成交紀錄的快速搜尋。不需註冊即可查詢各縣市與行政區的總價、單價、坪數、樓層、屋齡與歷史交易資料，並透過地圖模式了解周邊設施與地理位置。
+            </p>
+          </section>
+
+          <section className="flex flex-col gap-4" aria-labelledby="real-estate-faq">
+            <h2 id="real-estate-faq" className="text-2xl font-black text-ink dark:text-white opacity-90 tracking-tight">常見問題 FAQ</h2>
             <div className="flex flex-col gap-3 max-w-4xl">
               <details className="group bg-white/60 dark:bg-slate-800/60 rounded-xl border border-ink/5 dark:border-white/10 overflow-hidden shadow-sm">
                 <summary className="list-none [&::-webkit-details-marker]:hidden font-bold text-[15px] text-slate-700 dark:text-slate-200 p-4 sm:px-6 cursor-pointer select-none flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors">
@@ -2494,7 +2169,7 @@ export default function App() {
                 </div>
               </details>
             </div>
-          </div>
+          </section>
         </div>
 
         {/* Footer Info */}
@@ -2598,57 +2273,9 @@ export default function App() {
                     <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm flex items-center gap-2">
                        <MapIcon size={12} className="text-coral-500" /> 地理位置
                     </h3>
-                    <div className="h-[200px] sm:h-[250px] w-full liquid-glass rounded-[1.5rem] overflow-hidden border border-white/40 dark:border-white/10 shadow-inner relative isolate group">
-                       {selectedItem.lat && selectedItem.lng && selectedItem.lat !== 0 ? (
-                         <>
-                           <MapContainer 
-                             center={[selectedItem.lat, selectedItem.lng]} 
-                             zoom={16} 
-                             className="w-full h-full z-0"
-                             zoomControl={false}
-                             attributionControl={false}
-                           >
-                             <TileLayer
-                               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                             />
-                             <Marker position={[selectedItem.lat, selectedItem.lng]} icon={customIcon} />
-                             <MapController center={[selectedItem.lat, selectedItem.lng]} />
-                           </MapContainer>
-                           
-                           <div className="absolute bottom-3 right-3 z-[1000] flex flex-col sm:flex-row gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                             <a 
-                               href={`https://www.google.com/maps/search/?api=1&query=${selectedItem.lat},${selectedItem.lng}`}
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               className="px-3 py-1.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 shadow-xl flex items-center gap-1.5 hover:-translate-y-0.5 transition-transform"
-                             >
-                               <MapPin className="w-3 h-3 text-blue-500" />
-                               Google Maps
-                             </a>
-                             <a 
-                               href={`https://maps.apple.com/?q=${selectedItem.lat},${selectedItem.lng}`}
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               className="px-3 py-1.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 shadow-xl flex items-center gap-1.5 hover:-translate-y-0.5 transition-transform"
-                             >
-                               <MapPin className="w-3 h-3 text-slate-800 dark:text-white" />
-                               Apple Maps
-                             </a>
-                           </div>
-                         </>
-                       ) : selectedItem.lat === 0 ? (
-                         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100/50 dark:bg-slate-900/50 p-4 text-center">
-                            <MapPin className="w-8 h-8 text-slate-400 mb-2" />
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">無法精確定位地址</p>
-                            <p className="text-[9px] text-slate-400 leading-relaxed font-medium">因開放資料地址遮蔽，無法自動解析座標<br/>請參考明細中的門牌資訊</p>
-                         </div>
-                       ) : (
-                         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/50">
-                            <Compass className="w-8 h-8 text-slate-300 dark:text-slate-700 animate-spin-slow mb-2" />
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">正在解析座標...</p>
-                         </div>
-                       )}
-                    </div>
+                    <Suspense fallback={<Skeleton className="h-[200px] sm:h-[250px] rounded-[1.5rem] bg-white/40 dark:bg-slate-900/40" />}>
+                      <TransactionMapPreview selectedItem={selectedItem} />
+                    </Suspense>
                   </div>
 
                   {/* Details Grid */}
