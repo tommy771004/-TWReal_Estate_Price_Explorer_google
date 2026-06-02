@@ -44,7 +44,14 @@ import {
   ChevronLeft,
   ArrowDown,
   ArrowUp,
-  Heart
+  Heart,
+  Train,
+  GraduationCap,
+  ShieldCheck,
+  ArrowRight,
+  Car,
+  Leaf,
+  TrendingUp,
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
@@ -73,8 +80,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Area, 
+  AreaChart, 
+  CartesianGrid, 
+  ResponsiveContainer, 
+  Tooltip as RechartsTooltip, 
+  XAxis, 
+  YAxis
+} from "recharts";
 import { syncSeoMetadata } from "./lib/seo";
 import { parseSelectionFromUrl, buildSelectionSearch } from "./lib/urlState";
+import { calculateDistance } from "./lib/utils";
 import type { Transaction } from "./types/real-estate";
 
 const ResultsCharts = lazy(() => import("./components/ResultsCharts"));
@@ -106,6 +123,17 @@ const FEATURED_QUERY_INTENTS = [
   "租賃實價登錄",
   "社區成交單價",
 ];
+
+const getSpecialTags = (remarks?: string) => {
+  if (!remarks) return [];
+  const result: { label: string; class: string }[] = [];
+  if (/(親友|關係人|員工|特殊關係)/.test(remarks)) result.push({ label: "特殊交易", class: "bg-red-50 text-red-600 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30" });
+  if (/(增建|加蓋|頂加)/.test(remarks)) result.push({ label: "含增建", class: "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30" });
+  if (/(毛胚|未隔間)/.test(remarks)) result.push({ label: "毛胚屋", class: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/30" });
+  if (/(瑕疵|漏水|凶宅|非自然|死亡)/.test(remarks)) result.push({ label: "屋況瑕疵", class: "bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/30" });
+  if (/(地上權|使用權)/.test(remarks)) result.push({ label: "限制產權", class: "bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/30" });
+  return result;
+};
 
 export default function App() {
   const initialSelection = parseSelectionFromUrl();
@@ -164,6 +192,7 @@ export default function App() {
   const [geocodedCount, setGeocodedCount] = useState(0);
   const [totalToGeocode, setTotalToGeocode] = useState(0);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [globalFacilities, setGlobalFacilities] = useState<any[]>([]);
   
   // Saved Searches State
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(() => {
@@ -360,9 +389,12 @@ export default function App() {
       
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        const textBody = await response.text().catch(() => "could not read body");
+        const textBody = await response.text().catch(() => "");
         console.error("Non-JSON response text:", textBody.substring(0, 500));
-        throw new Error("伺服器傳回非預期的資料格式，請稍後再試。");
+        if (textBody.includes("Starting Server...")) {
+          throw new Error("伺服器正在啟動中，請等待幾秒鐘後再重新嘗試查詢。");
+        }
+        throw new Error("伺服器傳回非預期的資料格式，請稍後再重試。");
       }
 
       const result = await response.json();
@@ -696,6 +728,108 @@ export default function App() {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredData.slice(start, start + itemsPerPage);
   }, [filteredData, currentPage, itemsPerPage]);
+
+  const communityItems = useMemo(() => {
+    if (!selectedItem) return [];
+    
+    let matched = [];
+    if (selectedItem.buildCase) {
+      matched = data.filter(item => item.buildCase === selectedItem.buildCase && item.id !== selectedItem.id);
+    } else {
+      const baseAddressMatch = selectedItem.address.match(/(.+?[路街道巷弄號])/);
+      if (baseAddressMatch && baseAddressMatch[1].length >= 3) {
+        const baseAddr = baseAddressMatch[1];
+        matched = data.filter(item => 
+          item.district === selectedItem.district &&
+          item.address.startsWith(baseAddr) && 
+          item.id !== selectedItem.id &&
+          item.buildingType === selectedItem.buildingType
+        );
+      }
+    }
+
+    return matched.sort((a, b) => {
+      const aDate = parseInt(a.date.replace(/[^0-9]/g, "")) || 0;
+      const bDate = parseInt(b.date.replace(/[^0-9]/g, "")) || 0;
+      return bDate - aDate;
+    }).slice(0, 20); // show up to 20 recent records
+  }, [selectedItem, data]);
+
+  const communityChartData = useMemo(() => {
+    if (!selectedItem || communityItems.length === 0) return [];
+    const allItems = [...communityItems, selectedItem].sort((a, b) => {
+      const aDate = parseInt(a.date.replace(/[^0-9]/g, "")) || 0;
+      const bDate = parseInt(b.date.replace(/[^0-9]/g, "")) || 0;
+      return aDate - bDate; // Ascending for chart (Left to right: old to new)
+    });
+
+    return allItems.map(item => {
+       let unitPrice = 0;
+       const houseTotal = parseFloat(item.totalPrice) - parseFloat(item.parkingPrice || "0");
+       const houseArea = parseFloat(item.buildingArea) - parseFloat(item.parkingArea || "0");
+       if (houseTotal > 0 && houseArea > 0) {
+          unitPrice = (houseTotal / houseArea) * 3.30578 / 10000;
+       } else if (item.unitPrice && parseFloat(item.unitPrice) > 0) {
+          unitPrice = (parseFloat(item.unitPrice) * 3.30578 / 10000);
+       }
+       return {
+          date: item.date ? `${item.date.substring(0, item.date.length - 4)}/${item.date.substring(item.date.length - 4, item.date.length - 2)}` : '-', // format YY/MM
+          unitPrice: parseFloat(unitPrice.toFixed(1)),
+          isCurrent: item.id === selectedItem.id,
+          address: item.address,
+          floor: item.floor || '-',
+          totalPrice: parseFloat(item.totalPrice),
+       }
+    }).filter(d => d.unitPrice > 0);
+  }, [communityItems, selectedItem]);
+
+
+  useEffect(() => {
+    const validItems = paginatedData.filter(i => {
+      const lat = typeof i.lat === 'string' ? parseFloat(i.lat) : i.lat;
+      const lng = typeof i.lng === 'string' ? parseFloat(i.lng) : i.lng;
+      return lat && lng && lat !== 0;
+    });
+    
+    if (validItems.length === 0) return;
+    
+    let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+    validItems.forEach(i => {
+      const lat = typeof i.lat === 'string' ? parseFloat(i.lat) : parseFloat(i.lat as any);
+      const lng = typeof i.lng === 'string' ? parseFloat(i.lng) : parseFloat(i.lng as any);
+      if(lat < minLat) minLat = lat;
+      if(lat > maxLat) maxLat = lat;
+      if(lng < minLng) minLng = lng;
+      if(lng > maxLng) maxLng = lng;
+    });
+    
+    // Add margin (~5km)
+    minLat -= 0.05;
+    maxLat += 0.05;
+    minLng -= 0.05;
+    maxLng += 0.05;
+    
+    const fetchFac = async () => {
+      const query = `
+          [out:json][timeout:15];
+          (
+            node["amenity"="school"](${minLat},${minLng},${maxLat},${maxLng});
+            node["station"="subway"](${minLat},${minLng},${maxLat},${maxLng});
+            node["public_transport"="station"](${minLat},${minLng},${maxLat},${maxLng});
+          );
+          out center;
+      `;
+      try {
+        const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        setGlobalFacilities(data.elements || []);
+      } catch (err) {
+        console.warn("Could not fetch facilities", err);
+      }
+    };
+    
+    fetchFac();
+  }, [paginatedData]);
 
   const priceDistribution = useMemo(() => {
     if (filteredData.length < 10) return [];
@@ -1075,21 +1209,22 @@ export default function App() {
         />
         <motion.div 
           animate={{ 
-            x: [100, -100, 100],
-            y: [50, -50, 50],
-            scale: [1.2, 1, 1.2]
+            x: [50, -50, 50],
+            y: [30, -30, 30],
+            scale: [1.1, 1, 1.1]
           }}
           transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
-          className="absolute bottom-[-10%] right-[-5%] w-[700px] h-[700px] bg-amber-500/15 dark:bg-amber-600/10 rounded-full blur-[140px]" 
+          className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-coral-400/10 dark:bg-coral-600/10 rounded-full blur-[160px] pointer-events-none" 
         />
         <motion.div 
           animate={{ 
-            opacity: [0.3, 0.6, 0.3],
-            scale: [0.8, 1.1, 0.8]
+            opacity: [0.2, 0.4, 0.2],
+            scale: [0.9, 1.1, 0.9]
           }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-emerald-400/10 dark:bg-emerald-500/10 rounded-full blur-[100px]" 
+          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[20%] left-[10%] w-[500px] h-[500px] bg-rose-400/10 dark:bg-rose-500/10 rounded-full blur-[140px] pointer-events-none" 
         />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.015] dark:opacity-[0.03] mix-blend-overlay pointer-events-none z-50"></div>
       </div>
 
       {/* Glass Ornaments */}
@@ -1105,26 +1240,26 @@ export default function App() {
         className="relative w-full flex-1 flex flex-col z-10"
       >
         {/* Header */}
-        <div className="p-4 sm:px-8 sm:pt-4 sm:pb-4 border-b border-white/20 dark:border-white/10 liquid-glass flex flex-col gap-3 shrink-0 relative overflow-hidden group">
-          <div className="absolute bottom-0 left-0 right-0 h-[px] bg-gradient-to-r from-transparent via-coral-500/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-1000" />
-          <div className="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="relative group">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-[1.5rem] bg-gradient-to-tr from-slate-900 via-coral-800 to-coral-500 shadow-[0_10px_40px_rgba(20,184,166,0.4)] flex items-center justify-center transform group-hover:rotate-12 transition-all duration-500 group-hover:scale-110">
+        <div className="px-4 sm:px-6 pt-6 pb-2 shrink-0 relative z-20">
+          <div className="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4 px-2 sm:px-6 rounded-[2rem] relative z-10 group transition-all">
+            <div className="absolute inset-0 bg-transparent rounded-[2rem] pointer-events-none" />
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="relative group/icon">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-[1.5rem] bg-gradient-to-tr from-coral-900 via-coral-600 to-coral-400 shadow-[0_10px_30px_rgba(237,111,92,0.4)] flex items-center justify-center transform group-hover/icon:rotate-12 transition-all duration-500 group-hover/icon:scale-110 border border-white/20">
                   <Database className="text-white w-6 h-6 sm:w-7 sm:h-7" />
                 </div>
                 <motion.div 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.5, ease: "easeOut", duration: 0.5 }}
-                  className="absolute -top-3 -right-3 w-7 h-7 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-2xl flex items-center justify-center shadow-xl border-2 border-white dark:border-slate-900"
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-amber-200 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg border-2 border-white/80 dark:border-slate-800"
                 >
-                  <Sparkles size={12} className="text-white drop-shadow-sm" />
+                  <Sparkles size={10} className="text-white drop-shadow-sm" />
                 </motion.div>
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-ink dark:text-white">
+                  <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tighter text-ink dark:text-white leading-none">
                     實價登錄查詢
                   </h1>
                   <div className="flex items-center gap-1.5 relative">
@@ -1633,8 +1768,9 @@ export default function App() {
         </Dialog>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-t-[2.5rem] mx-0 sm:mx-6 border-b-0 shadow-2xl sm:shadow-[0_20px_50px_rgba(0,0,0,0.15)] mt-0 sm:-mt-6 relative z-20 pb-12 overflow-hidden">
-          <div className="px-6 sm:px-8 py-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between bg-white/30 dark:bg-black/20 backdrop-blur-3xl relative overflow-hidden">
+        <div className="flex-none px-4 sm:px-6 relative z-20 w-full pb-12 flex flex-col flex-1">
+          <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-[2.5rem] w-full max-w-[1600px] mx-auto border-b-0 shadow-2xl sm:shadow-[0_40px_100px_rgba(0,0,0,0.06)] dark:shadow-[0_40px_100px_rgba(0,0,0,0.4)] mt-0 sm:mt-4 relative overflow-hidden">
+            <div className="px-6 sm:px-8 py-5 border-b border-white/20 dark:border-white/10 flex items-center justify-between bg-white/30 dark:bg-slate-900/40 backdrop-blur-3xl relative overflow-hidden">
             <div className="absolute inset-y-0 left-0 w-1 bg-coral-500" />
             <div className="flex items-center gap-3 relative z-10">
               <div className="w-10 h-10 rounded-xl bg-coral-500/10 flex items-center justify-center border border-coral-500/10">
@@ -1770,7 +1906,7 @@ export default function App() {
               </Table>
             </div>
           ) : viewMode === "list" ? (
-            <div className="flex-1 min-h-[300px] flex flex-col">
+            <div className="flex-1 min-h-[300px] flex flex-col max-w-[1600px] mx-auto w-full">
               {!loading && (priceDistribution.length > 0 || priceTrend.length > 0) && (
                 <Suspense
                   fallback={
@@ -1847,16 +1983,46 @@ export default function App() {
 
                 <div className="flex flex-col gap-3 px-4 sm:px-6 pb-2">
                   <AnimatePresence mode="popLayout">
-                    {paginatedData.map((item, idx) => (
+                    {paginatedData.map((item, idx) => {
+                      let nearestStation = null;
+                      let nearestSchool = null;
+                      let minStDist = Infinity;
+                      let minScDist = Infinity;
+                      
+                      const itemLat = typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat;
+                      const itemLng = typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng;
+                      
+                      if(itemLat && itemLng && globalFacilities.length > 0) {
+                        globalFacilities.forEach(f => {
+                          const flat = f.lat || f.center?.lat;
+                          const flng = f.lon || f.center?.lon;
+                          if(!flat || !flng) return;
+                          
+                          const d = calculateDistance(itemLat, itemLng, flat, flng);
+                          if(d > 5) return;
+                          
+                          const isSchool = f.tags?.amenity === "school";
+                          if(isSchool) {
+                            if(d < minScDist) { minScDist = d; nearestSchool = f; }
+                          } else {
+                            if(d < minStDist) { minStDist = d; nearestStation = f; }
+                          }
+                        });
+                      }
+
+                      return (
                       <motion.div
                         layout
-                        initial={{ opacity: 0, scale: 0.98, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
-                        transition={{ duration: 0.3, delay: Math.min(idx * 0.03, 0.3), ease: [0.23, 1, 0.32, 1] }}
+                        initial={{ opacity: 0, scale: 0.96, y: 30, filter: "blur(8px)" }}
+                        whileInView={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+                        viewport={{ once: false, margin: "-10px" }}
+                        exit={{ opacity: 0, scale: 0.95, filter: "blur(5px)" }}
+                        whileHover={{ y: -4, scale: 1.01, boxShadow: "0 20px 40px -10px rgba(0,0,0,0.1)" }}
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                         key={item.id}
                         onClick={() => setSelectedItem(item)}
-                        className="group relative bg-white/70 dark:bg-slate-900/40 backdrop-blur-xl border border-ink/5 dark:border-white/10 rounded-2xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 transition-all cursor-pointer overflow-hidden"
+                        className="group relative bg-white/80 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/60 dark:border-white/10 rounded-2xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 cursor-pointer overflow-hidden ring-1 ring-black/5 dark:ring-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] hover:border-coral-500/30 dark:hover:border-coral-500/30 transition-colors"
                       >
                         {/* Interactive Left Indicator line */}
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-coral-500/0 group-hover:bg-coral-500 transition-colors duration-300" />
@@ -1877,7 +2043,7 @@ export default function App() {
                         </button>
 
                         {/* Content Grid */}
-                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-[80px_1fr_minmax(110px,auto)] gap-2 sm:gap-3 items-center pl-1 sm:pl-2">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-[80px_minmax(0,1fr)_minmax(130px,auto)] gap-3 sm:gap-6 items-center pl-1 sm:pl-2 w-full min-w-0">
                           
                           {/* Date Block */}
                           <div className="flex sm:flex-col items-center sm:items-start justify-between border-b sm:border-y-0 border-slate-100 dark:border-slate-800 pb-2 sm:pb-0">
@@ -1888,25 +2054,37 @@ export default function App() {
 
                           {/* Info Tags & Address */}
                           <div className="flex flex-col justify-center min-w-0 py-0.5">
-                            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                               <span className="px-1.5 py-0.5 rounded-[4px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[9px] font-black tracking-widest uppercase border border-slate-200/60 dark:border-slate-700/60 shadow-sm leading-none">
+                            <div className="flex flex-wrap items-center gap-1.5 mb-1.5 overflow-hidden max-h-[40px] sm:max-h-[20px]">
+                               <span className="px-1.5 py-0.5 rounded-[4px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[9px] font-black tracking-widest uppercase border border-slate-200/60 dark:border-slate-700/60 shadow-sm leading-none shrink-0 truncate max-w-[80px]">
                                  {item.district}
                                </span>
-                               <span className="px-1.5 py-0.5 rounded-[4px] bg-coral-50 dark:bg-coral-500/10 text-coral-600 dark:text-coral-400 text-[9px] font-black tracking-widest uppercase border border-coral-100 dark:border-coral-500/20 shadow-sm leading-none">
+                               <span className="px-1.5 py-0.5 rounded-[4px] bg-coral-50 dark:bg-coral-500/10 text-coral-600 dark:text-coral-400 text-[9px] font-black tracking-widest uppercase border border-coral-100 dark:border-coral-500/20 shadow-sm leading-none shrink-0 truncate max-w-[60px]">
                                  {item.buildingType.split("(")[0] || "土地"}
                                </span>
-                               <span className="px-1.5 py-0.5 rounded-[4px] bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-black tracking-widest uppercase border border-amber-100 dark:border-amber-500/20 shadow-sm leading-none">
+                               <span className="px-1.5 py-0.5 rounded-[4px] bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-black tracking-widest uppercase border border-amber-100 dark:border-amber-500/20 shadow-sm leading-none shrink-0 truncate max-w-[80px]">
                                  {item.transactionType}
                                </span>
                                {typeName === "預售屋" && item.buildCase && (
-                                 <span className="px-1.5 py-0.5 rounded-[4px] bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black tracking-widest uppercase border border-emerald-100 dark:border-emerald-500/20 shadow-sm leading-none truncate max-w-[150px]">
+                                 <span className="px-1.5 py-0.5 rounded-[4px] bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black tracking-widest uppercase border border-emerald-100 dark:border-emerald-500/20 shadow-sm leading-none truncate max-w-[120px] shrink-0">
                                    建案: {item.buildCase}
                                  </span>
                                )}
                             </div>
-                            <h3 className="text-[15px] sm:text-[16px] font-bold text-ink dark:text-slate-50 truncate group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-snug">
+                            <h3 className="text-[15px] sm:text-[16px] font-bold text-ink dark:text-slate-50 truncate group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-snug w-full">
                               {item.address}
                             </h3>
+                            
+                            {getSpecialTags(item.remarks).length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                {getSpecialTags(item.remarks).map(tag => (
+                                  <span key={tag.label} className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-black tracking-widest uppercase border leading-none shadow-sm flex items-center gap-1 ${tag.class}`}>
+                                    <ShieldCheck size={10} />
+                                    {tag.label}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
                             <div className="text-[11px] font-bold mt-1.5 flex flex-wrap items-center gap-1.5">
                               <span className="flex items-center gap-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-[6px]">
                                 <Maximize2 className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.buildingArea} ㎡</span>
@@ -1926,20 +2104,60 @@ export default function App() {
                                 </>
                               )}
                             </div>
+                            
+                            {(nearestStation || nearestSchool) && (
+                              <div className="text-[10px] font-bold mt-1.5 flex flex-wrap items-center gap-1.5">
+                                {nearestStation && (
+                                  <span className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-[6px] border border-blue-100 dark:border-blue-800/30">
+                                    <Train className="w-3 h-3" />
+                                    <span>
+                                      {nearestStation.tags?.name || "捷運/車站"} 
+                                      <span className="ml-1 opacity-70">
+                                        {minStDist < 1 ? `${Math.round(minStDist * 1000)}m` : `${minStDist.toFixed(1)}km`}
+                                      </span>
+                                    </span>
+                                  </span>
+                                )}
+                                {nearestSchool && (
+                                  <span className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-[6px] border border-amber-100 dark:border-amber-800/30">
+                                    <GraduationCap className="w-3 h-3" />
+                                    <span>
+                                      {nearestSchool.tags?.name || "學校"}
+                                      <span className="ml-1 opacity-70">
+                                        {minScDist < 1 ? `${Math.round(minScDist * 1000)}m` : `${minScDist.toFixed(1)}km`}
+                                      </span>
+                                    </span>
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
 
                           {/* Price Block */}
-                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-800 pt-3 sm:pt-0 pl-1 sm:pl-4 sm:pr-8 mt-2 sm:mt-0 relative sm:h-full">
-                            <div className="flex flex-col items-start sm:items-end sm:flex-1 sm:justify-start">
-                              <div className="text-[11px] font-bold text-slate-400 mb-0.5 sm:mb-1">
-                                 {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : <span className="opacity-0">-</span>}
-                              </div>
-                              <div className="flex items-baseline gap-1.5">
-                                 <span className="text-[11px] font-bold text-slate-400">總價</span>
-                                 <span className="text-xl sm:text-2xl leading-none font-display font-black text-red-500 tracking-tighter">
+                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-800 pt-3 sm:pt-0 pl-1 sm:pl-4 sm:pr-8 mt-2 sm:mt-0 relative sm:h-full min-w-0 gap-2 shrink-0">
+                            <div className="flex flex-row sm:flex-col items-baseline sm:items-end sm:flex-1 sm:justify-center gap-2 sm:gap-1 min-w-0 flex-wrap">
+                              <div className="flex items-baseline gap-1 sm:gap-1.5 order-2 sm:order-1 shrink-0 overflow-hidden">
+                                 <span className="text-[11px] font-bold text-slate-400 shrink-0">總價</span>
+                                 <span className="text-lg sm:text-2xl leading-none font-display font-black text-red-500 tracking-tighter truncate">
                                    {formatPrice(item.totalPrice)}
                                  </span>
                               </div>
+                              {item.parkingPrice && parseFloat(item.parkingPrice) > 0 ? (
+                                <div className="flex flex-col items-end gap-0.5 order-1 sm:order-2 shrink-0 truncate max-w-full">
+                                   <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/50 px-1.5 py-0.5 rounded-[4px]">
+                                     <span className="flex items-center gap-0.5 text-slate-400"><Home size={10} /> 房 {formatPrice((parseFloat(item.totalPrice) - parseFloat(item.parkingPrice)).toString())}</span>
+                                     <span className="text-slate-300">|</span>
+                                     <span className="flex items-center gap-0.5 text-slate-400"><Car size={10} /> 車 {formatPrice(item.parkingPrice)}</span>
+                                   </div>
+                                   <div className="text-[11px] font-bold text-slate-400 truncate w-full text-right mt-0.5">
+                                     {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : <span className="opacity-0 hidden sm:inline">-</span>}
+                                   </div>
+                                </div>
+                              ) : (
+                                <div className="text-[11px] font-bold text-slate-400 sm:mt-0.5 order-1 sm:order-2 shrink-0 truncate max-w-full">
+                                  {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : <span className="opacity-0 hidden sm:inline">-</span>}
+                                </div>
+                              )}
                             </div>
                             <Button 
                                variant="ghost" 
@@ -1956,7 +2174,8 @@ export default function App() {
 
                         </div>
                       </motion.div>
-                    ))}
+                      );
+                    })}
                   </AnimatePresence>
                 </div>
               </div>
@@ -2079,6 +2298,7 @@ export default function App() {
               />
             </Suspense>
           )}
+          </div>
         </div>
 
         {/* About & FAQ Section */}
@@ -2184,69 +2404,85 @@ export default function App() {
         </div>
 
         {/* Footer Info */}
-        <div className="fixed bottom-0 left-0 right-0 p-3 border-t border-white/20 dark:border-white/10 shrink-0 bg-white/40 dark:bg-black/40 backdrop-blur-xl flex items-center justify-between text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 z-50">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span className="font-medium">資料來源：內政部實價登錄</span>
-            <span className="font-medium">更新頻率：每 10 日</span>
-            {dataSource && (
-              <Badge variant="outline" className="text-[10px] text-coral-600 dark:text-coral-300 border-coral-200 dark:border-coral-800 bg-white/50 dark:bg-black/50 shadow-sm font-bold">
-                官方即時資料
-              </Badge>
-            )}
-            <span className="text-ink/90 dark:text-slate-200 font-bold">當前顯示：{filteredData.length} 筆</span>
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 lg:right-10 p-3 sm:px-5 sm:py-3 border border-white/40 dark:border-white/10 rounded-2xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl flex flex-wrap items-center justify-between gap-4 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 z-50 shadow-2xl max-w-xl sm:min-w-[400px]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="font-bold flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-500" /> 內政部實價登錄</span>
+            <span className="font-medium text-[9px] uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">每 10 日更新</span>
+            <span className="font-bold text-ink dark:text-white">顯示: {filteredData.length}</span>
           </div>
-          <div className="flex items-center gap-2 font-medium">
-            <div className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-coral-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-coral-500"></span>
-            </div>
-            <span className="hidden sm:inline">系統連線正常</span>
+          <div className="flex items-center gap-2 font-bold shrink-0">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>連線正常</span>
           </div>
         </div>
       </motion.div>
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-4xl w-full p-0 overflow-hidden liquid-glass-panel border-white/40 dark:border-white/10 rounded-[2.5rem] shadow-[0_32px_128px_rgba(0,0,0,0.3)] dark:shadow-[0_32px_128px_rgba(0,0,0,0.6)]">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl w-full p-0 overflow-hidden liquid-glass-panel border-white/40 dark:border-white/10 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_32px_128px_rgba(0,0,0,0.3)] dark:shadow-[0_32px_128px_rgba(0,0,0,0.6)]">
           {selectedItem && (
-            <div className="flex flex-col h-full max-h-[90vh]">
+            <div className="flex flex-col h-full max-h-[95vh] sm:max-h-[90vh]">
               {/* Premium Dialog Header */}
-              <div className="p-7 sm:p-10 bg-white/20 dark:bg-black/30 backdrop-blur-xl relative overflow-hidden shrink-0">
+              <div className="p-5 sm:p-10 bg-white/20 dark:bg-black/30 backdrop-blur-xl relative overflow-hidden shrink-0">
                 <div className="absolute inset-0 mesh-gradient opacity-20 dark:opacity-30" />
                 <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-coral-500/50 to-transparent" />
                 
-                <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                       <Badge className="bg-coral-500/20 text-coral-600 dark:text-coral-300 border-coral-500/30 font-bold tracking-widest text-[10px] uppercase py-0.5 px-3 rounded-full">{selectedItem.district}</Badge>
-                       <Badge variant="outline" className="text-slate-500 border-white/10 text-[10px] font-bold px-2 py-0.5 rounded-full">{selectedItem.id}</Badge>
+                <div className="relative z-10 flex flex-col">
+                  <div className="space-y-3 w-full sm:max-w-2xl">
+                    <div className="flex flex-wrap items-end gap-3 sm:gap-4">
+                       <div className="flex items-center gap-2">
+                         <Badge className="bg-coral-500/20 text-coral-600 dark:text-coral-300 border-coral-500/30 font-bold tracking-widest text-[10px] uppercase py-0.5 px-3 rounded-full">{selectedItem.district}</Badge>
+                       </div>
+                       <div className="flex items-start flex-col gap-1.5 ml-auto sm:ml-0">
+                         <div className="flex items-baseline gap-1.5">
+                           <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-black tracking-[0.2em]">登錄價</span>
+                           <span className="text-2xl sm:text-3xl font-display font-black text-coral-600 dark:text-coral-400 tracking-tighter drop-shadow-sm leading-none">
+                             {formatPrice(selectedItem.totalPrice)}
+                           </span>
+                         </div>
+                         {selectedItem.parkingPrice && parseFloat(selectedItem.parkingPrice) > 0 && (
+                           <div className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5 bg-white/40 dark:bg-black/40 px-2 py-1 rounded-[6px] backdrop-blur-md">
+                             <span className="flex items-center gap-0.5 text-slate-600 dark:text-slate-300"><Home size={10} /> {formatPrice((parseFloat(selectedItem.totalPrice) - parseFloat(selectedItem.parkingPrice)).toString())}</span>
+                             <span className="text-slate-400">|</span>
+                             <span className="flex items-center gap-0.5 text-slate-600 dark:text-slate-300"><Car size={10} /> {formatPrice(selectedItem.parkingPrice)}</span>
+                           </div>
+                         )}
+                       </div>
                     </div>
-                    <h2 className="text-2xl sm:text-4xl font-display font-bold text-ink dark:text-white tracking-tight leading-tight max-w-xl">
+                    <h2 className="text-xl sm:text-4xl font-display font-bold text-ink dark:text-white tracking-tight leading-tight">
                       {selectedItem.address}
                     </h2>
-                    <div className="flex flex-wrap items-center gap-4 text-xs">
-                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold bg-white/30 dark:bg-white/5 px-3 py-1.5 rounded-full border border-white/20 dark:border-white/5">
-                        <Calendar size={14} className="text-coral-500" />
+
+                    {getSpecialTags(selectedItem.remarks).length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {getSpecialTags(selectedItem.remarks).map(tag => (
+                          <span key={tag.label} className={`px-2.5 py-1 rounded-[6px] text-[10px] font-black tracking-widest uppercase border leading-none shadow-sm flex items-center gap-1.5 ${tag.class}`}>
+                            <ShieldCheck size={12} />
+                            {tag.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs">
+                      <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-bold bg-white/30 dark:bg-white/5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-white/20 dark:border-white/5">
+                        <Calendar size={12} className="text-coral-500" />
                         {formatDate(selectedItem.date)} 交易紀錄
                       </div>
-                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold bg-white/30 dark:bg-white/5 px-3 py-1.5 rounded-full border border-white/20 dark:border-white/5">
-                        <MapPin size={14} className="text-coral-500" />
+                      <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-bold bg-white/30 dark:bg-white/5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-white/20 dark:border-white/5">
+                        <MapPin size={12} className="text-coral-500" />
                         {cityName}
                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col items-start sm:items-end bg-coral-500/10 dark:bg-coral-500/20 backdrop-blur-3xl p-4 sm:p-6 rounded-3xl border border-coral-500/20 shadow-[0_0_30px_rgba(20,184,166,0.1)]">
-                    <div className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-[0.2em] mb-1.5 opacity-70">官方登錄成交價</div>
-                    <div className="text-3xl sm:text-5xl font-display font-bold text-coral-600 dark:text-coral-400 tracking-tighter drop-shadow-[0_0_15px_rgba(45,212,191,0.3)]">
-                      {formatPrice(selectedItem.totalPrice)}
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="flex-1 overflow-y-auto scrollbar-hide">
-                <div className="p-6 sm:p-10 space-y-10">
+                <div className="p-4 sm:p-10 space-y-6 sm:space-y-10">
                   {/* High Density Stats Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                     {[
@@ -2263,10 +2499,11 @@ export default function App() {
                     ].map((stat, i) => (
                       <motion.div 
                         key={i}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.05 }}
-                        className={`liquid-glass-input p-5 sm:p-6 rounded-[2rem] border-white/40 dark:border-white/10 shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-all`}
+                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        whileHover={{ y: -4, scale: 1.02, boxShadow: "0 20px 40px -10px rgba(0,0,0,0.1)" }}
+                        transition={{ duration: 0.4, delay: i * 0.05, ease: "easeOut" }}
+                        className={`liquid-glass-input p-5 sm:p-6 rounded-[2rem] border-white/40 dark:border-white/10 relative overflow-hidden group transition-colors`}
                       >
                          <div className={`absolute -right-2 -top-2 p-6 opacity-5 group-hover:opacity-10 transition-opacity ${stat.color} rotate-12`}>{stat.icon}</div>
                          <div className="text-[10px] font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase mb-3 flex items-center gap-2">
@@ -2279,12 +2516,68 @@ export default function App() {
                     ))}
                   </div>
 
+                  {/* Price Split Visualization */}
+                  {selectedItem.parkingPrice && parseFloat(selectedItem.parkingPrice) > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm flex items-center gap-2">
+                        <DollarSign size={12} className="text-emerald-500" /> 真實房屋單價拆算
+                      </h3>
+                      <div className="liquid-glass rounded-[1.5rem] border-white/80 dark:border-white/10 p-5 sm:p-6 shadow-sm overflow-hidden relative">
+                        <div className="absolute top-0 right-0 p-6 opacity-5 rotate-12 pointer-events-none">
+                          <Car size={120} />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 relative z-10">
+                          {/* House Calculation */}
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-1">扣車位後總價</span>
+                            <div className="text-2xl font-black text-ink dark:text-white tracking-tight flex items-baseline gap-1">
+                              {formatPrice((parseFloat(selectedItem.totalPrice) - parseFloat(selectedItem.parkingPrice)).toString())}
+                            </div>
+                            <span className="text-xs font-bold text-slate-500">
+                              總價 {formatPrice(selectedItem.totalPrice)} - 車位 {formatPrice(selectedItem.parkingPrice)}
+                            </span>
+                          </div>
+
+                          {/* Area Calculation */}
+                          <div className="flex flex-col gap-1 sm:pl-4 sm:border-l sm:border-slate-200 dark:sm:border-slate-800">
+                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-1">扣車位後坪數</span>
+                            <div className="text-2xl font-black text-ink dark:text-white tracking-tight">
+                              {((parseFloat(selectedItem.buildingArea) - parseFloat(selectedItem.parkingArea || "0")) * 0.3025).toFixed(1)} <span className="text-lg opacity-60">坪</span>
+                            </div>
+                            <span className="text-xs font-bold text-slate-500">
+                              總坪 {(parseFloat(selectedItem.buildingArea) * 0.3025).toFixed(1)} - 車位 {(parseFloat(selectedItem.parkingArea || "0") * 0.3025).toFixed(1)}
+                            </span>
+                          </div>
+
+                          {/* Final Unit Price */}
+                          <div className="flex flex-col gap-1 sm:pl-4 sm:border-l sm:border-emerald-500/20">
+                            <span className="text-[10px] uppercase font-black tracking-widest text-emerald-500 mb-1">真實房屋單價</span>
+                            <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter">
+                              {(() => {
+                                const houseTotal = parseFloat(selectedItem.totalPrice) - parseFloat(selectedItem.parkingPrice);
+                                const houseArea = parseFloat(selectedItem.buildingArea) - parseFloat(selectedItem.parkingArea || "0");
+                                if (houseTotal > 0 && houseArea > 0) {
+                                  const realUnitP = houseTotal / houseArea; // 元/平方米
+                                  return (realUnitP * 3.30578 / 10000).toFixed(1);
+                                }
+                                return "-";
+                              })()} <span className="text-base">萬/坪</span>
+                            </div>
+                            <span className="text-xs font-bold text-emerald-600/60 dark:text-emerald-400/60">
+                              排除車位干擾的真實單價
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Map Preview */}
                   <div className="space-y-3">
                     <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm flex items-center gap-2">
                        <MapIcon size={12} className="text-coral-500" /> 地理位置
                     </h3>
-                    <Suspense fallback={<Skeleton className="h-[200px] sm:h-[250px] rounded-[1.5rem] bg-white/40 dark:bg-slate-900/40" />}>
+                    <Suspense fallback={<Skeleton className="h-[160px] sm:h-[250px] rounded-[1.5rem] bg-white/40 dark:bg-slate-900/40" />}>
                       <TransactionMapPreview selectedItem={selectedItem} />
                     </Suspense>
                   </div>
@@ -2334,6 +2627,106 @@ export default function App() {
                       </div>
                     ) : null}
                   </div>
+
+                  {/* Community Overview */}
+                  {communityItems.length > 0 && communityChartData.length > 1 && (
+                    <div className="space-y-3 relative">
+                      <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm flex items-center gap-2">
+                         <Building2 size={12} className="text-blue-500" /> 同社區/建案歷史紀錄 ({selectedItem.buildCase || '同路段相近建築'})
+                      </h3>
+                      <div className="liquid-glass rounded-[1.5rem] border-white/80 dark:border-white/10 p-5 sm:p-6 shadow-sm overflow-hidden flex flex-col gap-6">
+                         
+                         {/* Header Stats */}
+                         <div className="flex flex-wrap items-center justify-between gap-4">
+                           <div className="flex flex-col gap-1">
+                             <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">目前顯示紀錄</span>
+                             <span className="text-2xl font-black text-ink dark:text-white leading-none">{communityChartData.length} <span className="text-sm font-bold text-slate-500">筆</span></span>
+                           </div>
+                           <div className="flex items-center gap-4">
+                             <div className="flex flex-col items-end gap-1">
+                               <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">最高單價</span>
+                               <span className="text-sm font-black text-coral-600 dark:text-coral-400">{Math.max(...communityChartData.map(c => c.unitPrice)).toFixed(1)} <span className="text-[10px]">萬/坪</span></span>
+                             </div>
+                             <div className="w-px h-8 bg-slate-200 dark:bg-slate-700/50" />
+                             <div className="flex flex-col items-end gap-1">
+                               <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">最低單價</span>
+                               <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{Math.min(...communityChartData.map(c => c.unitPrice)).toFixed(1)} <span className="text-[10px]">萬/坪</span></span>
+                             </div>
+                           </div>
+                         </div>
+
+                         {/* Trend Chart */}
+                         <div className="h-[180px] w-full -max-w-xs sm:max-w-none mt-2">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={communityChartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                                <defs>
+                                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                  </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
+                                <YAxis domain={['auto', 'auto']} hide />
+                                <RechartsTooltip 
+                                  content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                      const data = payload[0].payload;
+                                      return (
+                                        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-xl flex flex-col gap-1.5 min-w-[140px]">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="text-[10px] font-bold text-slate-500">{data.date}</span>
+                                            {data.isCurrent && <span className="text-[9px] bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded-full font-bold">當前點擊</span>}
+                                          </div>
+                                          <div className="text-lg font-black text-ink dark:text-white flex items-baseline gap-1">
+                                            {data.unitPrice} <span className="text-xs font-bold text-slate-400">萬/坪</span>
+                                          </div>
+                                          <div className="text-xs font-bold text-slate-500 flex justify-between">
+                                            <span>總價: {formatPrice(data.totalPrice.toString())}</span>
+                                            <span>樓層: {data.floor}</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Area 
+                                  type="monotone" 
+                                  dataKey="unitPrice" 
+                                  stroke="#3b82f6" 
+                                  strokeWidth={3}
+                                  fill="url(#colorPrice)" 
+                                  activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}
+                                />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                         </div>
+                         
+                         {/* List of records */}
+                         <div className="flex flex-col gap-2 mt-2 pt-4 border-t border-slate-200/50 dark:border-slate-800">
+                           <span className="text-[10px] font-bold text-slate-400 mb-1">近期成交明細</span>
+                           <div className="max-h-[200px] overflow-y-auto pr-2 space-y-2 [scrollbar-width:thin]">
+                             {[...communityChartData].reverse().map((record, i) => (
+                               <div key={i} className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${record.isCurrent ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30' : 'bg-white/40 dark:bg-slate-900/40 border-transparent hover:border-slate-200 dark:hover:border-slate-800'}`}>
+                                 <div className="flex flex-col gap-0.5">
+                                   <div className="flex items-center gap-2">
+                                     <span className="text-xs font-bold text-slate-500">{record.date}</span>
+                                     {record.isCurrent && <span className="px-1.5 py-[1px] bg-blue-500 text-white rounded text-[8px] font-bold">本戶</span>}
+                                   </div>
+                                   <span className="text-sm font-bold text-ink dark:text-slate-200 truncate max-w-[140px] sm:max-w-[200px]">{record.address}</span>
+                                 </div>
+                                 <div className="flex items-end flex-col gap-0.5 shrink-0">
+                                   <span className="text-sm font-black text-ink dark:text-white leading-none">{record.unitPrice} <span className="text-[10px] font-bold text-slate-400">萬/坪</span></span>
+                                   <span className="text-[10px] font-bold text-slate-500">{formatPrice(record.totalPrice.toString())} | {record.floor}</span>
+                                 </div>
+                               </div>
+                             ))}
+                           </div>
+                         </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Remarks */}
                   {selectedItem.remarks && (

@@ -209,7 +209,7 @@ export function TransactionMapPreview({ selectedItem }: TransactionMapPreviewPro
   const lng = typeof selectedItem.lng === "string" ? parseFloat(selectedItem.lng) : selectedItem.lng;
 
   return (
-    <div className="h-[200px] sm:h-[250px] w-full liquid-glass rounded-[1.5rem] overflow-hidden border border-white/40 dark:border-white/10 shadow-inner relative isolate group">
+    <div className="h-[160px] sm:h-[250px] w-full liquid-glass rounded-[1.5rem] overflow-hidden border border-white/40 dark:border-white/10 shadow-inner relative isolate group">
       {lat && lng && lat !== 0 ? (
         <>
           <MapContainer
