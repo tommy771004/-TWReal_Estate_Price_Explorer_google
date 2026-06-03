@@ -159,9 +159,11 @@ export default function App() {
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
+      document.documentElement.style.colorScheme = 'dark';
       localStorage.setItem('explorer_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
+      document.documentElement.style.colorScheme = 'light';
       localStorage.setItem('explorer_theme', 'light');
     }
   }, [darkMode]);
@@ -303,6 +305,8 @@ export default function App() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [robotStatus, setRobotStatus] = useState("");
   const [selectedItem, setSelectedItem] = useState<Transaction | null>(null);
+  const [buildingImages, setBuildingImages] = useState<string[]>([]);
+  const [isBuildingImagesLoading, setIsBuildingImagesLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: "asc" | "desc" } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -310,6 +314,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const isFetchingRef = React.useRef(false);
   const abortControllerRef = React.useRef<AbortController | null>(null);
+  const imageSliderRef = React.useRef<HTMLDivElement>(null);
   const robotTimeoutsRef = React.useRef<NodeJS.Timeout[]>([]);
   const sortScrollRef = React.useRef<HTMLDivElement>(null);
 
@@ -783,6 +788,67 @@ export default function App() {
     }).filter(d => d.unitPrice > 0);
   }, [communityItems, selectedItem]);
 
+  useEffect(() => {
+    if (!selectedItem) {
+      setBuildingImages([]);
+      return;
+    }
+    
+    let query = "";
+    if (selectedItem.buildCase) {
+      query = selectedItem.buildCase;
+    } else {
+      const cleanedAddress = selectedItem.address.replace(/[0-9]+(之|~|-)*[0-9]*號.*/, '');
+      if (cleanedAddress.length >= 3) {
+        query = `${cityName}${selectedItem.district}${cleanedAddress}`;
+      } else {
+        query = `${cityName}${selectedItem.district}${selectedItem.address}`;
+      }
+    }
+
+    const fetchImages = async () => {
+      setIsBuildingImagesLoading(true);
+      setBuildingImages([]);
+      try {
+        const url = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrnamespace=6&gsrlimit=5&iiprop=url&format=json&origin=*`;
+        const r = await fetch(url);
+        const data = await r.json();
+        const urls: string[] = [];
+        if (data && data.query && data.query.pages) {
+          Object.values(data.query.pages).forEach((page: any) => {
+             if (page.imageinfo && page.imageinfo.length > 0 && page.imageinfo[0].url) {
+                // only accept images
+                if (page.imageinfo[0].url.match(/\.(jpeg|jpg|gif|png)$/i)) {
+                   urls.push(page.imageinfo[0].url);
+                }
+             }
+          });
+        }
+        setBuildingImages(urls);
+      } catch (e) {
+        console.error("Failed to fetch images", e);
+      } finally {
+        setIsBuildingImagesLoading(false);
+      }
+    };
+
+    fetchImages();
+  }, [selectedItem, cityName]);
+
+  useEffect(() => {
+    if (!buildingImages.length) return;
+    const interval = setInterval(() => {
+      if (imageSliderRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = imageSliderRef.current;
+        let nextScroll = scrollLeft + clientWidth * 0.8;
+        if (nextScroll + clientWidth >= scrollWidth + 10) {
+          nextScroll = 0; // wrap around
+        }
+        imageSliderRef.current.scrollTo({ left: nextScroll, behavior: 'smooth' });
+      }
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [buildingImages]);
 
   useEffect(() => {
     const validItems = paginatedData.filter(i => {
@@ -2483,6 +2549,29 @@ export default function App() {
 
               <div className="flex-1 overflow-y-auto scrollbar-hide">
                 <div className="p-4 sm:p-10 space-y-6 sm:space-y-10">
+                  {/* Building Images Slider */}
+                  {isBuildingImagesLoading ? (
+                    <div className="w-full h-48 sm:h-64 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse flex items-center justify-center">
+                       <span className="text-slate-400 font-bold text-sm tracking-widest uppercase">載入外觀圖片中...</span>
+                    </div>
+                  ) : buildingImages.length > 0 ? (
+                    <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800">
+                      <div ref={imageSliderRef} className="flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide bg-slate-100/50 dark:bg-slate-900/50 p-2">
+                        {buildingImages.map((src, idx) => (
+                          <div key={idx} className="snap-center shrink-0 w-[85%] sm:w-[60%] first:ml-0 last:mr-0 rounded-xl overflow-hidden shadow-sm relative group bg-slate-200 dark:bg-slate-800">
+                            <img
+                              src={src}
+                              alt="Building Appearance"
+                              className="w-full h-48 sm:h-64 object-cover transition-transform duration-500 group-hover:scale-105"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 ring-1 ring-inset ring-black/10 dark:ring-white/10 rounded-xl pointer-events-none" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
                   {/* High Density Stats Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                     {[
