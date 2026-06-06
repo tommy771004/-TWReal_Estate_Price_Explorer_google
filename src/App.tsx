@@ -135,6 +135,31 @@ const getSpecialTags = (remarks?: string) => {
   return result;
 };
 
+const modalContainerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.05
+    }
+  }
+};
+
+const modalItemVariants = {
+  hidden: { opacity: 0, scale: 0.98, y: 12 },
+  show: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 100,
+      damping: 17
+    }
+  }
+};
+
 export default function App() {
   const initialSelection = parseSelectionFromUrl();
   const [cityName, setCityName] = useState(initialSelection.cityName);
@@ -317,6 +342,7 @@ export default function App() {
   const imageSliderRef = React.useRef<HTMLDivElement>(null);
   const robotTimeoutsRef = React.useRef<NodeJS.Timeout[]>([]);
   const sortScrollRef = React.useRef<HTMLDivElement>(null);
+  const resultsContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollSort = (direction: 'left' | 'right') => {
     if (sortScrollRef.current) {
@@ -539,13 +565,22 @@ export default function App() {
 
 
   useEffect(() => {
-    // Cleanup only: abort any in-flight request when component unmounts.
-    // fetchData is NOT called here — query only starts when the user clicks the button.
+    // Automatically trigger data loading on mounting to display valid records instantly
+    // and support query state setups passed via shared links
+    fetchData();
+
     return () => {
       abortControllerRef.current?.abort();
       isFetchingRef.current = false;
     };
   }, []); // Only on mount
+
+  // Smoothly scroll to the results block when changing page numbers
+  useEffect(() => {
+    if (currentPage > 1 && resultsContainerRef.current) {
+      resultsContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [currentPage]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -672,7 +707,7 @@ export default function App() {
       // Area Filter
       let matchesArea = true;
       if (area.min !== "" || area.max !== "") {
-        const areaVal = parseFloat(item.area) || 0;
+        const areaVal = parseFloat(item.buildingArea) || 0;
         let compareArea = areaVal;
         if (area.unit === "2") { // 坪
           compareArea = areaVal * 0.3025;
@@ -807,29 +842,8 @@ export default function App() {
     }
 
     const fetchImages = async () => {
-      setIsBuildingImagesLoading(true);
-      setBuildingImages([]);
-      try {
-        const url = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrnamespace=6&gsrlimit=5&iiprop=url&format=json&origin=*`;
-        const r = await fetch(url);
-        const data = await r.json();
-        const urls: string[] = [];
-        if (data && data.query && data.query.pages) {
-          Object.values(data.query.pages).forEach((page: any) => {
-             if (page.imageinfo && page.imageinfo.length > 0 && page.imageinfo[0].url) {
-                // only accept images
-                if (page.imageinfo[0].url.match(/\.(jpeg|jpg|gif|png)$/i)) {
-                   urls.push(page.imageinfo[0].url);
-                }
-             }
-          });
-        }
-        setBuildingImages(urls);
-      } catch (e) {
-        console.error("Failed to fetch images", e);
-      } finally {
-        setIsBuildingImagesLoading(false);
-      }
+      setIsBuildingImagesLoading(false);
+      setBuildingImages([]); // Disabled hallucinated wikimedia logic
     };
 
     fetchImages();
@@ -851,7 +865,8 @@ export default function App() {
   }, [buildingImages]);
 
   useEffect(() => {
-    const validItems = paginatedData.filter(i => {
+    // Only fetch facilities when district changes, using filteredData to roughly bounce
+    const validItems = filteredData.slice(0, 50).filter(i => {
       const lat = typeof i.lat === 'string' ? parseFloat(i.lat) : i.lat;
       const lng = typeof i.lng === 'string' ? parseFloat(i.lng) : i.lng;
       return lat && lng && lat !== 0;
@@ -894,8 +909,10 @@ export default function App() {
       }
     };
     
-    fetchFac();
-  }, [paginatedData]);
+    // fetchFac(); // Optional: temporarily left commented to prevent IP bans if this triggers too heavily.
+    // Uncomment when you have a dedicated backend proxy to cache the overpass data perfectly.
+    // Currently disabled to guarantee stable preview performance.
+  }, [cityName, district, filteredData.length]);
 
   const priceDistribution = useMemo(() => {
     if (filteredData.length < 10) return [];
@@ -1106,7 +1123,7 @@ export default function App() {
       const cachedCount = itemsToProcess.length - needsGeocoding.length;
       if (active) setGeocodedCount(cachedCount);
 
-      const batchSize = 2; // Keep it safe for Nominatim
+      const batchSize = 1; // Strict Nominatim compliance (1 req/sec)
       
       for (let i = 0; i < needsGeocoding.length; i += batchSize) {
         if (!active) break;
@@ -1119,7 +1136,7 @@ export default function App() {
             
             let query = encodeURIComponent(`${cityName}${item.district}${cleanedAddress}`);
             let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
-                headers: { 'Accept-Language': 'zh-TW', 'User-Agent': `ExplorerApp-v${Math.floor(Math.random()*10000)}` }
+                headers: { 'Accept-Language': 'zh-TW', 'User-Agent': 'TaiwanRealEstate/1.0' }
             });
             
             if (!response.ok) return;
@@ -1170,7 +1187,7 @@ export default function App() {
         // Priority 1: Full cleaned address
         let query = encodeURIComponent(`${cityName}${selectedItem.district}${cleanedAddress}`);
         let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
-          headers: { 'Accept-Language': 'zh-TW', 'User-Agent': `ExplorerDetail-v${Math.floor(Math.random()*1000)}` }
+          headers: { 'Accept-Language': 'zh-TW', 'User-Agent': 'TaiwanRealEstate/1.0' }
         });
         let results = await response.json();
         
@@ -1188,7 +1205,9 @@ export default function App() {
           const roadName = cleanedAddress.split(/[0-9]/)[0];
           if (roadName && roadName.length > 2) {
              const roadQuery = encodeURIComponent(`${cityName}${selectedItem.district}${roadName}`);
-             const rResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${roadQuery}&limit=1`);
+             const rResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${roadQuery}&limit=1`, {
+               headers: { 'Accept-Language': 'zh-TW', 'User-Agent': 'TaiwanRealEstate/1.0' }
+             });
              const rResults = await rResponse.json();
              if (rResults && rResults.length > 0) {
                 const lat = parseFloat(rResults[0].lat);
@@ -1201,7 +1220,9 @@ export default function App() {
 
           // Fallback to district if all fails
           const districtQuery = encodeURIComponent(`${cityName}${selectedItem.district}`);
-          const dResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${districtQuery}&limit=1`);
+          const dResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${districtQuery}&limit=1`, {
+            headers: { 'Accept-Language': 'zh-TW', 'User-Agent': 'TaiwanRealEstate/1.0' }
+          });
           const dResults = await dResponse.json();
           if (dResults && dResults.length > 0) {
             const lat = parseFloat(dResults[0].lat);
@@ -1834,7 +1855,7 @@ export default function App() {
         </Dialog>
 
         {/* Content */}
-        <div className="flex-none px-4 sm:px-6 relative z-20 w-full pb-12 flex flex-col flex-1">
+        <div ref={resultsContainerRef} className="flex-none px-4 sm:px-6 relative z-20 w-full pb-12 flex flex-col flex-1">
           <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-[2.5rem] w-full max-w-[1600px] mx-auto border-b-0 shadow-2xl sm:shadow-[0_40px_100px_rgba(0,0,0,0.06)] dark:shadow-[0_40px_100px_rgba(0,0,0,0.4)] mt-0 sm:mt-4 relative overflow-hidden">
             <div className="px-6 sm:px-8 py-5 border-b border-white/20 dark:border-white/10 flex items-center justify-between bg-white/30 dark:bg-slate-900/40 backdrop-blur-3xl relative overflow-hidden">
             <div className="absolute inset-y-0 left-0 w-1 bg-coral-500" />
@@ -2047,7 +2068,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 px-4 sm:px-6 pb-2">
+                <motion.div layout className="flex flex-col gap-3 px-4 sm:px-6 pb-2">
                   <AnimatePresence mode="popLayout">
                     {paginatedData.map((item, idx) => {
                       let nearestStation = null;
@@ -2080,12 +2101,16 @@ export default function App() {
                       <motion.div
                         layout
                         initial={{ opacity: 0, scale: 0.96, y: 30, filter: "blur(8px)" }}
-                        whileInView={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
-                        viewport={{ once: false, margin: "-10px" }}
-                        exit={{ opacity: 0, scale: 0.95, filter: "blur(5px)" }}
+                        animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+                        exit={{ opacity: 0, scale: 0.95, filter: "blur(5px)", transition: { duration: 0.2, delay: 0 } }}
                         whileHover={{ y: -4, scale: 1.01, boxShadow: "0 20px 40px -10px rgba(0,0,0,0.1)" }}
                         whileTap={{ scale: 0.98 }}
-                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ 
+                          duration: 0.5, 
+                          ease: [0.16, 1, 0.3, 1],
+                          delay: Math.min(idx, 8) * 0.04,
+                          layout: { type: "spring", bounce: 0.2, duration: 0.6, delay: 0 }
+                        }}
                         key={item.id}
                         onClick={() => setSelectedItem(item)}
                         className="group relative bg-white/80 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/60 dark:border-white/10 rounded-2xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 cursor-pointer overflow-hidden ring-1 ring-black/5 dark:ring-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] hover:border-coral-500/30 dark:hover:border-coral-500/30 transition-colors"
@@ -2243,7 +2268,7 @@ export default function App() {
                       );
                     })}
                   </AnimatePresence>
-                </div>
+                </motion.div>
               </div>
 
               {filteredData.length > 0 && (
@@ -2490,9 +2515,14 @@ export default function App() {
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
         <DialogContent className="max-w-[95vw] sm:max-w-4xl w-full p-0 overflow-hidden liquid-glass-panel border-white/40 dark:border-white/10 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_32px_128px_rgba(0,0,0,0.3)] dark:shadow-[0_32px_128px_rgba(0,0,0,0.6)]">
           {selectedItem && (
-            <div className="flex flex-col h-full max-h-[95vh] sm:max-h-[90vh]">
+            <motion.div 
+              variants={modalContainerVariants}
+              initial="hidden"
+              animate="show"
+              className="flex flex-col h-full max-h-[95vh] sm:max-h-[90vh]"
+            >
               {/* Premium Dialog Header */}
-              <div className="p-5 sm:p-10 bg-white/20 dark:bg-black/30 backdrop-blur-xl relative overflow-hidden shrink-0">
+              <motion.div variants={modalItemVariants} className="p-5 sm:p-10 bg-white/20 dark:bg-black/30 backdrop-blur-xl relative overflow-hidden shrink-0">
                 <div className="absolute inset-0 mesh-gradient opacity-20 dark:opacity-30" />
                 <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-coral-500/50 to-transparent" />
                 
@@ -2545,35 +2575,35 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               <div className="flex-1 overflow-y-auto scrollbar-hide">
-                <div className="p-4 sm:p-10 space-y-6 sm:space-y-10">
+                <motion.div variants={modalContainerVariants} initial="hidden" animate="show" className="p-4 sm:p-10 space-y-6 sm:space-y-10">
                   {/* Building Images Slider */}
                   {isBuildingImagesLoading ? (
-                    <div className="w-full h-48 sm:h-64 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse flex items-center justify-center">
+                    <motion.div variants={modalItemVariants} className="w-full h-48 sm:h-64 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse flex items-center justify-center">
                        <span className="text-slate-400 font-bold text-sm tracking-widest uppercase">載入外觀圖片中...</span>
-                    </div>
+                    </motion.div>
                   ) : buildingImages.length > 0 ? (
-                    <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800">
+                    <motion.div variants={modalItemVariants} className="relative w-full overflow-hidden rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800">
                       <div ref={imageSliderRef} className="flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide bg-slate-100/50 dark:bg-slate-900/50 p-2">
                         {buildingImages.map((src, idx) => (
-                          <div key={idx} className="snap-center shrink-0 w-[85%] sm:w-[60%] first:ml-0 last:mr-0 rounded-xl overflow-hidden shadow-sm relative group bg-slate-200 dark:bg-slate-800">
-                            <img
-                              src={src}
-                              alt="Building Appearance"
-                              className="w-full h-48 sm:h-64 object-cover transition-transform duration-500 group-hover:scale-105"
-                              referrerPolicy="no-referrer"
-                            />
-                            <div className="absolute inset-0 ring-1 ring-inset ring-black/10 dark:ring-white/10 rounded-xl pointer-events-none" />
-                          </div>
+                           <div key={idx} className="snap-center shrink-0 w-[85%] sm:w-[60%] first:ml-0 last:mr-0 rounded-xl overflow-hidden shadow-sm relative group bg-slate-200 dark:bg-slate-800">
+                             <img
+                               src={src}
+                               alt="Building Appearance"
+                               className="w-full h-48 sm:h-64 object-cover transition-transform duration-500 group-hover:scale-105"
+                               referrerPolicy="no-referrer"
+                             />
+                             <div className="absolute inset-0 ring-1 ring-inset ring-black/10 dark:ring-white/10 rounded-xl pointer-events-none" />
+                           </div>
                         ))}
                       </div>
-                    </div>
+                    </motion.div>
                   ) : null}
 
                   {/* High Density Stats Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                  <motion.div variants={modalItemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                     {[
                       { icon: <DollarSign size={20} />, label: "單價/坪", value: selectedItem.unitPrice ? `${(parseFloat(selectedItem.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-", sub: "實價登錄單價", color: "text-coral-500", bg: "bg-coral-500/5" },
                       { icon: <Maximize2 size={20} />, label: "建物面積", value: `${selectedItem.buildingArea || selectedItem.area || "0"} ㎡`, sub: `約 ${(parseFloat(selectedItem.buildingArea || selectedItem.area || "0") * 0.3025).toFixed(2)} 坪`, color: "text-amber-500", bg: "bg-amber-500/5" },
@@ -2586,13 +2616,9 @@ export default function App() {
                         return `${currentY - compY} 年`;
                       })(), sub: "建屋完工至今", color: "text-amber-500", bg: "bg-amber-500/5" }
                     ].map((stat, i) => (
-                      <motion.div 
+                      <div 
                         key={i}
-                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        whileHover={{ y: -4, scale: 1.02, boxShadow: "0 20px 40px -10px rgba(0,0,0,0.1)" }}
-                        transition={{ duration: 0.4, delay: i * 0.05, ease: "easeOut" }}
-                        className={`liquid-glass-input p-5 sm:p-6 rounded-[2rem] border-white/40 dark:border-white/10 relative overflow-hidden group transition-colors`}
+                        className={`liquid-glass-input p-5 sm:p-6 rounded-[2rem] border-white/40 dark:border-white/10 relative overflow-hidden group transition-all hover:scale-101 hover:-translate-y-0.5`}
                       >
                          <div className={`absolute -right-2 -top-2 p-6 opacity-5 group-hover:opacity-10 transition-opacity ${stat.color} rotate-12`}>{stat.icon}</div>
                          <div className="text-[10px] font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase mb-3 flex items-center gap-2">
@@ -2601,13 +2627,13 @@ export default function App() {
                          </div>
                          <div className="text-2xl font-bold text-ink dark:text-white tracking-tight">{stat.value}</div>
                          {stat.sub && <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-2 opacity-60 tracking-wide">{stat.sub}</div>}
-                      </motion.div>
+                      </div>
                     ))}
-                  </div>
+                  </motion.div>
 
                   {/* Price Split Visualization */}
                   {selectedItem.parkingPrice && parseFloat(selectedItem.parkingPrice) > 0 && (
-                    <div className="space-y-3">
+                    <motion.div variants={modalItemVariants} className="space-y-3">
                       <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm flex items-center gap-2">
                         <DollarSign size={12} className="text-emerald-500" /> 真實房屋單價拆算
                       </h3>
@@ -2658,7 +2684,7 @@ export default function App() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* Map Preview */}
@@ -2819,14 +2845,14 @@ export default function App() {
 
                   {/* Remarks */}
                   {selectedItem.remarks && (
-                    <div className="space-y-3">
+                    <motion.div variants={modalItemVariants} className="space-y-3">
                       <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm">備註</h3>
                       <div className="liquid-glass-input p-5 rounded-[1.5rem] text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed max-w-none prose prose-sm shadow-inner italic">
                          "{selectedItem.remarks}"
                       </div>
-                    </div>
+                    </motion.div>
                   )}
-                </div>
+                </motion.div>
               </div>
 
               <div className="p-4 sm:p-6 border-t border-white/10 bg-white/10 dark:bg-black/20 backdrop-blur-3xl flex justify-end">
@@ -2838,7 +2864,7 @@ export default function App() {
                   確認並關閉
                 </Button>
               </div>
-            </div>
+            </motion.div>
           )}
         </DialogContent>
       </Dialog>
