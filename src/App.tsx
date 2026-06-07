@@ -243,6 +243,31 @@ export default function App() {
   });
   const [showFavorites, setShowFavorites] = useState(false);
 
+  // Recent keyword searches (last 5), persisted to localStorage
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('explorer_recent_searches');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const addRecentSearch = (query: string) => {
+    const q = query.trim();
+    if (!q) return;
+    setRecentSearches(prev => {
+      const updated = [q, ...prev.filter(item => item !== q)].slice(0, 5);
+      localStorage.setItem('explorer_recent_searches', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    localStorage.removeItem('explorer_recent_searches');
+  };
+
   const toggleFavorite = (item: Transaction, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
@@ -356,9 +381,18 @@ export default function App() {
 
   const [dataSource, setDataSource] = useState<string | null>(null);
 
-  const fetchData = React.useCallback(async () => {
+  const fetchData = React.useCallback(async (keywordOverride?: string) => {
     if (isFetchingRef.current) return;
-    
+
+    // keywordOverride lets callers (e.g. Recent Searches) run a query without
+    // waiting for setSearch to flush. Guard with typeof so passing fetchData
+    // directly as an event handler (event arg) falls back to current search.
+    const activeKeyword = typeof keywordOverride === "string" ? keywordOverride : search;
+    if (typeof keywordOverride === "string" && keywordOverride !== search) {
+      setSearch(keywordOverride);
+    }
+    addRecentSearch(activeKeyword);
+
     isFetchingRef.current = true;
     setLoading(true);
     setError(null);
@@ -398,7 +432,7 @@ export default function App() {
           unitPrice,
           area,
           age,
-          keyword: search
+          keyword: activeKeyword
         })
       });
 
@@ -1601,27 +1635,58 @@ export default function App() {
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 />
                 
-                {/* Autocomplete Dropdown */}
+                {/* Autocomplete Dropdown: typed suggestions, or Recent Searches when empty */}
                 <AnimatePresence>
-                  {showSuggestions && addressSuggestions.length > 0 && (
-                    <motion.div 
+                  {showSuggestions && (addressSuggestions.length > 0 || recentSearches.length > 0) && (
+                    <motion.div
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 5 }}
-                      className="absolute top-[calc(100%+8px)] left-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] overflow-hidden py-2"
+                      className="absolute top-[calc(100%+8px)] left-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] overflow-hidden py-2 z-50"
                     >
-                      {addressSuggestions.map(suggestion => (
-                        <div 
-                          key={suggestion}
-                          className="px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-coral-500/10 hover:text-coral-600 dark:hover:text-coral-400 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors"
-                          onClick={() => {
-                            setSearch(suggestion);
-                            setShowSuggestions(false);
-                          }}
-                        >
-                          {suggestion}
-                        </div>
-                      ))}
+                      {addressSuggestions.length > 0 ? (
+                        addressSuggestions.map(suggestion => (
+                          <div
+                            key={suggestion}
+                            className="px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-coral-500/10 hover:text-coral-600 dark:hover:text-coral-400 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors"
+                            onClick={() => {
+                              setSearch(suggestion);
+                              setShowSuggestions(false);
+                            }}
+                          >
+                            {suggestion}
+                          </div>
+                        ))
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between px-4 pb-2 mb-1 border-b border-slate-100 dark:border-slate-800">
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.18em]">
+                              <Clock className="w-3 h-3" /> 最近搜尋
+                            </span>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={clearRecentSearches}
+                              className="text-[10px] font-bold text-slate-400 hover:text-coral-500 transition-colors"
+                            >
+                              清除
+                            </button>
+                          </div>
+                          {recentSearches.map(query => (
+                            <div
+                              key={query}
+                              className="flex items-center gap-2 px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-coral-500/10 hover:text-coral-600 dark:hover:text-coral-400 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors"
+                              onClick={() => {
+                                setShowSuggestions(false);
+                                fetchData(query);
+                              }}
+                            >
+                              <Clock className="w-3.5 h-3.5 opacity-40 shrink-0" />
+                              <span className="truncate">{query}</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

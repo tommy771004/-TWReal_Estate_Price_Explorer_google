@@ -51,6 +51,20 @@ const previewIcon = new L.DivIcon({
   iconAnchor: [0, 0],
 });
 
+// Coral-themed cluster bubble; size scales with child count for readability.
+const createClusterIcon = (cluster: { getChildCount: () => number }) => {
+  const count = cluster.getChildCount();
+  const size = count < 10 ? 34 : count < 100 ? 42 : 52;
+  return L.divIcon({
+    className: "custom-cluster-icon",
+    html: `<div style="width:${size}px;height:${size}px"
+             class="flex items-center justify-center rounded-full bg-coral-500/90 text-white font-bold border-2 border-white shadow-[0_0_12px_rgba(237,111,92,0.5)] backdrop-blur-sm hover:scale-110 transition-transform duration-200">
+             <span class="text-xs tabular-nums">${count}</span>
+           </div>`,
+    iconSize: L.point(size, size, true),
+  });
+};
+
 function FacilitiesOverlay({ show }: { show: boolean }) {
   const map = useMap();
   const [facilities, setFacilities] = useState<any[]>([]);
@@ -333,7 +347,12 @@ export default function ResultsMap({
           <MapBoundsManager items={filteredData} />
           <FacilitiesOverlay show={showFacilities} />
 
-          <MarkerClusterGroup chunkedLoading maxClusterRadius={50} spiderfyOnMaxZoom>
+          <MarkerClusterGroup
+            chunkedLoading
+            maxClusterRadius={50}
+            spiderfyOnMaxZoom
+            iconCreateFunction={createClusterIcon}
+          >
             {filteredData.map((item) => {
               const lat = typeof item.lat === "string" ? parseFloat(item.lat) : item.lat;
               const lng = typeof item.lng === "string" ? parseFloat(item.lng) : item.lng;
