@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://tw-real-estate-price-explorer-googl.vercel.app/sitemap.xml
