@@ -1390,6 +1390,7 @@ export default function App() {
                       onClick={() => setShowFavorites(!showFavorites)}
                       className={`w-8 h-8 rounded-full transition-all shadow-sm relative ${showFavorites ? 'bg-red-500/10 text-red-500' : 'bg-slate-500/10 hover:bg-red-500/10 text-slate-600 dark:text-slate-400 hover:text-red-500'}`}
                       title="我的最愛"
+                      aria-label="我的最愛"
                     >
                       <Heart size={14} className={favorites.length > 0 ? 'fill-current' : ''} />
                       {favorites.length > 0 && (
@@ -1443,6 +1444,7 @@ export default function App() {
                       disabled={loading}
                       className="w-8 h-8 rounded-full bg-coral-500/10 hover:bg-coral-500/20 text-coral-600 dark:text-coral-400 transition-all active:rotate-180 duration-500"
                       title="重新整理資料"
+                      aria-label="重新整理資料"
                     >
                       <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
@@ -1452,6 +1454,7 @@ export default function App() {
                       onClick={() => setDarkMode(!darkMode)}
                       className="w-8 h-8 rounded-full bg-slate-500/10 hover:bg-slate-500/20 text-slate-600 dark:text-slate-400 transition-all shadow-sm"
                       title={darkMode ? "切換至淺色模式" : "切換至深色模式"}
+                      aria-label={darkMode ? "切換至淺色模式" : "切換至深色模式"}
                     >
                       {darkMode ? <Sun size={14} /> : <Moon size={14} />}
                     </Button>
@@ -1492,20 +1495,39 @@ export default function App() {
               </div>
 
               <div className="hidden sm:flex items-center px-4 py-2 bg-coral-500/10 dark:bg-coral-400/5 border border-coral-500/10 rounded-full backdrop-blur-sm shadow-sm ring-1 ring-white/20">
-                <div className="w-2 h-2 rounded-full bg-coral-500 animate-pulse mr-3 shadow-[0_0_12px_rgba(20,184,166,0.8)]"></div>
+                <div className="w-2 h-2 rounded-full bg-coral-500 animate-pulse mr-3 shadow-[0_0_12px_rgba(237,111,92,0.8)]"></div>
                 <span className="text-[10px] font-bold text-coral-700 dark:text-coral-400 uppercase tracking-[0.2em]">Live</span>
               </div>
             </div>
           </div>
 
           <div className="max-w-[1600px] mx-auto w-full grid gap-6 px-1 pt-1 pb-2 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)]">
-            <section aria-labelledby="search-intent-overview" className="flex flex-col gap-3">
+            <section aria-labelledby="search-summary-heading" className="flex flex-col justify-center gap-4">
+              <div className="flex flex-col gap-2">
+                <h2 id="search-summary-heading" className="text-2xl sm:text-[1.75rem] font-display font-black tracking-tight text-ink dark:text-white leading-tight">
+                  {cityName}{district !== "全部" ? ` · ${district}` : ""}{typeName ? ` ${typeName}` : ""}成交行情
+                </h2>
+                <p className="text-[13px] sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-xl">
+                  串接內政部不動產交易實價登錄開放資料，即時查詢成交總價、單價、坪數與歷史走勢，協助掌握區域行情。
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-coral-400/40 bg-coral-500/10 px-3 py-1.5 text-[12px] font-bold text-coral-700 dark:text-coral-300">
+                  <Database size={13} /> 共 {filteredData.length.toLocaleString()} 筆成交
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/60 dark:border-white/10 bg-white/45 dark:bg-slate-900/35 px-3 py-1.5 text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                  <ShieldCheck size={13} className="text-emerald-500" /> 內政部開放資料
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/60 dark:border-white/10 bg-white/45 dark:bg-slate-900/35 px-3 py-1.5 text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                  <Clock size={13} className="text-coral-500" /> 每 10 日更新
+                </span>
+              </div>
               
 
 
             </section>
 
-            <section aria-labelledby="search-intent-overview" className="flex flex-col gap-3">
+            <section aria-labelledby="featured-cities" className="flex flex-col gap-3">
               <div className="flex flex-col gap-3">
                 <h3 id="featured-cities" className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
                   熱門查詢城市
@@ -1614,7 +1636,7 @@ export default function App() {
                     <MapPin size={16} className="text-coral-500" />
                   </div>
                   <div className="flex flex-col items-start gap-0.5 justify-center">
-                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-none mt-0.5">選擇區域</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-widest leading-none mt-0.5">選擇區域</span>
                     <span className="font-bold text-ink dark:text-white text-[15px] leading-none mb-0.5 mt-0.5 truncate max-w-[120px]">{cityName} {district !== "全部" ? `· ${district}` : ''}</span>
                   </div>
                 </div>
@@ -1693,11 +1715,14 @@ export default function App() {
               </div>
             </div>
 
-            {/* Tags Row: Type & Property Types */}
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
-              
+            {/* Tags Row: Type & Property Types + Search Actions (right-aligned) */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-end sm:justify-between">
+
+              {/* Left: filter selectors */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center min-w-0">
+
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-80">交易型態</span>
+                <span className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-1">交易型態</span>
                 <div className="flex bg-white/40 dark:bg-black/20 p-1.5 rounded-[1rem] shadow-inner border border-white/60 dark:border-white/5">
                   {TRANSACTION_TYPES.map(t => (
                     <button 
@@ -1707,7 +1732,7 @@ export default function App() {
                         if (t.name === "預售屋") setViewMode("aggregated");
                         else setViewMode("list");
                       }}
-                      className={`px-4 xl:px-6 h-9 font-bold text-xs sm:text-[13px] rounded-xl transition-all ${typeName === t.name ? 'bg-white dark:bg-slate-800 text-coral-600 dark:text-coral-400 shadow-sm border border-slate-100 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                      className={`px-4 xl:px-6 h-9 font-bold text-xs sm:text-[13px] rounded-xl whitespace-nowrap transition-all ${typeName === t.name ? 'bg-white dark:bg-slate-800 text-coral-600 dark:text-coral-400 shadow-sm border border-slate-100 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                     >
                       {t.name.replace("租賃", "租")}
                     </button>
@@ -1717,8 +1742,8 @@ export default function App() {
 
               <div className="w-full sm:w-px h-px sm:h-10 bg-white/40 dark:bg-white/5 mx-0 sm:mx-2" />
 
-              <div className="flex flex-col gap-1.5 w-full min-w-0">
-                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-1 opacity-80 shrink-0">標的種類</span>
+              <div className="flex flex-col gap-1.5 w-full sm:w-auto min-w-0">
+                 <span className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-1 shrink-0">標的種類</span>
                  <div className="flex flex-nowrap sm:flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x">
                    {["房地", "房地(車)", "建物", "車位", "土地"].map(pt => (
                       <label key={pt} className="relative cursor-pointer group shrink-0 snap-start">
@@ -1735,6 +1760,60 @@ export default function App() {
                       </label>
                    ))}
                  </div>
+              </div>
+              </div>
+
+              {/* Right: search actions, aligned with filters */}
+              <div className="flex flex-row flex-wrap sm:flex-nowrap items-center justify-end gap-2 sm:gap-3 w-full sm:w-auto shrink-0">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsAdvancedSearchOpen(!isAdvancedSearchOpen)}
+                  className={`flex-1 sm:flex-none text-xs sm:text-sm font-bold ${isAdvancedSearchOpen ? 'text-coral-600 dark:text-coral-400 bg-coral-500/10 dark:bg-coral-500/20' : 'text-slate-600 dark:text-slate-300'} hover:text-coral-700 hover:bg-coral-50 dark:hover:bg-coral-900/30 rounded-[1.25rem] h-11 transition-all gap-2 px-4 border border-transparent shadow-sm ${isAdvancedSearchOpen ? 'border-coral-500/30 shadow-inner' : ''}`}
+                >
+                  <div className="relative">
+                    <SlidersHorizontal className="w-4 h-4" />
+                    {isAdvancedSearchOpen && (
+                      <motion.div id="search-dot" className="absolute -top-1 -right-1 w-2 h-2 bg-coral-500 shadow-[0_0_8px_rgba(237,111,92,0.5)] rounded-full" />
+                    )}
+                  </div>
+                  進階篩選
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setSearch("");
+                    setDistrict("全部");
+                    setCityName("臺北市");
+                    setPropertyTypes(["房地", "房地(車)", "建物", "車位", "土地"]);
+                    setTypeName("買賣");
+                    setPeriod({ startY: "112", startM: "1", endY: "113", endM: "12" });
+                    setUnitPrice({ min: "", max: "", unit: "1" });
+                    setArea({ min: "", max: "", unit: "2" });
+                    setAge({ min: "", max: "" });
+                  }}
+                  className="flex-1 sm:flex-none h-11 px-4 rounded-[1.25rem] text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-coral-500/5 transition-all text-xs sm:text-sm font-bold flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  清除篩選
+                </Button>
+                <Button
+                  onClick={() => setIsSavingSearch(true)}
+                  variant="ghost"
+                  className="flex-1 sm:flex-none bg-coral-500/10 hover:bg-coral-500/20 text-coral-600 dark:text-coral-400 border border-coral-500/20 rounded-[1.25rem] h-11 px-4 text-xs font-bold transition-all shadow-sm flex items-center justify-center"
+                  title="儲存目前的搜尋設定"
+                  aria-label="儲存目前的搜尋設定"
+                >
+                  <Bookmark size={14} className="mr-1.5" />
+                  儲存條件
+                </Button>
+                <Button
+                  onClick={fetchData}
+                  disabled={loading}
+                  className="flex-1 sm:flex-none liquid-glass-button-primary rounded-[1.25rem] px-8 h-11 whitespace-nowrap shadow-md text-sm font-bold flex items-center justify-center"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  {loading ? "處理中..." : "開始查詢"}
+                </Button>
               </div>
             </div>
 
@@ -1753,7 +1832,7 @@ export default function App() {
 
                     {/* Period */}
                      <div className="space-y-2 relative z-10">
-                       <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-2 opacity-80">交易期間</label>
+                       <label className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-2">交易期間</label>
                        <div className="flex items-center gap-1 liquid-glass-input rounded-2xl p-1.5 flex-wrap sm:flex-nowrap border-white/50 dark:border-white/10 shadow-sm">
                          <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
                            <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.startY} onChange={e => setPeriod({...period, startY: e.target.value})}>
@@ -1786,7 +1865,7 @@ export default function App() {
                     {/* Unit Price */}
                     <div className="space-y-2 relative z-10">
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-2 opacity-80">單價</label>
+                        <label className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-2">單價</label>
                         <div className="flex items-center gap-3 text-xs font-bold text-slate-500 dark:text-slate-400 bg-white/40 dark:bg-black/20 px-3 py-1 rounded-full border border-white/50 dark:border-white/10 shadow-sm">
                           <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"><input type="radio" name="up_unit" checked={unitPrice.unit==="1"} onChange={()=>setUnitPrice({...unitPrice, unit:"1"})} className="accent-coral-500 w-3.5 h-3.5"/> 萬元/坪</label>
                           <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"><input type="radio" name="up_unit" checked={unitPrice.unit==="2"} onChange={()=>setUnitPrice({...unitPrice, unit:"2"})} className="accent-coral-500 w-3.5 h-3.5"/> 元/㎡</label>
@@ -1802,7 +1881,7 @@ export default function App() {
                     {/* Area */}
                     <div className="space-y-2 relative z-10">
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-2 opacity-80">面積</label>
+                        <label className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-2">面積</label>
                         <div className="flex items-center gap-3 text-xs font-bold text-slate-500 dark:text-slate-400 bg-white/40 dark:bg-black/20 px-3 py-1 rounded-full border border-white/50 dark:border-white/10 shadow-sm">
                           <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"><input type="radio" name="a_unit" checked={area.unit==="1"} onChange={()=>setArea({...area, unit:"1"})} className="accent-coral-500 w-3.5 h-3.5"/> ㎡</label>
                           <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors"><input type="radio" name="a_unit" checked={area.unit==="2"} onChange={()=>setArea({...area, unit:"2"})} className="accent-coral-500 w-3.5 h-3.5"/> 坪</label>
@@ -1817,7 +1896,7 @@ export default function App() {
 
                     {/* Age */}
                     <div className="space-y-2 flex flex-col justify-end lg:pb-[2px] relative z-10">
-                      <label className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] ml-2 opacity-80">屋齡 (年)</label>
+                      <label className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-2">屋齡 (年)</label>
                       <div className="flex items-center gap-2">
                         <input type="number" placeholder="最小值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={age.min} onChange={e=>setAge({...age, min: e.target.value})} />
                         <span className="text-slate-400/50 font-bold">-</span>
@@ -1829,65 +1908,6 @@ export default function App() {
               )}
             </AnimatePresence>
 
-            {/* Row 4: Search Actions */}
-            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-1 sm:mt-2 gap-3 sm:gap-4">
-              {/* Upper row on mobile: Advanced & Clear buttons */}
-              <div className="flex flex-row gap-2 w-full sm:w-auto">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setIsAdvancedSearchOpen(!isAdvancedSearchOpen)}
-                  className={`flex-1 sm:flex-none text-xs sm:text-sm font-bold ${isAdvancedSearchOpen ? 'text-coral-600 dark:text-coral-400 bg-coral-500/10 dark:bg-coral-500/20' : 'text-slate-600 dark:text-slate-300'} hover:text-coral-700 hover:bg-coral-50 dark:hover:bg-coral-900/30 rounded-[1.25rem] h-11 transition-all gap-2 px-4 border border-transparent shadow-sm ${isAdvancedSearchOpen ? 'border-coral-500/30 shadow-inner' : ''}`}
-                >
-                  <div className="relative">
-                    <SlidersHorizontal className="w-4 h-4" />
-                    {isAdvancedSearchOpen && (
-                      <motion.div Id="search-dot" className="absolute -top-1 -right-1 w-2 h-2 bg-coral-500 shadow-[0_0_8px_rgba(20,184,166,0.5)] rounded-full" />
-                    )}
-                  </div>
-                  進階篩選
-                </Button>
-
-                <Button 
-                  variant="ghost" 
-                  onClick={() => {
-                    setSearch("");
-                    setDistrict("全部");
-                    setCityName("臺北市");
-                    setPropertyTypes(["房地", "房地(車)", "建物", "車位", "土地"]);
-                    setTypeName("買賣");
-                    setPeriod({ startY: "112", startM: "1", endY: "113", endM: "12" });
-                    setUnitPrice({ min: "", max: "", unit: "1" });
-                    setArea({ min: "", max: "", unit: "2" });
-                    setAge({ min: "", max: "" });
-                  }}
-                  className="flex-1 sm:flex-none h-11 px-4 rounded-[1.25rem] text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-coral-500/5 transition-all text-xs sm:text-sm font-bold flex items-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  清除篩選
-                </Button>
-              </div>
-
-              {/* Search execution group */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
-                <Button
-                  onClick={() => setIsSavingSearch(true)}
-                  variant="ghost"
-                  className="flex-1 sm:flex-none bg-coral-500/10 hover:bg-coral-500/20 text-coral-600 dark:text-coral-400 border border-coral-500/20 rounded-[1.25rem] h-11 px-4 text-xs font-bold transition-all shadow-sm"
-                  title="儲存目前的搜尋設定"
-                >
-                  <Bookmark size={14} className="mr-1.5" />
-                  儲存條件
-                </Button>
-                <Button 
-                  onClick={fetchData} 
-                  disabled={loading}
-                  className="flex-1 sm:flex-none liquid-glass-button-primary rounded-[1.25rem] px-8 h-11 whitespace-nowrap shadow-md text-sm font-bold"
-                >
-                  <Search className="w-4 h-4 mr-2" />
-                  {loading ? "處理中..." : "開始查詢"}
-                </Button>
-              </div>
-            </div>
                </div>
               </motion.div>
             )}
@@ -2588,7 +2608,6 @@ export default function App() {
             >
               {/* Premium Dialog Header */}
               <motion.div variants={modalItemVariants} className="p-5 sm:p-10 bg-white/20 dark:bg-black/30 backdrop-blur-xl relative overflow-hidden shrink-0">
-                <div className="absolute inset-0 mesh-gradient opacity-20 dark:opacity-30" />
                 <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-coral-500/50 to-transparent" />
                 
                 <div className="relative z-10 flex flex-col">
@@ -2656,7 +2675,7 @@ export default function App() {
                            <div key={idx} className="snap-center shrink-0 w-[85%] sm:w-[60%] first:ml-0 last:mr-0 rounded-xl overflow-hidden shadow-sm relative group bg-slate-200 dark:bg-slate-800">
                              <img
                                src={src}
-                               alt="Building Appearance"
+                               alt={`${selectedItem.address} 建物外觀照片`}
                                className="w-full h-48 sm:h-64 object-cover transition-transform duration-500 group-hover:scale-105"
                                referrerPolicy="no-referrer"
                              />

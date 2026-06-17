@@ -262,8 +262,8 @@ export function TransactionMapPreview({ selectedItem }: TransactionMapPreviewPro
       ) : selectedItem.lat === 0 ? (
         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100/50 dark:bg-slate-900/50 p-4 text-center">
           <MapPin className="w-8 h-8 text-slate-400 mb-2" />
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">無法精確定位地址</p>
-          <p className="text-[9px] text-slate-400 leading-relaxed font-medium">
+          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-1">無法精確定位地址</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
             因開放資料地址遮蔽，無法自動解析座標
             <br />
             請參考明細中的門牌資訊

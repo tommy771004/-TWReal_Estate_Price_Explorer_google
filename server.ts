@@ -5,7 +5,7 @@ import path from "path";
 import apiApp from "./api/index";
 
 export async function startServer() {
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
   // 使用 apiApp 作為基礎的 Express 實例
   const httpServer = http.createServer(apiApp);
 
