@@ -223,7 +223,7 @@ export function TransactionMapPreview({ selectedItem }: TransactionMapPreviewPro
   const lng = typeof selectedItem.lng === "string" ? parseFloat(selectedItem.lng) : selectedItem.lng;
 
   return (
-    <div className="h-[160px] sm:h-[250px] w-full liquid-glass rounded-[1.5rem] overflow-hidden border border-white/40 dark:border-white/10 shadow-inner relative isolate group">
+    <div className="h-[160px] sm:h-[250px] w-full liquid-glass rounded-[1.5rem] overflow-hidden border border-slate-200/50 dark:border-slate-800/80 shadow-sm relative isolate group">
       {lat && lng && lat !== 0 ? (
         <>
           <MapContainer
@@ -456,7 +456,7 @@ export default function ResultsMap({
             <div className="flex items-center gap-3">
               <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-coral-500 shadow-[0_0_8px_rgba(20,184,166,0.5)]"
+                  className="h-full bg-coral-500 shadow-[0_0_8px_rgba(237,111,92,0.4)]"
                   initial={{ width: 0 }}
                   animate={{ width: `${(geocodedCount / (totalToGeocode || 1)) * 100}%` }}
                 />

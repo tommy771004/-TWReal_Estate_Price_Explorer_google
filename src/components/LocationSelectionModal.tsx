@@ -31,8 +31,6 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
     }
   }, [isOpen, cityName]);
 
-  if (!isOpen) return null;
-
   const currentDistricts = CITY_DISTRICTS[internalCity] || [];
   
   // Apply Search

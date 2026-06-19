@@ -52,6 +52,7 @@ import {
   Car,
   Leaf,
   TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
@@ -355,6 +356,7 @@ export default function App() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [robotStatus, setRobotStatus] = useState("");
   const [selectedItem, setSelectedItem] = useState<Transaction | null>(null);
+  const [trendDistrict, setTrendDistrict] = useState<string | null>(null);
   const [buildingImages, setBuildingImages] = useState<string[]>([]);
   const [isBuildingImagesLoading, setIsBuildingImagesLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: "asc" | "desc" } | null>(null);
@@ -378,6 +380,18 @@ export default function App() {
 
   const YEARS = Array.from({ length: 15 }, (_, i) => (101 + i).toString());
   const MONTHS = Array.from({ length: 12 }, (_, i) => (1 + i).toString());
+
+  const getPeriodValue = (y: string, m: string) => {
+    const yearIdx = parseInt(y) - 101;
+    const monthIdx = parseInt(m) - 1;
+    return yearIdx * 12 + monthIdx;
+  };
+
+  const getPeriodFromValue = (val: number) => {
+    const year = 101 + Math.floor(val / 12);
+    const month = 1 + (val % 12);
+    return { y: year.toString(), m: month.toString() };
+  };
 
   const [dataSource, setDataSource] = useState<string | null>(null);
 
@@ -792,6 +806,48 @@ export default function App() {
 
     return result;
   }, [data, search, sortConfig, district, propertyTypes, period, unitPrice, area, age, cityName]);
+
+  const districtAveragePrices = useMemo(() => {
+    const map: Record<string, { total: number; count: number }> = {};
+    data.forEach(item => {
+      if (!item.district || !item.unitPrice) return;
+      const price = parseFloat(item.unitPrice);
+      if (isNaN(price) || price <= 0) return;
+      const key = `${item.district}`;
+      if (!map[key]) {
+        map[key] = { total: 0, count: 0 };
+      }
+      map[key].total += price;
+      map[key].count += 1;
+    });
+
+    const averages: Record<string, number> = {};
+    Object.keys(map).forEach(dist => {
+      if (map[dist].count > 0) {
+        averages[dist] = map[dist].total / map[dist].count;
+      }
+    });
+    return averages;
+  }, [data]);
+
+  const historyCounts = useMemo(() => {
+    const buildCaseMap: Record<string, number> = {};
+    const addressMap: Record<string, number> = {};
+
+    data.forEach(item => {
+      if (item.buildCase) {
+        buildCaseMap[item.buildCase] = (buildCaseMap[item.buildCase] || 0) + 1;
+      }
+      const baseAddressMatch = item.address.match(/(.+?[路街道巷弄號])/);
+      if (baseAddressMatch && baseAddressMatch[1] && baseAddressMatch[1].length >= 3) {
+        const baseAddr = baseAddressMatch[1];
+        const key = `${item.district}_${baseAddr}_${item.buildingType}`;
+        addressMap[key] = (addressMap[key] || 0) + 1;
+      }
+    });
+
+    return { buildCaseMap, addressMap };
+  }, [data]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1304,59 +1360,89 @@ export default function App() {
     return dateStr;
   };
 
+  const getLatestThreeMonthsForDistrict = (dist: string) => {
+    const districtItems = data.filter(item => item.district === dist);
+    
+    let maxYear = 0;
+    let maxMonth = 0;
+    
+    data.forEach(item => {
+      if (item.date && item.date.length >= 5) {
+        let yStr = item.date.length === 7 ? item.date.substring(0, 3) : item.date.substring(0, 2);
+        let mStr = item.date.length === 7 ? item.date.substring(3, 5) : item.date.substring(2, 4);
+        const yr = parseInt(yStr) + 1911;
+        const mo = parseInt(mStr);
+        if (yr > maxYear || (yr === maxYear && mo > maxMonth)) {
+          maxYear = yr;
+          maxMonth = mo;
+        }
+      }
+    });
+
+    if (maxYear === 0) {
+      maxYear = 2026;
+      maxMonth = 6;
+    }
+
+    let m1Y = maxYear;
+    let m1M = maxMonth - 1;
+    if (m1M === 0) { m1M = 12; m1Y -= 1; }
+
+    let m2Y = m1Y;
+    let m2M = m1M - 1;
+    if (m2M === 0) { m2M = 12; m2Y -= 1; }
+
+    const targetMonths = [
+      { year: m2Y, month: m2M, label: `${m2Y}/${m2M.toString().padStart(2, '0')}` },
+      { year: m1Y, month: m1M, label: `${m1Y}/${m1M.toString().padStart(2, '0')}` },
+      { year: maxYear, month: maxMonth, label: `${maxYear}/${maxMonth.toString().padStart(2, '0')}` }
+    ];
+
+    const counts = targetMonths.map(tm => {
+      const count = districtItems.filter(item => {
+        if (item.date && item.date.length >= 5) {
+          let yStr = item.date.length === 7 ? item.date.substring(0, 3) : item.date.substring(0, 2);
+          let mStr = item.date.length === 7 ? item.date.substring(3, 5) : item.date.substring(2, 4);
+          const yr = parseInt(yStr) + 1911;
+          const mo = parseInt(mStr);
+          return yr === tm.year && mo === tm.month;
+        }
+        return false;
+      }).length;
+
+      return {
+        month: tm.label,
+        count
+      };
+    });
+
+    return counts;
+  };
+
   return (
     <div className="relative min-h-[100dvh] w-full flex flex-col font-sans selection:bg-coral-500/30 bg-transparent  text-ink dark:text-slate-100 pb-20 overflow-x-hidden">
-      <LocationSelectionModal
-        isOpen={isLocationModalOpen}
-        onClose={() => setIsLocationModalOpen(false)}
-        cityName={cityName}
-        setCityName={setCityName}
-        district={district}
-        setDistrict={setDistrict}
-      />
-      {/* Immersive Mesh Background */}
+      <AnimatePresence>
+        {isLocationModalOpen && (
+          <LocationSelectionModal
+            isOpen={isLocationModalOpen}
+            onClose={() => setIsLocationModalOpen(false)}
+            cityName={cityName}
+            setCityName={setCityName}
+            district={district}
+            setDistrict={setDistrict}
+          />
+        )}
+      </AnimatePresence>
+      {/* Clean Architectural Grid & Soft Atmospheric Sfumato */}
       <div className="immersive-bg opacity-100" />
-      
-      {/* Dynamic Animated Blobs */}
-      <div className="immersive-bg">
-        <motion.div 
-          animate={{ 
-            x: [-100, 100, -100],
-            y: [-100, 100, -100],
-            scale: [1, 1.2, 1]
-          }}
-          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-coral-500/15 dark:bg-coral-600/10 rounded-full blur-[120px]" 
-        />
-        <motion.div 
-          animate={{ 
-            x: [50, -50, 50],
-            y: [30, -30, 30],
-            scale: [1.1, 1, 1.1]
-          }}
-          transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
-          className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-coral-400/10 dark:bg-coral-600/10 rounded-full blur-[160px] pointer-events-none" 
-        />
-        <motion.div 
-          animate={{ 
-            opacity: [0.2, 0.4, 0.2],
-            scale: [0.9, 1.1, 0.9]
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[20%] left-[10%] w-[500px] h-[500px] bg-rose-400/10 dark:bg-rose-500/10 rounded-full blur-[140px] pointer-events-none" 
-        />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.015] dark:opacity-[0.03] mix-blend-overlay pointer-events-none z-50"></div>
-      </div>
-
-      {/* Glass Ornaments */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: "linear" }} className="absolute top-[12%] left-[8%] opacity-10 dark:opacity-5 text-coral-500"><Sparkles size={64} /></motion.div>
-        <motion.div animate={{ y: [0, 40, 0], opacity: [0.05, 0.15, 0.05] }} transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[45%] right-[12%] text-amber-500"><Compass size={48} /></motion.div>
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] max-w-[600px] bg-coral-500/5 dark:bg-coral-500/5 rounded-full blur-[120px] opacity-70" />
+        <div className="absolute bottom-[20%] right-[-10%] w-[40vw] h-[40vw] max-w-[500px] bg-amber-500/3 dark:bg-amber-500/2 rounded-full blur-[100px] opacity-50" />
       </div>
       
-      {/* Main Container - Liquid Glass */}
+      {/* Main Container - Elegant Structure */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         className="relative w-full flex-1 flex flex-col z-10"
       >
@@ -1365,18 +1451,10 @@ export default function App() {
           <div className="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4 px-2 sm:px-6 rounded-[2rem] relative z-10 group transition-all">
             <div className="absolute inset-0 bg-transparent rounded-[2rem] pointer-events-none" />
             <div className="flex items-center gap-4 relative z-10">
-              <div className="relative group/icon">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-[1.5rem] bg-gradient-to-tr from-coral-900 via-coral-600 to-coral-400 shadow-[0_10px_30px_rgba(237,111,92,0.4)] flex items-center justify-center transform group-hover/icon:rotate-12 transition-all duration-500 group-hover/icon:scale-110 border border-white/20">
-                  <Database className="text-white w-6 h-6 sm:w-7 sm:h-7" />
+              <div className="relative">
+                <div className="w-12 h-12 rounded-xl bg-coral-500/10 dark:bg-coral-500/15 flex items-center justify-center border border-coral-500/10">
+                  <Database className="text-coral-600 dark:text-coral-400 w-6 h-6" />
                 </div>
-                <motion.div 
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.5, ease: "easeOut", duration: 0.5 }}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-amber-200 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg border-2 border-white/80 dark:border-slate-800"
-                >
-                  <Sparkles size={10} className="text-white drop-shadow-sm" />
-                </motion.div>
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-3">
@@ -1492,11 +1570,6 @@ export default function App() {
                 >
                   <MapIcon size={14} /> 地圖探索
                 </button>
-              </div>
-
-              <div className="hidden sm:flex items-center px-4 py-2 bg-coral-500/10 dark:bg-coral-400/5 border border-coral-500/10 rounded-full backdrop-blur-sm shadow-sm ring-1 ring-white/20">
-                <div className="w-2 h-2 rounded-full bg-coral-500 animate-pulse mr-3 shadow-[0_0_12px_rgba(237,111,92,0.8)]"></div>
-                <span className="text-[10px] font-bold text-coral-700 dark:text-coral-400 uppercase tracking-[0.2em]">Live</span>
               </div>
             </div>
           </div>
@@ -1617,13 +1690,40 @@ export default function App() {
           <AnimatePresence initial={false}>
             {isSearchExpanded && (
               <motion.div 
-                initial={window.innerWidth < 768 ? { height: 0, opacity: 0 } : false}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={window.innerWidth < 768 ? { height: 0, opacity: 0 } : false}
-                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }} // smooth ease-out (like Apple)
+                initial={{ height: 0, opacity: 0, scale: 0.985, y: -8 }}
+                animate={{ height: "auto", opacity: 1, scale: 1, y: 0 }}
+                exit={{ height: 0, opacity: 0, scale: 0.985, y: -8 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} // smooth ease-out (like Apple)
                 className="max-w-[1600px] mx-auto w-full z-10 overflow-hidden"
               >
-                <div className="flex flex-col gap-2 sm:gap-4 liquid-glass-panel p-3 sm:px-6 sm:py-4 rounded-[2rem] shadow-2xl mx-1 mb-2 sm:mb-4 mt-1 sm:mt-0">
+                <motion.div 
+                  layout="position"
+                  animate={{
+                    borderColor: loading ? "rgba(237, 111, 92, 0.45)" : "rgba(255, 255, 255, 0.15)",
+                    boxShadow: loading 
+                      ? "0 0 25px 6px rgba(237, 111, 92, 0.22), 0 25px 50px -12px rgba(0, 0, 0, 0.25)" 
+                      : "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+                  }}
+                  transition={{ duration: 0.4 }}
+                  className="relative overflow-hidden flex flex-col gap-2 sm:gap-4 liquid-glass-panel p-3 sm:px-6 sm:py-4 rounded-[2rem] shadow-2xl mx-1 mb-2 sm:mb-4 mt-1 sm:mt-0"
+                >
+                  {/* Subtle running loading animation bar inside the filter panel header */}
+                  <AnimatePresence>
+                    {loading && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 2 }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="absolute top-0 left-0 right-0 w-full bg-gradient-to-r from-transparent via-coral-400 to-transparent overflow-hidden"
+                      >
+                        <motion.div 
+                          animate={{ x: ["-100%", "100%"] }}
+                          transition={{ repeat: Infinity, duration: 1.6, ease: "linear" }}
+                          className="w-1/2 h-full bg-gradient-to-r from-coral-300 to-coral-500"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
             
             {/* Top Row: Location & Search */}
             <div className="flex flex-col sm:flex-row gap-4 z-40">
@@ -1664,7 +1764,7 @@ export default function App() {
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 5 }}
-                      className="absolute top-[calc(100%+8px)] left-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] overflow-hidden py-2 z-50"
+                      className="absolute top-[calc(100%+8px)] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-xl shadow-lg overflow-hidden py-2 z-50"
                     >
                       {addressSuggestions.length > 0 ? (
                         addressSuggestions.map(suggestion => (
@@ -1817,6 +1917,100 @@ export default function App() {
               </div>
             </div>
 
+            {/* Active Filter Chips with entrance and exit animations */}
+            <AnimatePresence>
+              {(() => {
+                const chips: { id: string; label: string; onClear: () => void }[] = [];
+                if (search.trim()) {
+                  chips.push({
+                    id: "search",
+                    label: `關鍵字: ${search}`,
+                    onClear: () => setSearch(""),
+                  });
+                }
+                if (district !== "全部") {
+                  chips.push({
+                    id: "district",
+                    label: `區域: ${district}`,
+                    onClear: () => setDistrict("全部"),
+                  });
+                }
+                if (typeName !== "買賣") {
+                  chips.push({
+                    id: "typeName",
+                    label: `型態: ${typeName}`,
+                    onClear: () => {
+                      setTypeName("買賣");
+                      setViewMode("list");
+                    },
+                  });
+                }
+                propertyTypes.forEach(pt => {
+                  chips.push({
+                    id: `pt-${pt}`,
+                    label: `種類: ${pt}`,
+                    onClear: () => setPropertyTypes(propertyTypes.filter(p => p !== pt)),
+                  });
+                });
+                if (unitPrice.min || unitPrice.max) {
+                  chips.push({
+                    id: "unitPrice",
+                    label: `單價: ${unitPrice.min || "0"} ~ ${unitPrice.max || "無上限"} ${unitPrice.unit === "1" ? "萬/坪" : "元/㎡"}`,
+                    onClear: () => setUnitPrice({ min: "", max: "", unit: "1" }),
+                  });
+                }
+                if (area.min || area.max) {
+                  chips.push({
+                    id: "area",
+                    label: `坪數: ${area.min || "0"} ~ ${area.max || "無上限"} ${area.unit === "2" ? "坪" : "㎡"}`,
+                    onClear: () => setArea({ min: "", max: "", unit: "2" }),
+                  });
+                }
+                if (age.min || age.max) {
+                  chips.push({
+                    id: "age",
+                    label: `屋齡: ${age.min || "0"} ~ ${age.max || "無上限"} 年`,
+                    onClear: () => setAge({ min: "", max: "" }),
+                  });
+                }
+
+                if (chips.length === 0) return null;
+
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                    animate={{ opacity: 1, height: "auto", marginTop: 12 }}
+                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex flex-wrap items-center gap-1.5 pb-1 border-t border-slate-100 dark:border-slate-800/60 pt-3 overflow-hidden ml-1"
+                  >
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1">已選條件:</span>
+                    <AnimatePresence>
+                      {chips.map(chip => (
+                        <motion.span
+                          key={chip.id}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ duration: 0.2 }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-coral-500/10 dark:bg-coral-500/15 border border-coral-200/50 dark:border-coral-500/30 text-coral-600 dark:text-coral-400 text-xs font-bold shadow-sm"
+                        >
+                          {chip.label}
+                          <button
+                            type="button"
+                            onClick={chip.onClear}
+                            className="w-3.5 h-3.5 rounded-full hover:bg-coral-500 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                          >
+                            <X size={10} strokeWidth={3} />
+                          </button>
+                        </motion.span>
+                      ))}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })()}
+            </AnimatePresence>
+
             {/* Row 3: Advanced Filters */}
             <AnimatePresence>
               {isAdvancedSearchOpen && (
@@ -1827,38 +2021,84 @@ export default function App() {
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="overflow-hidden mt-2"
                 >
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-5 sm:p-7 bg-white/30 dark:bg-slate-900/40 backdrop-blur-2xl border border-white/60 dark:border-white/10 rounded-[2rem] shadow-[0_16px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.4)] mb-2 relative overflow-hidden">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-5 sm:p-7 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-[2rem] shadow-sm mb-2 relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent dark:from-white/5" />
 
                     {/* Period */}
-                     <div className="space-y-2 relative z-10">
-                       <label className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-2">交易期間</label>
-                       <div className="flex items-center gap-1 liquid-glass-input rounded-2xl p-1.5 flex-wrap sm:flex-nowrap border-white/50 dark:border-white/10 shadow-sm">
-                         <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
-                           <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.startY} onChange={e => setPeriod({...period, startY: e.target.value})}>
-                             {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{y}</option>)}
-                           </select>
-                           <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">Y</span>
+                     <div className="space-y-2 relative z-10 flex flex-col justify-between">
+                       <div>
+                         <label className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-2">交易期間</label>
+                         <div className="flex items-center gap-1 liquid-glass-input rounded-2xl p-1.5 flex-wrap sm:flex-nowrap border-white/50 dark:border-white/10 shadow-sm">
+                           <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
+                             <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.startY} onChange={e => setPeriod({...period, startY: e.target.value})}>
+                               {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{y}</option>)}
+                             </select>
+                             <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">Y</span>
+                           </div>
+                           <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
+                             <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.startM} onChange={e => setPeriod({...period, startM: e.target.value})}>
+                               {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{m}</option>)}
+                             </select>
+                             <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">M</span>
+                           </div>
+                           <span className="text-slate-400 dark:text-slate-600 font-bold shrink-0">-</span>
+                           <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
+                             <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.endY} onChange={e => setPeriod({...period, endY: e.target.value})}>
+                               {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{y}</option>)}
+                             </select>
+                             <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">Y</span>
+                           </div>
+                           <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
+                             <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.endM} onChange={e => setPeriod({...period, endM: e.target.value})}>
+                               {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{m}</option>)}
+                             </select>
+                             <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">M</span>
+                           </div>
                          </div>
-                         <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
-                           <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.startM} onChange={e => setPeriod({...period, startM: e.target.value})}>
-                             {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{m}</option>)}
-                           </select>
-                           <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">M</span>
+                       </div>
+
+                       <div className="space-y-1 mt-2.5 px-2 bg-slate-500/5 dark:bg-black/20 p-2.5 rounded-xl border border-white/40 dark:border-white/5">
+                         <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                           <span>起: {period.startY}年{period.startM}月</span>
+                           <span className="opacity-70 text-[9px]">拖曳快速調整</span>
                          </div>
-                         <span className="text-slate-400 dark:text-slate-600 font-bold shrink-0">-</span>
-                         <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
-                           <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.endY} onChange={e => setPeriod({...period, endY: e.target.value})}>
-                             {YEARS.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{y}</option>)}
-                           </select>
-                           <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">Y</span>
+                         <input 
+                           type="range" 
+                           min={0} 
+                           max={179} 
+                           value={getPeriodValue(period.startY, period.startM)}
+                           onChange={(e) => {
+                             const val = parseInt(e.target.value);
+                             const { y, m } = getPeriodFromValue(val);
+                             const endVal = getPeriodValue(period.endY, period.endM);
+                             if (val <= endVal) {
+                               setPeriod({ ...period, startY: y, startM: m });
+                             } else {
+                               setPeriod({ ...period, startY: y, startM: m, endY: y, endM: m });
+                             }
+                           }}
+                           className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-coral-500"
+                         />
+                         <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 pt-1">
+                           <span>迄: {period.endY}年{period.endM}月</span>
                          </div>
-                         <div className="flex-1 min-w-0 flex items-center bg-white/50 dark:bg-black/20 rounded-xl px-1.5 h-10 hover:bg-white/80 dark:hover:bg-black/40 transition-colors">
-                           <select className="appearance-none bg-transparent border-none outline-none text-sm font-bold cursor-pointer w-full text-center pr-1 focus:ring-0" value={period.endM} onChange={e => setPeriod({...period, endM: e.target.value})}>
-                             {MONTHS.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-800 text-ink dark:text-white">{m}</option>)}
-                           </select>
-                           <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">M</span>
-                         </div>
+                         <input 
+                           type="range" 
+                           min={0} 
+                           max={179} 
+                           value={getPeriodValue(period.endY, period.endM)}
+                           onChange={(e) => {
+                             const val = parseInt(e.target.value);
+                             const { y, m } = getPeriodFromValue(val);
+                             const startVal = getPeriodValue(period.startY, period.startM);
+                             if (val >= startVal) {
+                               setPeriod({ ...period, endY: y, endM: m });
+                             } else {
+                               setPeriod({ ...period, startY: y, startM: m, endY: y, endM: m });
+                             }
+                           }}
+                           className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-coral-500"
+                         />
                        </div>
                      </div>
 
@@ -1895,12 +2135,58 @@ export default function App() {
                     </div>
 
                     {/* Age */}
-                    <div className="space-y-2 flex flex-col justify-end lg:pb-[2px] relative z-10">
-                      <label className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-2">屋齡 (年)</label>
-                      <div className="flex items-center gap-2">
-                        <input type="number" placeholder="最小值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={age.min} onChange={e=>setAge({...age, min: e.target.value})} />
-                        <span className="text-slate-400/50 font-bold">-</span>
-                        <input type="number" placeholder="最大值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={age.max} onChange={e=>setAge({...age, max: e.target.value})} />
+                    <div className="space-y-2 flex flex-col justify-between relative z-10">
+                      <div>
+                        <label className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-2">屋齡 (年)</label>
+                        <div className="flex items-center gap-2">
+                          <input type="number" placeholder="最小值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={age.min} onChange={e=>setAge({...age, min: e.target.value})} />
+                          <span className="text-slate-400/50 font-bold">-</span>
+                          <input type="number" placeholder="最大值" className="w-full liquid-glass-input h-12 px-4 rounded-2xl outline-none text-sm font-bold shadow-sm" value={age.max} onChange={e=>setAge({...age, max: e.target.value})} />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 mt-2.5 px-2 bg-slate-500/5 dark:bg-black/20 p-2.5 rounded-xl border border-white/40 dark:border-white/5">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                          <span>最小屋齡: {age.min ? `${age.min}年` : "不限"}</span>
+                          <span className="opacity-70 text-[9px]">拖曳包含範圍</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min={0} 
+                          max={60} 
+                          value={age.min === "" ? 0 : parseInt(age.min)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const nextMin = val === "0" ? "" : val;
+                            const currentMax = age.max === "" ? 60 : parseInt(age.max);
+                            if (nextMin === "" || parseInt(nextMin) <= currentMax) {
+                              setAge({ ...age, min: nextMin });
+                            } else {
+                              setAge({ ...age, min: nextMin, max: nextMin });
+                            }
+                          }}
+                          className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-coral-500"
+                        />
+                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 pt-1">
+                          <span>最大屋齡: {age.max ? `${age.max}年` : "不限"}</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min={0} 
+                          max={60} 
+                          value={age.max === "" ? 60 : parseInt(age.max)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const nextMax = val === "60" ? "" : val;
+                            const currentMin = age.min === "" ? 0 : parseInt(age.min);
+                            if (nextMax === "" || parseInt(nextMax) >= currentMin) {
+                              setAge({ ...age, max: nextMax });
+                            } else {
+                              setAge({ ...age, min: nextMax, max: nextMax });
+                            }
+                          }}
+                          className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-coral-500"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1908,7 +2194,7 @@ export default function App() {
               )}
             </AnimatePresence>
 
-               </div>
+               </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1940,9 +2226,9 @@ export default function App() {
         </Dialog>
 
         {/* Content */}
-        <div ref={resultsContainerRef} className="flex-none px-4 sm:px-6 relative z-20 w-full pb-12 flex flex-col flex-1">
-          <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-[2.5rem] w-full max-w-[1600px] mx-auto border-b-0 shadow-2xl sm:shadow-[0_40px_100px_rgba(0,0,0,0.06)] dark:shadow-[0_40px_100px_rgba(0,0,0,0.4)] mt-0 sm:mt-4 relative overflow-hidden">
-            <div className="px-6 sm:px-8 py-5 border-b border-white/20 dark:border-white/10 flex items-center justify-between bg-white/30 dark:bg-slate-900/40 backdrop-blur-3xl relative overflow-hidden">
+        <div ref={resultsContainerRef} className="flex-none px-1.5 sm:px-6 relative z-20 w-full pb-12 flex flex-col flex-1">
+          <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-[2.5rem] w-full max-w-[1600px] mx-auto border-b-0 shadow-md mt-0 sm:mt-4 relative overflow-hidden">
+            <div className="px-6 sm:px-8 py-5 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between bg-white dark:bg-slate-900 relative overflow-hidden">
             <div className="absolute inset-y-0 left-0 w-1 bg-coral-500" />
             <div className="flex items-center gap-3 relative z-10">
               <div className="w-10 h-10 rounded-xl bg-coral-500/10 flex items-center justify-center border border-coral-500/10">
@@ -1981,18 +2267,25 @@ export default function App() {
             </div>
           </div>
           
-          {loading ? (
-            <div className="p-8 sm:p-16 space-y-12 flex flex-col items-center justify-center min-h-[500px]">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-[2rem] bg-coral-500/10 dark:bg-coral-500/20 flex items-center justify-center border border-coral-500/20 shadow-xl overflow-hidden group">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(20,184,166,0.2)_0%,transparent_70%)] animate-pulse" />
-                  <Database size={48} className="text-coral-600 dark:text-coral-400 relative z-10 animate-float-blob" />
+          <AnimatePresence mode="wait">
+            {loading ? (
+              <motion.div
+                key="loading-spinner-view"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="p-8 sm:p-16 space-y-12 flex flex-col items-center justify-center min-h-[500px] w-full"
+              >
+              <div className="relative flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full border-2 border-slate-100 dark:border-slate-800 flex items-center justify-center relative">
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-[-2px] rounded-full border-t-2 border-coral-500" 
+                  />
+                  <Database size={22} className="text-coral-500 relative z-10" />
                 </div>
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                  className="absolute -inset-2 border-2 border-dashed border-coral-500/20 rounded-[2.5rem]" 
-                />
               </div>
               
               <div className="text-center space-y-3 z-10">
@@ -2009,11 +2302,18 @@ export default function App() {
                   </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           ) : viewMode === "aggregated" && typeName === "預售屋" ? (
-            <div className="flex-1 min-h-[300px] flex flex-col p-4 sm:p-6 overflow-x-auto">
+            <motion.div
+              key="aggregated-view"
+              initial={{ opacity: 0, scale: 0.99, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.99, y: -15 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 min-h-[300px] flex flex-col p-4 sm:p-6 overflow-x-auto w-full"
+            >
               <Table className="min-w-[800px]">
-                <TableHeader className="sticky top-0 bg-white/40 dark:bg-black/30 backdrop-blur-3xl z-10 border-b border-white/20 dark:border-white/10">
+                <TableHeader className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-10 border-b border-slate-200/80 dark:border-slate-800/80">
                   <TableRow className="border-none hover:bg-transparent">
                     <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest pl-6">建案名稱/社區</TableHead>
                     <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">區域</TableHead>
@@ -2076,9 +2376,16 @@ export default function App() {
                   </motion.tbody>
                 </AnimatePresence>
               </Table>
-            </div>
+            </motion.div>
           ) : viewMode === "list" ? (
-            <div className="flex-1 min-h-[300px] flex flex-col max-w-[1600px] mx-auto w-full">
+            <motion.div
+              key="list-view"
+              initial={{ opacity: 0, scale: 0.99, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.99, y: -15 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 min-h-[300px] flex flex-col max-w-[1600px] mx-auto w-full"
+            >
               {!loading && (priceDistribution.length > 0 || priceTrend.length > 0) && (
                 <Suspense
                   fallback={
@@ -2097,7 +2404,7 @@ export default function App() {
                 </Suspense>
               )}
               <div className="w-full flex flex-col min-w-0">
-                <div className="px-4 sm:px-6 mb-4 w-full min-w-0">
+                <div className="px-1.5 sm:px-6 mb-4 w-full min-w-0">
                   <div className="flex items-center gap-2 relative w-full max-w-full">
                     <button 
                       onClick={() => scrollSort('left')}
@@ -2153,7 +2460,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <motion.div layout className="flex flex-col gap-3 px-4 sm:px-6 pb-2">
+                <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-3 px-1.5 sm:px-6 pb-2">
                   <AnimatePresence mode="popLayout">
                     {paginatedData.map((item, idx) => {
                       let nearestStation = null;
@@ -2182,6 +2489,27 @@ export default function App() {
                         });
                       }
 
+                      let hasHistory = false;
+                      if (item.buildCase) {
+                        hasHistory = (historyCounts.buildCaseMap[item.buildCase] || 0) > 1;
+                      } else {
+                        const baseAddressMatch = item.address.match(/(.+?[路街道巷弄號])/);
+                        if (baseAddressMatch && baseAddressMatch[1] && baseAddressMatch[1].length >= 3) {
+                          const baseAddr = baseAddressMatch[1];
+                          const key = `${item.district}_${baseAddr}_${item.buildingType}`;
+                          hasHistory = (historyCounts.addressMap[key] || 0) > 1;
+                        }
+                      }
+
+                      let priceDiffPercentage = 0;
+                      let showPriceIndicator = false;
+                      const itemUnitPrice = parseFloat(item.unitPrice);
+                      const avgPrice = districtAveragePrices[item.district];
+                      if (hasHistory && itemUnitPrice > 0 && avgPrice > 0) {
+                        priceDiffPercentage = ((itemUnitPrice - avgPrice) / avgPrice) * 100;
+                        showPriceIndicator = true;
+                      }
+
                       return (
                       <motion.div
                         layout
@@ -2198,10 +2526,10 @@ export default function App() {
                         }}
                         key={item.id}
                         onClick={() => setSelectedItem(item)}
-                        className="group relative bg-white/80 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/60 dark:border-white/10 rounded-2xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 cursor-pointer overflow-hidden ring-1 ring-black/5 dark:ring-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] hover:border-coral-500/30 dark:hover:border-coral-500/30 transition-colors"
+                        className="group relative liquid-glass-panel rounded-[1.5rem] p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 cursor-pointer overflow-hidden ring-1 ring-black/5 dark:ring-white/10 hover:border-coral-500/30 dark:hover:border-coral-500/30 transition-all duration-300"
                       >
                         {/* Interactive Left Indicator line */}
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-coral-500/0 group-hover:bg-coral-500 transition-colors duration-300" />
+                        <div className="absolute left-0 top-0 bottom-0 w-[5px] bg-gradient-to-b from-coral-400 to-coral-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[0_0_12px_rgba(237,111,92,0.8)]" />
                         
                         <button
                           onClick={(e) => toggleFavorite(item, e)}
@@ -2222,36 +2550,36 @@ export default function App() {
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-[80px_minmax(0,1fr)_minmax(130px,auto)] gap-3 sm:gap-6 items-center pl-1 sm:pl-2 w-full min-w-0">
                           
                           {/* Date Block */}
-                          <div className="flex sm:flex-col items-center sm:items-start justify-between border-b sm:border-y-0 border-slate-100 dark:border-slate-800 pb-2 sm:pb-0">
-                            <div className="text-xl sm:text-[22px] leading-none font-display font-black text-ink dark:text-white tracking-tighter">
+                          <div className="flex sm:flex-col items-center sm:items-start justify-between border-b sm:border-y-0 border-slate-200/50 dark:border-slate-800 pb-2 sm:pb-0">
+                            <div className="text-xl sm:text-2xl leading-none font-display font-medium text-ink/80 dark:text-white/80 tracking-tight">
                               {formatDate(item.date).replace(/-/g, '.')}
                             </div>
                           </div>
 
                           {/* Info Tags & Address */}
-                          <div className="flex flex-col justify-center min-w-0 py-0.5">
-                            <div className="flex flex-wrap items-center gap-1.5 mb-1.5 overflow-hidden max-h-[40px] sm:max-h-[20px]">
-                               <span className="px-1.5 py-0.5 rounded-[4px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[9px] font-black tracking-widest uppercase border border-slate-200/60 dark:border-slate-700/60 shadow-sm leading-none shrink-0 truncate max-w-[80px]">
+                          <div className="flex flex-col justify-center items-start sm:items-center min-w-0 py-0.5">
+                            <div className="flex flex-wrap items-center justify-start sm:justify-center gap-1.5 mb-1.5 overflow-hidden max-h-[40px] sm:max-h-[20px]">
+                               <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold tracking-widest uppercase border border-slate-200/60 dark:border-slate-700/60 shadow-sm leading-none shrink-0 truncate max-w-[80px]">
                                  {item.district}
                                </span>
-                               <span className="px-1.5 py-0.5 rounded-[4px] bg-coral-50 dark:bg-coral-500/10 text-coral-600 dark:text-coral-400 text-[9px] font-black tracking-widest uppercase border border-coral-100 dark:border-coral-500/20 shadow-sm leading-none shrink-0 truncate max-w-[60px]">
+                               <span className="px-2 py-0.5 rounded-md bg-coral-50 dark:bg-coral-500/10 text-coral-600 dark:text-coral-400 text-[10px] font-bold tracking-widest uppercase border border-coral-100 dark:border-coral-500/20 shadow-sm leading-none shrink-0 truncate max-w-[60px]">
                                  {item.buildingType.split("(")[0] || "土地"}
                                </span>
-                               <span className="px-1.5 py-0.5 rounded-[4px] bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-black tracking-widest uppercase border border-amber-100 dark:border-amber-500/20 shadow-sm leading-none shrink-0 truncate max-w-[80px]">
+                               <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold tracking-widest uppercase border border-amber-100 dark:border-amber-500/20 shadow-sm leading-none shrink-0 truncate max-w-[80px]">
                                  {item.transactionType}
                                </span>
                                {typeName === "預售屋" && item.buildCase && (
-                                 <span className="px-1.5 py-0.5 rounded-[4px] bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black tracking-widest uppercase border border-emerald-100 dark:border-emerald-500/20 shadow-sm leading-none truncate max-w-[120px] shrink-0">
+                                 <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold tracking-widest uppercase border border-emerald-100 dark:border-emerald-500/20 shadow-sm leading-none truncate max-w-[120px] shrink-0">
                                    建案: {item.buildCase}
                                  </span>
                                )}
                             </div>
-                            <h3 className="text-[15px] sm:text-[16px] font-bold text-ink dark:text-slate-50 truncate group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-snug w-full">
+                            <h3 className="text-base sm:text-lg font-bold text-ink dark:text-slate-50 truncate group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-snug w-full text-left sm:text-center">
                               {item.address}
                             </h3>
                             
                             {getSpecialTags(item.remarks).length > 0 && (
-                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              <div className="flex flex-wrap items-center justify-start sm:justify-center gap-1.5 mt-1">
                                 {getSpecialTags(item.remarks).map(tag => (
                                   <span key={tag.label} className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-black tracking-widest uppercase border leading-none shadow-sm flex items-center gap-1 ${tag.class}`}>
                                     <ShieldCheck size={10} />
@@ -2261,7 +2589,7 @@ export default function App() {
                               </div>
                             )}
 
-                            <div className="text-[11px] font-bold mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <div className="text-[11px] font-bold mt-1.5 flex flex-wrap items-center justify-start sm:justify-center gap-1.5">
                               <span className="flex items-center gap-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-[6px]">
                                 <Maximize2 className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.buildingArea ? (parseFloat(item.buildingArea) * 0.3025).toFixed(2) : "0.00"} 坪</span>
                               </span>
@@ -2272,7 +2600,7 @@ export default function App() {
                               )}
                               {item.rooms && item.rooms !== '0' && (
                                 <>
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center justify-start sm:justify-center gap-1.5">
                                     <span className="flex items-center gap-1 bg-coral-500/10 text-coral-600 dark:text-coral-400 px-1.5 py-0.5 rounded-[6px]"><Bed className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.rooms}</span></span>
                                     {item.halls && item.halls !== '0' && <span className="flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-[6px]"><Sofa className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.halls}</span></span>}
                                     {item.bathrooms && item.bathrooms !== '0' && <span className="flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-[6px]"><Bath className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.bathrooms}</span></span>}
@@ -2282,7 +2610,7 @@ export default function App() {
                             </div>
                             
                             {(nearestStation || nearestSchool) && (
-                              <div className="text-[10px] font-bold mt-1.5 flex flex-wrap items-center gap-1.5">
+                              <div className="text-[10px] font-bold mt-1.5 flex flex-wrap items-center justify-start sm:justify-center gap-1.5">
                                 {nearestStation && (
                                   <span className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-[6px] border border-blue-100 dark:border-blue-800/30">
                                     <Train className="w-3 h-3" />
@@ -2310,42 +2638,86 @@ export default function App() {
                           </div>
 
                           {/* Price Block */}
-                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-800 pt-3 sm:pt-0 pl-1 sm:pl-4 sm:pr-8 mt-2 sm:mt-0 relative sm:h-full min-w-0 gap-2 shrink-0">
-                            <div className="flex flex-row sm:flex-col items-baseline sm:items-end sm:flex-1 sm:justify-center gap-2 sm:gap-1 min-w-0 flex-wrap">
-                              <div className="flex items-baseline gap-1 sm:gap-1.5 order-2 sm:order-1 shrink-0 overflow-hidden">
-                                 <span className="text-[11px] font-bold text-slate-400 shrink-0">總價</span>
-                                 <span className="text-lg sm:text-2xl leading-none font-display font-black text-red-500 tracking-tighter truncate">
+                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-200/50 dark:border-slate-800 pt-3 sm:pt-0 pl-1 sm:pl-5 sm:pr-4 mt-2 sm:mt-0 relative sm:h-full min-w-0 gap-2 shrink-0">
+                            <div className="flex flex-row sm:flex-col items-baseline sm:items-end sm:flex-1 sm:justify-center gap-2 sm:gap-1.5 min-w-0 flex-wrap">
+                              <div className="flex items-baseline gap-1.5 sm:gap-2 order-2 sm:order-1 shrink-0 overflow-hidden">
+                                 <span className="text-xs font-bold text-slate-400 shrink-0">總價</span>
+                                 <span className="text-xl sm:text-3xl leading-none font-display font-medium text-coral-600 dark:text-coral-400 tracking-tight truncate">
                                    {formatPrice(item.totalPrice)}
                                  </span>
                               </div>
                               {item.parkingPrice && parseFloat(item.parkingPrice) > 0 ? (
                                 <div className="flex flex-col items-end gap-0.5 order-1 sm:order-2 shrink-0 truncate max-w-full">
-                                   <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/50 px-1.5 py-0.5 rounded-[4px]">
-                                     <span className="flex items-center gap-0.5 text-slate-400"><Home size={10} /> 房 {formatPrice((parseFloat(item.totalPrice) - parseFloat(item.parkingPrice)).toString())}</span>
-                                     <span className="text-slate-300">|</span>
-                                     <span className="flex items-center gap-0.5 text-slate-400"><Car size={10} /> 車 {formatPrice(item.parkingPrice)}</span>
+                                   <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 bg-slate-100/80 dark:bg-slate-800/80 px-2 py-0.5 rounded-md backdrop-blur-sm shadow-sm ring-1 ring-black/5 dark:ring-white/5">
+                                     <span className="flex items-center gap-1 text-slate-400"><Home size={10} /> 房 {formatPrice((parseFloat(item.totalPrice) - parseFloat(item.parkingPrice)).toString())}</span>
+                                     <span className="text-slate-300 dark:text-slate-600">|</span>
+                                     <span className="flex items-center gap-1 text-slate-400"><Car size={10} /> 車 {formatPrice(item.parkingPrice)}</span>
                                    </div>
-                                   <div className="text-[11px] font-bold text-slate-400 truncate w-full text-right mt-0.5">
-                                     {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : <span className="opacity-0 hidden sm:inline">-</span>}
+                                   <div className="flex items-center justify-end gap-1.5 w-full mt-1">
+                                      <div className="text-xs font-bold text-slate-400 truncate text-right">
+                                        {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : "-"}
+                                      </div>
+                                      {showPriceIndicator && (
+                                        <span 
+                                          title={`與同區域(${item.district})平均成交單價 ${(avgPrice * 3.30578 / 10000).toFixed(1)} 萬/坪 相比的差異`}
+                                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black leading-none ${
+                                            priceDiffPercentage >= 0 
+                                              ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30" 
+                                              : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
+                                          }`}
+                                        >
+                                          {priceDiffPercentage >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                          <span>{Math.abs(priceDiffPercentage).toFixed(1)}%</span>
+                                        </span>
+                                      )}
                                    </div>
                                 </div>
                               ) : (
-                                <div className="text-[11px] font-bold text-slate-400 sm:mt-0.5 order-1 sm:order-2 shrink-0 truncate max-w-full">
-                                  {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : <span className="opacity-0 hidden sm:inline">-</span>}
+                                <div className="text-xs font-bold text-slate-400 sm:mt-0.5 order-1 sm:order-2 shrink-0 truncate max-w-full flex items-center justify-end gap-1.5">
+                                  <span>
+                                    {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : "-"}
+                                  </span>
+                                  {showPriceIndicator && (
+                                    <span 
+                                      title={`與同區域(${item.district})平均成交單價 ${(avgPrice * 3.30578 / 10000).toFixed(1)} 萬/坪 相比的差異`}
+                                      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black leading-none ${
+                                        priceDiffPercentage >= 0 
+                                          ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30" 
+                                          : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
+                                      }`}
+                                    >
+                                      {priceDiffPercentage >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                      <span>{Math.abs(priceDiffPercentage).toFixed(1)}%</span>
+                                    </span>
+                                  )}
                                 </div>
                               )}
                             </div>
-                            <Button 
-                               variant="ghost" 
-                               size="sm" 
-                               className="h-8 px-3 text-xs bg-coral-500/10 text-coral-600 hover:bg-coral-500/20 hover:text-coral-700 dark:bg-coral-900/30 dark:text-coral-400 dark:hover:bg-coral-900/50 flex-shrink-0 sm:self-end self-center rounded-lg font-bold tracking-widest uppercase transition-all group-hover:bg-coral-500 justify-center group-hover:text-white"
-                               onClick={(e) => {
-                                 e.stopPropagation();
-                                 setSelectedItem(item);
-                               }}
-                            >
-                               詳情 <ChevronRight className="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform" />
-                            </Button>
+                            <div className="flex items-center gap-1.5 ml-auto sm:ml-0 sm:self-end self-center flex-shrink-0">
+                              <Button 
+                                 variant="ghost" 
+                                 size="sm" 
+                                 className="h-8 px-3 text-xs bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-coral-600 dark:hover:text-coral-400 rounded-xl font-bold transition-all shadow-sm flex items-center gap-1"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setTrendDistrict(item.district);
+                                 }}
+                              >
+                                 <TrendingUp className="w-3.5 h-3.5 text-coral-500" />
+                                 <span>區域熱度</span>
+                              </Button>
+                              <Button 
+                                 variant="ghost" 
+                                 size="sm" 
+                                 className="h-8 px-4 text-xs bg-slate-100 hover:bg-coral-500 hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-coral-500/80 dark:hover:text-white rounded-xl font-bold tracking-widest uppercase transition-all shadow-sm"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setSelectedItem(item);
+                                 }}
+                              >
+                                 詳情 <ChevronRight className="w-3 h-3 ml-1" />
+                              </Button>
+                            </div>
                           </div>
 
                         </div>
@@ -2357,7 +2729,7 @@ export default function App() {
               </div>
 
               {filteredData.length > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-4 mt-4 px-4 sm:px-6 mb-8">
+                <div className="flex flex-wrap items-center justify-between gap-4 mt-4 px-1.5 sm:px-6 mb-8">
                   <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
                     <span>每頁顯示</span>
                     <select
@@ -2409,71 +2781,72 @@ export default function App() {
 
               {filteredData.length === 0 && !loading && !error && (
                 <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center justify-center py-32 text-slate-500/50 dark:text-slate-400/50"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col items-center justify-center py-24 text-slate-400 dark:text-slate-500"
                 >
-                  <div className="w-24 h-24 rounded-3xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center mb-6 shadow-inner relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-coral-500/10 to-transparent group-hover:opacity-100 transition-opacity" />
-                    <motion.div
-                      animate={{ 
-                        rotate: [0, 10, -10, 10, 0],
-                        scale: [1, 1.1, 1] 
-                      }}
-                      transition={{ duration: 5, repeat: Infinity }}
-                    >
-                      <Compass className="w-10 h-10 opacity-50 text-coral-600/50 relative z-10" />
-                    </motion.div>
+                  <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-center mb-5 shadow-sm">
+                    <Compass className="w-6 h-6 text-slate-400 dark:text-slate-500" />
                   </div>
-                  <p className="font-display font-bold text-xl tracking-tight text-ink/90 dark:text-slate-200">還沒找到藏寶圖？</p>
-                  <p className="text-sm mt-2 font-medium opacity-60">嘗試放寬您的篩選條件或更改關鍵字</p>
+                  <p className="font-sans font-bold text-base tracking-tight text-slate-800 dark:text-slate-200">未找到符合條件的成交紀錄</p>
+                  <p className="text-xs mt-1.5 font-medium text-slate-500 dark:text-slate-400">嘗試放寬您的篩選項目、縮小價格範圍或清除搜尋關鍵字</p>
                 </motion.div>
               )}
               {error && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col items-center justify-center py-24 px-6 text-red-500/80 dark:text-red-400/80"
+                  className="flex flex-col items-center justify-center py-20 px-6 text-red-500/80 dark:text-red-400/80"
                 >
-                  <div className="w-20 h-20 rounded-2xl bg-coral-100/50 dark:bg-coral-500/10 border border-red-500/20 flex items-center justify-center mb-8 shadow-sm">
-                    <X className="w-10 h-10 opacity-60" />
+                  <div className="w-16 h-16 rounded-2xl bg-red-500/5 border border-red-500/10 flex items-center justify-center mb-6 shadow-sm animate-pulse">
+                    <X className="w-6 h-6 text-red-500" />
                   </div>
-                  <p className="text-2xl font-display font-extrabold mb-3 tracking-tight text-red-700 dark:text-red-400">數據連線中斷</p>
-                  <p className="text-sm opacity-70 max-w-sm text-center font-medium leading-relaxed mb-10">{error}</p>
+                  <p className="text-lg font-sans font-bold mb-2 tracking-tight text-red-700 dark:text-red-400">數據集載入失敗</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm text-center font-medium leading-relaxed mb-8">{error}</p>
                   <Button 
                     variant="outline" 
-                    className="rounded-2xl px-12 h-12 liquid-glass-button border-red-500/30 text-red-700 dark:text-red-400 hover:bg-coral-500/5 font-bold shadow-xl shadow-red-500/5 transition-all active:scale-95"
+                    className="rounded-xl px-8 h-10 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-bold transition-all active:scale-95 text-xs shadow-sm"
                     onClick={fetchData}
                   >
-                    重新初始化掃描
+                    重新載入資料
                   </Button>
                 </motion.div>
               )}
-            </div>
+            </motion.div>
           ) : (
-            <Suspense
-              fallback={
-                <div className="p-4 sm:p-6">
-                  <Skeleton className="h-[540px] rounded-[2rem] bg-white/40 dark:bg-slate-900/40" />
-                </div>
-              }
+            <motion.div
+              key="map-view"
+              initial={{ opacity: 0, scale: 0.99 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.99 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full"
             >
-              <ResultsMap
-                cityName={cityName}
-                district={district}
-                filteredData={filteredData}
-                formatPrice={formatPrice}
-                geocodedCount={geocodedCount}
-                isGeocoding={isGeocoding}
-                mapLayer={mapLayer}
-                onMapLayerChange={setMapLayer}
-                onSelectItem={setSelectedItem}
-                onToggleFacilities={() => setShowFacilities(!showFacilities)}
-                showFacilities={showFacilities}
-                totalToGeocode={totalToGeocode}
-              />
-            </Suspense>
+              <Suspense
+                fallback={
+                  <div className="p-4 sm:p-6">
+                    <Skeleton className="h-[540px] rounded-[2rem] bg-white/40 dark:bg-slate-900/40" />
+                  </div>
+                }
+              >
+                <ResultsMap
+                  cityName={cityName}
+                  district={district}
+                  filteredData={filteredData}
+                  formatPrice={formatPrice}
+                  geocodedCount={geocodedCount}
+                  isGeocoding={isGeocoding}
+                  mapLayer={mapLayer}
+                  onMapLayerChange={setMapLayer}
+                  onSelectItem={setSelectedItem}
+                  onToggleFacilities={() => setShowFacilities(!showFacilities)}
+                  showFacilities={showFacilities}
+                  totalToGeocode={totalToGeocode}
+                />
+              </Suspense>
+            </motion.div>
           )}
+        </AnimatePresence>
           </div>
         </div>
 
@@ -2579,26 +2952,144 @@ export default function App() {
           </section>
         </div>
 
-        {/* Footer Info */}
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 lg:right-10 p-3 sm:px-5 sm:py-3 border border-white/40 dark:border-white/10 rounded-2xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl flex flex-wrap items-center justify-between gap-4 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 z-50 shadow-2xl max-w-xl sm:min-w-[400px]">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="font-bold flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-500" /> 內政部實價登錄</span>
-            <span className="font-medium text-[9px] uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">每 10 日更新</span>
-            <span className="font-bold text-ink dark:text-white">顯示: {filteredData.length}</span>
-          </div>
-          <div className="flex items-center gap-2 font-bold shrink-0">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span>連線正常</span>
-          </div>
-        </div>
       </motion.div>
+
+      {/* District Volume Trend Dialog */}
+      <Dialog open={!!trendDistrict} onOpenChange={(open) => !open && setTrendDistrict(null)}>
+        <DialogContent className="max-w-[90vw] sm:max-w-md w-full p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-[2rem] shadow-2xl">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-ink dark:text-white">
+              <span className="p-1.5 rounded-lg bg-coral-500/10 dark:bg-coral-500/20 text-coral-600 dark:text-coral-400">
+                <TrendingUp size={18} />
+              </span>
+              <span>區域熱度分析</span>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {trendDistrict && (() => {
+            const trendData = getLatestThreeMonthsForDistrict(trendDistrict);
+            const totalVolume = trendData.reduce((acc, curr) => acc + curr.count, 0);
+            
+            let changeText = "";
+            let changeStatus: "up" | "down" | "flat" = "flat";
+            let changePercent = 0;
+            if (trendData.length >= 2) {
+              const prev = trendData[trendData.length - 2].count;
+              const curr = trendData[trendData.length - 1].count;
+              if (prev > 0) {
+                changePercent = ((curr - prev) / prev) * 100;
+                if (changePercent > 0) {
+                  changeStatus = "up";
+                  changeText = `月增 ${changePercent.toFixed(1)}%`;
+                } else if (changePercent < 0) {
+                  changeStatus = "down";
+                  changeText = `月減 ${Math.abs(changePercent).toFixed(1)}%`;
+                } else {
+                  changeStatus = "flat";
+                  changeText = "與上月持平";
+                }
+              } else if (curr > 0) {
+                changeStatus = "up";
+                changeText = "成長顯著";
+              } else {
+                changeText = "無變化";
+              }
+            }
+
+            let vitalityDesc = "市場觀望";
+            let vitalityColor = "text-slate-500 dark:text-slate-400 bg-slate-500/10";
+            if (totalVolume >= 15) {
+              vitalityDesc = "熱絡度極高";
+              vitalityColor = "text-rose-600 bg-rose-500/12 dark:text-rose-400 dark:bg-rose-500/15";
+            } else if (totalVolume >= 8) {
+              vitalityDesc = "市場活絡";
+              vitalityColor = "text-coral-600 bg-coral-500/12 dark:text-coral-400 dark:bg-coral-500/15";
+            } else if (totalVolume >= 3) {
+              vitalityDesc = "交易平穩";
+              vitalityColor = "text-teal-600 bg-teal-500/12 dark:text-teal-400 dark:bg-teal-500/15";
+            }
+
+            return (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/50">
+                  <div>
+                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500">【{trendDistrict}】近3月成交</span>
+                    <div className="text-2xl font-black font-display text-ink dark:text-white mt-1">
+                      {totalVolume} <span className="text-sm font-bold text-slate-400 dark:text-slate-500">筆</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500 block text-right">市場活絡度</span>
+                    <span className={`inline-block px-2.5 py-1 rounded-xl text-xs font-black tracking-wider mt-1.5 ${vitalityColor}`}>
+                      {vitalityDesc}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block px-1">成交量走勢</span>
+                  <div className="h-[180px] w-full bg-slate-50/50 dark:bg-slate-950/20 rounded-2xl border border-slate-100 dark:border-slate-850 p-4 flex flex-col justify-between">
+                    <div className="h-[120px] w-full flex items-end justify-around pb-2 border-b border-slate-100 dark:border-slate-800/50">
+                      {trendData.map((d, index) => {
+                        const maxCount = Math.max(...trendData.map(t => t.count), 1);
+                        const heightPct = `${Math.max((d.count / maxCount) * 100, 8)}%`;
+                        const isLatest = index === trendData.length - 1;
+                        
+                        return (
+                          <div key={d.month} className="flex flex-col items-center gap-2 group w-12">
+                            <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                              {d.count} 筆
+                            </span>
+                            <div className="w-8 relative flex justify-center bg-slate-100 dark:bg-slate-800/50 rounded-t-lg h-[90px] items-end">
+                              <motion.div 
+                                initial={{ height: 0 }}
+                                animate={{ height: heightPct }}
+                                transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
+                                className={`w-full rounded-t-md transition-colors ${
+                                  isLatest 
+                                    ? "bg-gradient-to-t from-coral-600 to-coral-400 shadow-[0_4px_12px_rgba(237,111,92,0.2)]" 
+                                    : "bg-slate-400/30 dark:bg-slate-700 hover:bg-slate-500/40"
+                                }`}
+                              />
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                              {d.month.split('/')[1]}月
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 pt-1.5 px-1">
+                      <span>統計區間：{trendData[0]?.month} - {trendData[2]?.month}</span>
+                      {changeText && (
+                        <span className={`font-black flex items-center gap-0.5 ${
+                          changeStatus === 'up' 
+                            ? 'text-rose-600 dark:text-rose-400' 
+                            : changeStatus === 'down' 
+                              ? 'text-emerald-600 dark:text-emerald-400' 
+                              : 'text-slate-500'
+                        }`}>
+                          {changeStatus === 'up' && <ArrowUp size={12} />}
+                          {changeStatus === 'down' && <ArrowDown size={12} />}
+                          {changeText}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="text-[11px] leading-relaxed text-slate-400 dark:text-slate-500 bg-slate-500/5 dark:bg-black/15 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
+                  💡 統計說明：成交量係指該行政區於特定月份之實價登錄移轉件數。若近一期較前一期有顯著增長，表示該區買氣與流動性極佳，適合買方積極考慮。
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-4xl w-full p-0 overflow-hidden liquid-glass-panel border-white/40 dark:border-white/10 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_32px_128px_rgba(0,0,0,0.3)] dark:shadow-[0_32px_128px_rgba(0,0,0,0.6)]">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl w-full p-0 overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl">
           {selectedItem && (
             <motion.div 
               variants={modalContainerVariants}
@@ -2607,7 +3098,7 @@ export default function App() {
               className="flex flex-col h-full max-h-[95vh] sm:max-h-[90vh]"
             >
               {/* Premium Dialog Header */}
-              <motion.div variants={modalItemVariants} className="p-5 sm:p-10 bg-white/20 dark:bg-black/30 backdrop-blur-xl relative overflow-hidden shrink-0">
+              <motion.div variants={modalItemVariants} className="p-5 sm:p-10 bg-slate-50 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800/50 relative overflow-hidden shrink-0">
                 <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-coral-500/50 to-transparent" />
                 
                 <div className="relative z-10 flex flex-col">
@@ -2632,7 +3123,7 @@ export default function App() {
                          )}
                        </div>
                     </div>
-                    <h2 className="text-xl sm:text-4xl font-display font-bold text-ink dark:text-white tracking-tight leading-tight">
+                    <h2 className="text-2xl sm:text-4xl font-display font-medium text-ink dark:text-white tracking-tight leading-tight">
                       {selectedItem.address}
                     </h2>
 
