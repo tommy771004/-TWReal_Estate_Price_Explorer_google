@@ -93,21 +93,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Area, 
-  AreaChart, 
-  CartesianGrid, 
-  ResponsiveContainer, 
-  Tooltip as RechartsTooltip, 
-  XAxis, 
-  YAxis
-} from "recharts";
 import { syncSeoMetadata } from "./lib/seo";
-import { parseSelectionFromUrl, buildSelectionSearch } from "./lib/urlState";
+import { SEO_CONTENT_PAGES } from "./content/seoPages";
+import { parseSelectionFromUrl, buildSelectionPath } from "./lib/urlState";
 import { calculateDistance } from "./lib/utils";
 import type { Transaction } from "./types/real-estate";
 
 const ResultsCharts = lazy(() => import("./components/ResultsCharts"));
+const CommunityTrendChart = lazy(() => import("./components/CommunityTrendChart"));
 const ResultsMap = lazy(() => import("./components/MapViews"));
 const TransactionMapPreview = lazy(() =>
   import("./components/MapViews").then((module) => ({ default: module.TransactionMapPreview }))
@@ -136,6 +129,7 @@ const FEATURED_QUERY_INTENTS = [
   "租賃實價登錄",
   "社區成交單價",
 ];
+const SEO_CONTENT_UPDATED = __SEO_LAST_MODIFIED__;
 
 const modalContainerVariants = {
   hidden: { opacity: 0 },
@@ -200,11 +194,11 @@ export default function App() {
   }, [cityName, district, typeName]);
 
   // Reflect the city / type / district selection in the URL so it is shareable
-  // and indexable (?city=...&type=...). replaceState avoids polluting history.
+  // and indexable. replaceState avoids polluting history.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const search = buildSelectionSearch({ cityName, typeName, district });
-    const nextUrl = `${window.location.pathname}${search}${window.location.hash}`;
+    const pathname = buildSelectionPath({ cityName, typeName, district });
+    const nextUrl = `${pathname}${window.location.hash}`;
     const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     if (nextUrl !== currentUrl) {
       window.history.replaceState(null, "", nextUrl);
@@ -1220,7 +1214,7 @@ export default function App() {
               <div className="flex flex-col">
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tighter text-ink dark:text-white leading-none">
-                    實價登錄查詢
+                    {cityName}{district !== "全部" ? district : ""}{typeName}實價登錄查詢
                   </h1>
                   <div className="flex items-center gap-1.5 relative">
                     <Button 
@@ -1342,7 +1336,7 @@ export default function App() {
                   {cityName}{district !== "全部" ? ` · ${district}` : ""}{typeName ? ` ${typeName}` : ""}成交行情
                 </h2>
                 <p className="text-[13px] sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-xl">
-                  串接內政部不動產交易實價登錄開放資料，即時查詢成交總價、單價、坪數與歷史走勢，協助掌握區域行情。
+                  免費查詢{cityName}{district !== "全部" ? district : ""}{typeName}成交紀錄、每坪單價、總價、坪數與歷史走勢；資料來自內政部實價登錄開放資料。
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -2470,7 +2464,19 @@ export default function App() {
           <section className="flex flex-col gap-4" aria-labelledby="about-real-estate-search">
             <h2 id="about-real-estate-search" className="text-2xl font-black text-ink dark:text-white opacity-90 tracking-tight">關於實價登錄查詢</h2>
             <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-4xl text-sm sm:text-[15px]">
-              實價登錄查詢是一個免費的台灣房地產實價登錄查詢工具，整合內政部實價登錄開放資料，提供買賣、預售屋與租賃成交紀錄的快速搜尋。不需註冊即可查詢各縣市與行政區的總價、單價、坪數、樓層、屋齡與歷史交易資料，並透過地圖模式了解周邊設施與地理位置。
+              實價登錄查詢是一個免費的台灣房地產實價登錄查詢工具，整合
+              <a
+                href="https://lvr.land.moi.gov.tw/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mx-1 font-bold text-coral-700 underline decoration-coral-400/50 underline-offset-4 hover:text-coral-600 dark:text-coral-400"
+              >
+                內政部不動產交易實價查詢服務網
+              </a>
+              開放資料，提供買賣、預售屋與租賃成交紀錄的快速搜尋。不需註冊即可查詢各縣市與行政區的總價、單價、坪數、樓層、屋齡與歷史交易資料，並透過地圖模式了解周邊設施與地理位置。
+            </p>
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
+              頁面資訊更新：<time dateTime={SEO_CONTENT_UPDATED}>{SEO_CONTENT_UPDATED}</time>；成交資料依官方發布時程同步。
             </p>
           </section>
 
@@ -2506,6 +2512,9 @@ export default function App() {
               </details>
             </div>
           </section>
+          <nav aria-label="網站資訊與使用指南" className="flex flex-wrap gap-3 border-t border-white/40 pt-6 text-sm font-bold text-slate-600 dark:border-white/10 dark:text-slate-300">
+            {SEO_CONTENT_PAGES.map((page) => <a key={page.path} href={page.path} className="rounded-full border border-white/60 bg-white/45 px-4 py-2 hover:text-coral-600 dark:border-white/10 dark:bg-slate-900/35">{page.title}</a>)}
+          </nav>
         </div>
 
       </motion.div>
@@ -2723,6 +2732,10 @@ export default function App() {
                              <img
                                src={src}
                                alt={`${selectedItem.address} 建物外觀照片`}
+                               width="1200"
+                               height="800"
+                               loading="lazy"
+                               decoding="async"
                                className="w-full h-48 sm:h-64 object-cover transition-transform duration-500 group-hover:scale-105"
                                referrerPolicy="no-referrer"
                              />
@@ -2903,50 +2916,9 @@ export default function App() {
 
                          {/* Trend Chart */}
                          <div className="h-[180px] w-full -max-w-xs sm:max-w-none mt-2">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={communityChartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                                <defs>
-                                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                  </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
-                                <YAxis domain={['auto', 'auto']} hide />
-                                <RechartsTooltip 
-                                  content={({ active, payload }) => {
-                                    if (active && payload && payload.length) {
-                                      const data = payload[0].payload;
-                                      return (
-                                        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-xl flex flex-col gap-1.5 min-w-[140px]">
-                                          <div className="flex items-center justify-between gap-2">
-                                            <span className="text-[10px] font-bold text-slate-500">{data.date}</span>
-                                            {data.isCurrent && <span className="text-[9px] bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded-full font-bold">當前點擊</span>}
-                                          </div>
-                                          <div className="text-lg font-black text-ink dark:text-white flex items-baseline gap-1">
-                                            {data.unitPrice} <span className="text-xs font-bold text-slate-400">萬/坪</span>
-                                          </div>
-                                          <div className="text-xs font-bold text-slate-500 flex justify-between">
-                                            <span>總價: {formatPrice(data.totalPrice.toString())}</span>
-                                            <span>樓層: {data.floor}</span>
-                                          </div>
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  }}
-                                />
-                                <Area 
-                                  type="monotone" 
-                                  dataKey="unitPrice" 
-                                  stroke="#3b82f6" 
-                                  strokeWidth={3}
-                                  fill="url(#colorPrice)" 
-                                  activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}
-                                />
-                              </AreaChart>
-                            </ResponsiveContainer>
+                            <Suspense fallback={<Skeleton className="h-full w-full rounded-2xl" />}>
+                              <CommunityTrendChart data={communityChartData} />
+                            </Suspense>
                          </div>
                          
                          {/* List of records */}

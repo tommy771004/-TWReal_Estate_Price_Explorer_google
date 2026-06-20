@@ -9,15 +9,12 @@
       content="免費查詢台灣各縣市買賣、預售屋與租賃的實價登錄成交紀錄，支援地圖檢視、單價篩選、坪數比較與歷史交易資料。"
     />
     <meta
-      name="keywords"
-      content="實價登錄,實價登錄查詢,台灣房價,房價查詢,成交價查詢,預售屋實價登錄,租屋實價登錄"
-    />
-    <meta
       name="robots"
       content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"
     />
     <meta name="author" content="實價登錄查詢" />
     <meta name="theme-color" content="#ed6f5c" />
+    <!-- GOOGLE_SITE_VERIFICATION -->
     <link rel="canonical" href="/" />
     <link rel="icon" href="/og-image.svg" type="image/svg+xml" />
 
@@ -30,7 +27,10 @@
       content="免費查詢台灣各縣市買賣、預售屋與租賃的實價登錄成交紀錄，支援地圖檢視、單價篩選、坪數比較與歷史交易資料。"
     />
     <meta property="og:url" content="/" />
-    <meta property="og:image" content="/og-image.svg" />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="實價登錄查詢的台灣房價地圖與成交資料預覽圖" />
 
     <meta name="twitter:card" content="summary_large_image" />
@@ -39,7 +39,23 @@
       name="twitter:description"
       content="免費查詢台灣各縣市買賣、預售屋與租賃的實價登錄成交紀錄，支援地圖檢視、單價篩選、坪數比較與歷史交易資料。"
     />
-    <meta name="twitter:image" content="/og-image.svg" />
+    <meta name="twitter:image" content="/og-image.png" />
+
+    <script data-legacy-seo-redirect>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        if (!params.has("city") && !params.has("type") && !params.has("district")) return;
+
+        var city = params.get("city") || "臺中市";
+        var type = params.get("type") || "買賣";
+        var district = params.get("district") || "全區";
+        var segments = district !== "全區"
+          ? ["districts", city, district, type]
+          : (city === "臺中市" && type === "買賣" ? [] : ["prices", city, type]);
+        var target = segments.length ? "/" + segments.map(encodeURIComponent).join("/") + "/" : "/";
+        window.location.replace(target + window.location.hash);
+      })();
+    </script>
 
     <style>
       :root {
@@ -125,10 +141,10 @@
     </script>
 
     <!--
-      Static JSON-LD baseline for crawlers and AI search engines (GPTBot, ClaudeBot,
-      PerplexityBot, Googlebot) that do not execute JavaScript. lib/seo.ts refines
-      WebSite/WebApplication/CollectionPage per selection at runtime; @id values match
-      so engines merge the graphs. FAQPage is static-only and powers AI citations.
+      Static JSON-LD baseline for crawlers that do not execute JavaScript. lib/seo.ts
+      refines WebSite/WebApplication/CollectionPage per selection at runtime; @id values
+      match so consumers can merge the graphs. Visible FAQs remain ordinary page content;
+      FAQ rich-result markup is intentionally omitted for this non-government website.
     -->
     <script type="application/ld+json" data-seo-id="static">
       {
@@ -159,6 +175,8 @@
             "browserRequirements": "Requires JavaScript",
             "operatingSystem": "All",
             "inLanguage": "zh-Hant-TW",
+            "isAccessibleForFree": true,
+            "dateModified": "__SEO_LAST_MODIFIED__",
             "offers": {
               "@type": "Offer",
               "price": "0",
@@ -173,53 +191,6 @@
             "provider": {
               "@id": "https://tw-real-estate-price-explorer-googl.vercel.app/#organization"
             }
-          },
-          {
-            "@type": "FAQPage",
-            "@id": "https://tw-real-estate-price-explorer-googl.vercel.app/#faq",
-            "inLanguage": "zh-Hant-TW",
-            "mainEntity": [
-              {
-                "@type": "Question",
-                "name": "什麼是實價登錄？",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "實價登錄是台灣自 2012 年 8 月起實施的不動產交易申報制度，要求買賣、預售屋與租賃成交後須在 30 日內向地方政府申報實際成交價格，再由內政部彙整為開放資料供民眾免費查詢。"
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "實價登錄資料多久更新一次？",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "內政部不動產交易實價查詢服務網每月更新三次，分別於每月 1 日、11 日、21 日公布最新成交資料。本站串接內政部開放資料，提供目前可取得的最新成交紀錄。"
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "如何查詢特定縣市或行政區的房價？",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "選擇縣市與行政區後，系統會列出該區域的買賣、預售屋或租賃成交紀錄，並可依成交總價、單價（每坪）、坪數、屋齡與關鍵字進一步篩選，也能切換地圖模式檢視成交位置。"
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "預售屋與成屋（買賣）的實價登錄有什麼差別？",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "買賣（成屋）登錄為已完成過戶的中古屋或新成屋交易；預售屋登錄為建商在房屋完工前的銷售合約成交價。本站可在買賣、預售屋與租賃三種資料間切換查詢。"
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "使用本站查詢實價登錄需要付費嗎？",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "不需要。本站完全免費，所有實價登錄成交資料皆來自內政部公開的開放資料，無需註冊或付費即可查詢台灣各縣市房價。"
-                }
-              }
-            ]
           }
         ]
       }
@@ -242,7 +213,9 @@
         <section>
           <h2>資料來源</h2>
           <p>
-            本站資料主要來自內政部實價登錄開放資料，協助使用者更快掌握區域房價、市場成交行情與歷史交易資訊。
+            本站資料主要來自
+            <a href="https://lvr.land.moi.gov.tw/" rel="noopener noreferrer">內政部不動產交易實價查詢服務網</a>
+            開放資料，協助使用者更快掌握區域房價、市場成交行情與歷史交易資訊。
           </p>
         </section>
 
@@ -264,6 +237,20 @@
             常見需求包括實價登錄查詢、台灣房價地圖、預售屋成交紀錄、租賃實價登錄、社區成交單價與各縣市房價比較。
           </p>
         </section>
+
+        <nav aria-label="網站資訊">
+          <h2>網站資訊與使用指南</h2>
+          <ul>
+            <li><a href="/prices/">各縣市房價查詢入口</a></li>
+            <li><a href="/guides/">實價登錄使用指南</a></li>
+            <li><a href="/methodology/">資料方法與計算說明</a></li>
+            <li><a href="/data-sources/">官方資料來源</a></li>
+            <li><a href="/guides/transaction-records/">如何閱讀成交紀錄</a></li>
+            <li><a href="/about/">關於本站</a></li>
+            <li><a href="/contact/">聯絡與問題回報</a></li>
+            <li><a href="/privacy/">隱私權與資料使用</a></li>
+          </ul>
+        </nav>
 
         <section>
           <h2>常見問題</h2>

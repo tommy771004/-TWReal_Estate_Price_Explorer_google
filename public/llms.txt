@@ -1,0 +1,20 @@
+# 實價登錄查詢
+
+> 免費查詢台灣各縣市買賣、預售屋與租賃實價登錄成交紀錄的資料工具。
+
+本站提供成交總價、每坪單價、坪數、屋齡、歷史交易與地圖檢視。資料來自內政部不動產交易實價查詢服務網的公開資料；使用者不需註冊或付費。
+
+## 主要頁面
+
+- [實價登錄查詢首頁](https://tw-real-estate-price-explorer-googl.vercel.app/): 預設顯示臺中市買賣實價登錄。
+- [各縣市查詢入口](https://tw-real-estate-price-explorer-googl.vercel.app/prices/): 選擇買賣、預售屋或租賃的語意網址。
+- [實價登錄使用指南](https://tw-real-estate-price-explorer-googl.vercel.app/guides/): 閱讀成交紀錄與資料限制。
+- [資料方法](https://tw-real-estate-price-explorer-googl.vercel.app/methodology/): 了解資料處理、計算與比較限制。
+- [XML Sitemap](https://tw-real-estate-price-explorer-googl.vercel.app/sitemap.xml): 可索引的縣市與交易類型頁面。
+
+## 資料來源與限制
+
+- 官方來源：[內政部不動產交易實價查詢服務網](https://lvr.land.moi.gov.tw/)
+- 本站是民間資料查詢介面，不代表內政部或任何政府機關。
+- 開放資料中的門牌可能經過區間化處理，地圖位置僅供行情研究參考。
+- 成交資料依官方發布時程同步；個別交易仍應以官方資料與專業查證為準。

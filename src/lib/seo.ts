@@ -1,18 +1,10 @@
-import { buildSelectionSearch } from "./urlState";
+import { buildSelectionPath, buildSeoCopy } from "./seoRoutes";
 
 const SITE_NAME = "實價登錄查詢";
 const SITE_ALT_NAME = "Taiwan Real Estate Price Explorer";
 const DEFAULT_DESCRIPTION =
   "免費查詢台灣各縣市買賣、預售屋與租賃的實價登錄成交紀錄，支援地圖檢視、單價篩選、坪數比較與歷史交易資料。";
-const DEFAULT_KEYWORDS = [
-  "實價登錄",
-  "實價登錄查詢",
-  "台灣房價",
-  "房價查詢",
-  "成交價查詢",
-  "預售屋實價登錄",
-  "租屋實價登錄",
-];
+const CONTENT_LAST_MODIFIED = __SEO_LAST_MODIFIED__;
 
 type SeoInput = {
   cityName: string;
@@ -96,44 +88,20 @@ const upsertStructuredData = (id: string, payload: Record<string, unknown>) => {
   element.textContent = JSON.stringify(payload);
 };
 
-const buildSeoCopy = ({ cityName, district, typeName }: SeoInput) => {
-  const scopeLabel = district !== "全部" ? `${cityName}${district}` : cityName;
-  const title = `${scopeLabel}${typeName}實價登錄查詢 | 台灣房價地圖與成交紀錄`;
-  const description =
-    district !== "全部"
-      ? `查詢${scopeLabel}${typeName}實價登錄成交紀錄，快速查看成交總價、單價、坪數、屋齡與地圖位置，資料串接內政部開放資料。`
-      : `免費查詢${cityName}${typeName}實價登錄成交紀錄，快速查看成交總價、單價、坪數、屋齡與地圖位置，資料串接內政部開放資料。`;
-
-  const keywords = Array.from(
-    new Set([
-      ...DEFAULT_KEYWORDS,
-      `${cityName}實價登錄`,
-      `${cityName}房價`,
-      `${typeName}實價登錄`,
-      district !== "全部" ? `${cityName}${district}實價登錄` : "",
-      district !== "全部" ? `${cityName}${district}房價` : "",
-    ].filter(Boolean))
-  ).join(", ");
-
-  return { title, description, keywords };
-};
-
 export const syncSeoMetadata = (input: SeoInput) => {
   if (typeof document === "undefined") {
     return;
   }
 
-  const { title, description, keywords } = buildSeoCopy(input);
-  const selectionSearch = buildSelectionSearch(input);
-  const canonicalUrl = buildAbsoluteUrl(`/${selectionSearch}`);
-  const imageUrl = buildAbsoluteUrl("/og-image.svg");
+  const { title, description } = buildSeoCopy(input);
+  const canonicalUrl = buildAbsoluteUrl(buildSelectionPath(input));
+  const imageUrl = buildAbsoluteUrl("/og-image.png");
   const origin = getSiteOrigin();
 
   document.title = title;
   document.documentElement.lang = "zh-Hant-TW";
 
   upsertMetaTag('meta[name="description"]', { name: "description", content: description });
-  upsertMetaTag('meta[name="keywords"]', { name: "keywords", content: keywords });
   upsertMetaTag('meta[name="robots"]', {
     name: "robots",
     content: "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1",
@@ -151,6 +119,18 @@ export const syncSeoMetadata = (input: SeoInput) => {
   });
   upsertMetaTag('meta[property="og:url"]', { property: "og:url", content: canonicalUrl });
   upsertMetaTag('meta[property="og:image"]', { property: "og:image", content: imageUrl });
+  upsertMetaTag('meta[property="og:image:type"]', {
+    property: "og:image:type",
+    content: "image/png",
+  });
+  upsertMetaTag('meta[property="og:image:width"]', {
+    property: "og:image:width",
+    content: "1200",
+  });
+  upsertMetaTag('meta[property="og:image:height"]', {
+    property: "og:image:height",
+    content: "630",
+  });
   upsertMetaTag('meta[property="og:image:alt"]', {
     property: "og:image:alt",
     content: "實價登錄查詢的台灣房價地圖與成交資料預覽圖",
@@ -202,6 +182,8 @@ export const syncSeoMetadata = (input: SeoInput) => {
         browserRequirements: "Requires JavaScript",
         operatingSystem: "All",
         inLanguage: "zh-Hant-TW",
+        isAccessibleForFree: true,
+        dateModified: CONTENT_LAST_MODIFIED,
         offers: {
           "@type": "Offer",
           price: "0",
@@ -224,6 +206,7 @@ export const syncSeoMetadata = (input: SeoInput) => {
         name: title,
         description,
         inLanguage: "zh-Hant-TW",
+        dateModified: CONTENT_LAST_MODIFIED,
         isPartOf: {
           "@id": `${origin}/#website`,
         },

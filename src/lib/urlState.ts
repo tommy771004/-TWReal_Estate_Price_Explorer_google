@@ -1,29 +1,18 @@
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "../constants";
+import {
+  DEFAULT_CITY,
+  DEFAULT_DISTRICT,
+  DEFAULT_TYPE,
+  buildSelectionPath,
+  parseSelectionPath,
+} from "./seoRoutes";
 
-export const DEFAULT_CITY = "臺北市";
-export const DEFAULT_TYPE = "買賣";
-export const DEFAULT_DISTRICT = "全部";
+export { buildSelectionPath };
 
 export type Selection = {
   cityName: string;
   typeName: string;
   district: string;
-};
-
-/**
- * Build the canonical query string for a selection, e.g. "?city=高雄市&type=租賃".
- * Defaults are omitted so the homepage stays at a clean "/".
- * Used by both the URL sync effect and the SEO canonical/og:url so they always match.
- */
-export const buildSelectionSearch = ({ cityName, typeName, district }: Partial<Selection>) => {
-  const params = new URLSearchParams();
-
-  if (cityName && cityName !== DEFAULT_CITY) params.set("city", cityName);
-  if (typeName && typeName !== DEFAULT_TYPE) params.set("type", typeName);
-  if (district && district !== DEFAULT_DISTRICT) params.set("district", district);
-
-  const query = params.toString();
-  return query ? `?${query}` : "";
 };
 
 /**
@@ -41,10 +30,16 @@ export const parseSelectionFromUrl = (): Selection => {
     return fallback;
   }
 
+  const pathSelection = parseSelectionPath(window.location.pathname);
   const params = new URLSearchParams(window.location.search);
-  const cityRaw = params.get("city")?.trim();
-  const typeRaw = params.get("type")?.trim();
-  const districtRaw = params.get("district")?.trim();
+  const selected = pathSelection ?? {
+    cityName: params.get("city")?.trim() || DEFAULT_CITY,
+    typeName: params.get("type")?.trim() || DEFAULT_TYPE,
+    district: params.get("district")?.trim() || DEFAULT_DISTRICT,
+  };
+  const cityRaw = selected.cityName;
+  const typeRaw = selected.typeName;
+  const districtRaw = selected.district;
 
   const cityName = cityRaw && CITIES.some((c) => c.name === cityRaw) ? cityRaw : DEFAULT_CITY;
   const typeName =
