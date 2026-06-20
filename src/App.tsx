@@ -56,6 +56,18 @@ import {
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
+import { TransactionCard } from "./components/TransactionCard";
+import { useGeocoding } from "./hooks/useGeocoding";
+import { 
+  YEARS, 
+  MONTHS, 
+  getPeriodValue, 
+  getPeriodFromValue, 
+  formatPrice, 
+  formatDate, 
+  getLatestThreeMonthsForDistrict,
+  getSpecialTags
+} from "./utils/real-estate-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -124,17 +136,6 @@ const FEATURED_QUERY_INTENTS = [
   "租賃實價登錄",
   "社區成交單價",
 ];
-
-const getSpecialTags = (remarks?: string) => {
-  if (!remarks) return [];
-  const result: { label: string; class: string }[] = [];
-  if (/(親友|關係人|員工|特殊關係)/.test(remarks)) result.push({ label: "特殊交易", class: "bg-red-50 text-red-600 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30" });
-  if (/(增建|加蓋|頂加)/.test(remarks)) result.push({ label: "含增建", class: "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30" });
-  if (/(毛胚|未隔間)/.test(remarks)) result.push({ label: "毛胚屋", class: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/30" });
-  if (/(瑕疵|漏水|凶宅|非自然|死亡)/.test(remarks)) result.push({ label: "屋況瑕疵", class: "bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/30" });
-  if (/(地上權|使用權)/.test(remarks)) result.push({ label: "限制產權", class: "bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/30" });
-  return result;
-};
 
 const modalContainerVariants = {
   hidden: { opacity: 0 },
@@ -217,9 +218,6 @@ export default function App() {
   const [showFacilities, setShowFacilities] = useState(false);
   const [showChartsMobile, setShowChartsMobile] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [geocodedCount, setGeocodedCount] = useState(0);
-  const [totalToGeocode, setTotalToGeocode] = useState(0);
-  const [isGeocoding, setIsGeocoding] = useState(false);
   const [globalFacilities, setGlobalFacilities] = useState<any[]>([]);
   
   // Saved Searches State
@@ -268,6 +266,22 @@ export default function App() {
     setRecentSearches([]);
     localStorage.removeItem('explorer_recent_searches');
   };
+
+  const [trendingSearches, setTrendingSearches] = useState<{ query: string; count: number; type: "city" | "district" | "keyword" }[]>([]);
+
+  const fetchTrendingSearches = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/trending-searches");
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && Array.isArray(result.data)) {
+          setTrendingSearches(result.data);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch trending searches:", error);
+    }
+  }, []);
 
   const toggleFavorite = (item: Transaction, e?: React.MouseEvent) => {
     if (e) {
@@ -328,28 +342,6 @@ export default function App() {
     setArea(s.area);
     setAge(s.age);
   };
-
-  // Location Cache to avoid redundant API calls
-  const locationCache = useRef<Record<string, { lat: number, lng: number }>>({});
-
-  // Initialize cache from localStorage
-  useEffect(() => {
-    try {
-      const savedCache = localStorage.getItem('real_estate_loc_cache');
-      if (savedCache) {
-        locationCache.current = JSON.parse(savedCache);
-      }
-    } catch (e) {
-      console.warn("Failed to load map cache", e);
-    }
-  }, []);
-
-  // Save cache helper
-  const saveCache = () => {
-    try {
-      localStorage.setItem('real_estate_loc_cache', JSON.stringify(locationCache.current));
-    } catch (e) {}
-  };
   
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -378,21 +370,6 @@ export default function App() {
     }
   };
 
-  const YEARS = Array.from({ length: 15 }, (_, i) => (101 + i).toString());
-  const MONTHS = Array.from({ length: 12 }, (_, i) => (1 + i).toString());
-
-  const getPeriodValue = (y: string, m: string) => {
-    const yearIdx = parseInt(y) - 101;
-    const monthIdx = parseInt(m) - 1;
-    return yearIdx * 12 + monthIdx;
-  };
-
-  const getPeriodFromValue = (val: number) => {
-    const year = 101 + Math.floor(val / 12);
-    const month = 1 + (val % 12);
-    return { y: year.toString(), m: month.toString() };
-  };
-
   const [dataSource, setDataSource] = useState<string | null>(null);
 
   const fetchData = React.useCallback(async (keywordOverride?: string) => {
@@ -411,8 +388,6 @@ export default function App() {
     setLoading(true);
     setError(null);
     setDataSource(null);
-    setGeocodedCount(0);
-    setIsGeocoding(false);
     setRobotStatus("準備擷取開放資料...");
     if (window.innerWidth < 768) {
       setIsSearchExpanded(false);
@@ -608,14 +583,45 @@ export default function App() {
       setRobotStatus("");
       setLoading(false);
       isFetchingRef.current = false;
+      fetchTrendingSearches();
     }
-  }, [cityName, typeName, district, propertyTypes, period, unitPrice, area, age, search]);
+  }, [cityName, typeName, district, propertyTypes, period, unitPrice, area, age, search, fetchTrendingSearches]);
+
+
+  const handleTrendingClick = React.useCallback((item: { query: string; type: "city" | "district" | "keyword" }) => {
+    setShowSuggestions(false);
+    if (item.type === "keyword") {
+      setSearch(item.query);
+      fetchData(item.query);
+    } else if (item.type === "district") {
+      const parts = item.query.split(" ");
+      if (parts.length === 2) {
+        setCityName(parts[0]);
+        setDistrict(parts[1]);
+        setSearch("");
+        setTimeout(() => {
+          fetchData("");
+        }, 50);
+      } else {
+        setSearch(item.query);
+        fetchData(item.query);
+      }
+    } else {
+      setCityName(item.query);
+      setDistrict("全部");
+      setSearch("");
+      setTimeout(() => {
+        fetchData("");
+      }, 50);
+    }
+  }, [fetchData]);
 
 
   useEffect(() => {
     // Automatically trigger data loading on mounting to display valid records instantly
     // and support query state setups passed via shared links
     fetchData();
+    fetchTrendingSearches();
 
     return () => {
       abortControllerRef.current?.abort();
@@ -1154,183 +1160,17 @@ export default function App() {
 
   }, [filteredData, typeName]);
 
-  // Geocoding logic using Nominatim (OpenStreetMap) with fallback & Cache
-  useEffect(() => {
-    if (!filteredData.length) {
-      setGeocodedCount(0);
-      setIsGeocoding(false);
-      return;
-    }
-
-    // We'll geocode the first N items to provide precision
-    const maxToGeocode = 40;
-    const itemsToProcess = filteredData.slice(0, maxToGeocode);
-    
-    // Check if we already have precision for these items
-    const needsGeocoding = itemsToProcess.filter(item => {
-      const cleanedAddress = item.address.replace(/(\d+)\s*[~～-]\s*\d+[號號]?/g, '$1號');
-      const cacheKey = `${cityName}${item.district}${cleanedAddress}`;
-      return !locationCache.current[cacheKey];
-    });
-
-    if (needsGeocoding.length === 0) {
-      setGeocodedCount(itemsToProcess.length);
-      setTotalToGeocode(itemsToProcess.length);
-      setIsGeocoding(false);
-      return;
-    }
-
-    let active = true;
-
-    const geocodeBatch = async () => {
-      if (!active) return;
-      setGeocodedCount(0);
-      setTotalToGeocode(itemsToProcess.length);
-      setIsGeocoding(true);
-      
-      // Update data with cache immediately
-      let newlyFoundFromCache = false;
-      const updatedFullData = [...data];
-      
-      itemsToProcess.forEach(item => {
-        const cleanedAddress = item.address.replace(/(\d+)\s*[~～-]\s*\d+[號號]?/g, '$1號');
-        const cacheKey = `${cityName}${item.district}${cleanedAddress}`;
-        if (locationCache.current[cacheKey]) {
-          const { lat, lng } = locationCache.current[cacheKey];
-          const idx = updatedFullData.findIndex(p => p.id === item.id);
-          if (idx !== -1 && (!updatedFullData[idx].lat || updatedFullData[idx].lat === 0 || updatedFullData[idx].lat.toString().includes('.'))) {
-             updatedFullData[idx] = { ...updatedFullData[idx], lat, lng };
-             newlyFoundFromCache = true;
-          }
-        }
-      });
-
-      if (newlyFoundFromCache && active) {
-        setData(updatedFullData);
-      }
-
-      // Progress count should start from cached items
-      const cachedCount = itemsToProcess.length - needsGeocoding.length;
-      if (active) setGeocodedCount(cachedCount);
-
-      const batchSize = 1; // Strict Nominatim compliance (1 req/sec)
-      
-      for (let i = 0; i < needsGeocoding.length; i += batchSize) {
-        if (!active) break;
-        const currentBatch = needsGeocoding.slice(i, i + batchSize);
-
-        await Promise.all(currentBatch.map(async (item) => {
-          try {
-            const cleanedAddress = item.address.replace(/(\d+)\s*[~～-]\s*\d+[號號]?/g, '$1號');
-            const cacheKey = `${cityName}${item.district}${cleanedAddress}`;
-            
-            let query = encodeURIComponent(`${cityName}${item.district}${cleanedAddress}`);
-            let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
-                headers: { 'Accept-Language': 'zh-TW', 'User-Agent': 'TaiwanRealEstate/1.0' }
-            });
-            
-            if (!response.ok) return;
-            let results = await response.json();
-            
-            if (results && results.length > 0 && active) {
-              const lat = parseFloat(results[0].lat);
-              const lng = parseFloat(results[0].lon);
-              locationCache.current[cacheKey] = { lat, lng };
-              setData(prev => prev.map(p => p.id === item.id ? { ...p, lat, lng } : p));
-            }
-          } catch (e) {
-            console.warn(`Geocoding failed for ${item.address}:`, e);
-          } finally {
-            if (active) setGeocodedCount(prev => prev + 1);
-          }
-        }));
-
-        saveCache();
-        if (i + batchSize < needsGeocoding.length && active) {
-          await new Promise(r => setTimeout(r, 1200)); 
-        }
-      }
-      if (active) setIsGeocoding(false);
-    };
-
-    geocodeBatch();
-    return () => { active = false; };
-  }, [filteredData.length, cityName, search, district]);
-
-  // Priority geocoding for selectedItem
-  useEffect(() => {
-    if (!selectedItem || (selectedItem.lat !== undefined && selectedItem.lng !== undefined)) return;
-
-    const geocodeSingle = async () => {
-      try {
-        const cleanedAddress = selectedItem.address.replace(/(\d+)\s*[~～-]\s*\d+[號號]?/g, '$1號');
-        const cacheKey = `${cityName}${selectedItem.district}${cleanedAddress}`;
-
-        // Check Cache first
-        if (locationCache.current[cacheKey]) {
-          const { lat, lng } = locationCache.current[cacheKey];
-          setData(prev => prev.map(p => p.id === selectedItem.id ? { ...p, lat, lng } : p));
-          setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat, lng } : prev);
-          return;
-        }
-
-        // Priority 1: Full cleaned address
-        let query = encodeURIComponent(`${cityName}${selectedItem.district}${cleanedAddress}`);
-        let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
-          headers: { 'Accept-Language': 'zh-TW', 'User-Agent': 'TaiwanRealEstate/1.0' }
-        });
-        let results = await response.json();
-        
-        if (results && results.length > 0) {
-          const lat = parseFloat(results[0].lat);
-          const lng = parseFloat(results[0].lon);
-          
-          locationCache.current[cacheKey] = { lat, lng };
-          saveCache();
-
-          setData(prev => prev.map(p => p.id === selectedItem.id ? { ...p, lat, lng } : p));
-          setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat, lng } : prev);
-        } else {
-          // Priority 2: Road name only
-          const roadName = cleanedAddress.split(/[0-9]/)[0];
-          if (roadName && roadName.length > 2) {
-             const roadQuery = encodeURIComponent(`${cityName}${selectedItem.district}${roadName}`);
-             const rResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${roadQuery}&limit=1`, {
-               headers: { 'Accept-Language': 'zh-TW', 'User-Agent': 'TaiwanRealEstate/1.0' }
-             });
-             const rResults = await rResponse.json();
-             if (rResults && rResults.length > 0) {
-                const lat = parseFloat(rResults[0].lat);
-                const lng = parseFloat(rResults[0].lon);
-                setData(prev => prev.map(p => p.id === selectedItem.id ? { ...p, lat, lng } : p));
-                setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat, lng } : prev);
-                return;
-             }
-          }
-
-          // Fallback to district if all fails
-          const districtQuery = encodeURIComponent(`${cityName}${selectedItem.district}`);
-          const dResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${districtQuery}&limit=1`, {
-            headers: { 'Accept-Language': 'zh-TW', 'User-Agent': 'TaiwanRealEstate/1.0' }
-          });
-          const dResults = await dResponse.json();
-          if (dResults && dResults.length > 0) {
-            const lat = parseFloat(dResults[0].lat);
-            const lng = parseFloat(dResults[0].lon);
-            setData(prev => prev.map(p => p.id === selectedItem.id ? { ...p, lat, lng } : p));
-            setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat, lng } : prev);
-          } else {
-             setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat: 0, lng: 0 } : prev);
-          }
-        }
-      } catch (e) {
-        console.warn(`Geocoding failed for ${selectedItem.address}:`, e);
-        setSelectedItem(prev => prev && prev.id === selectedItem.id ? { ...prev, lat: 0, lng: 0 } : prev);
-      }
-    };
-
-    geocodeSingle();
-  }, [selectedItem?.id, cityName]);
+  // Custom Geocoding Hook to handle async Nominatim mappings & Thread-safe OSM cache
+  const { isGeocoding, geocodedCount, totalToGeocode } = useGeocoding({
+    cityName,
+    filteredData,
+    data,
+    setData,
+    selectedItem,
+    setSelectedItem,
+    search,
+    district,
+  });
 
   const handleSort = (key: keyof Transaction) => {
     let direction: "asc" | "desc" = "asc";
@@ -1338,85 +1178,6 @@ export default function App() {
       direction = "desc";
     }
     setSortConfig({ key, direction });
-  };
-
-  const formatPrice = (price: string) => {
-    const p = parseFloat(price);
-    if (isNaN(p)) return price;
-    if (p >= 10000) {
-      const wan = p / 10000;
-      return `${wan % 1 === 0 ? wan : parseFloat(wan.toFixed(2))} 萬`;
-    }
-    return `${p} 元`;
-  };
-
-  const formatDate = (dateStr: string) => {
-    if (dateStr.length === 7) {
-      const year = parseInt(dateStr.substring(0, 3)) + 1911;
-      const month = dateStr.substring(3, 5);
-      const day = dateStr.substring(5, 7);
-      return `${year}/${month}/${day}`;
-    }
-    return dateStr;
-  };
-
-  const getLatestThreeMonthsForDistrict = (dist: string) => {
-    const districtItems = data.filter(item => item.district === dist);
-    
-    let maxYear = 0;
-    let maxMonth = 0;
-    
-    data.forEach(item => {
-      if (item.date && item.date.length >= 5) {
-        let yStr = item.date.length === 7 ? item.date.substring(0, 3) : item.date.substring(0, 2);
-        let mStr = item.date.length === 7 ? item.date.substring(3, 5) : item.date.substring(2, 4);
-        const yr = parseInt(yStr) + 1911;
-        const mo = parseInt(mStr);
-        if (yr > maxYear || (yr === maxYear && mo > maxMonth)) {
-          maxYear = yr;
-          maxMonth = mo;
-        }
-      }
-    });
-
-    if (maxYear === 0) {
-      maxYear = 2026;
-      maxMonth = 6;
-    }
-
-    let m1Y = maxYear;
-    let m1M = maxMonth - 1;
-    if (m1M === 0) { m1M = 12; m1Y -= 1; }
-
-    let m2Y = m1Y;
-    let m2M = m1M - 1;
-    if (m2M === 0) { m2M = 12; m2Y -= 1; }
-
-    const targetMonths = [
-      { year: m2Y, month: m2M, label: `${m2Y}/${m2M.toString().padStart(2, '0')}` },
-      { year: m1Y, month: m1M, label: `${m1Y}/${m1M.toString().padStart(2, '0')}` },
-      { year: maxYear, month: maxMonth, label: `${maxYear}/${maxMonth.toString().padStart(2, '0')}` }
-    ];
-
-    const counts = targetMonths.map(tm => {
-      const count = districtItems.filter(item => {
-        if (item.date && item.date.length >= 5) {
-          let yStr = item.date.length === 7 ? item.date.substring(0, 3) : item.date.substring(0, 2);
-          let mStr = item.date.length === 7 ? item.date.substring(3, 5) : item.date.substring(2, 4);
-          const yr = parseInt(yStr) + 1911;
-          const mo = parseInt(mStr);
-          return yr === tm.year && mo === tm.month;
-        }
-        return false;
-      }).length;
-
-      return {
-        month: tm.label,
-        count
-      };
-    });
-
-    return counts;
   };
 
   return (
@@ -1757,14 +1518,14 @@ export default function App() {
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 />
                 
-                {/* Autocomplete Dropdown: typed suggestions, or Recent Searches when empty */}
+                {/* Autocomplete Dropdown: typed suggestions, or Recent Searches & Trending Searches when empty */}
                 <AnimatePresence>
-                  {showSuggestions && (addressSuggestions.length > 0 || recentSearches.length > 0) && (
+                  {showSuggestions && (addressSuggestions.length > 0 || recentSearches.length > 0 || trendingSearches.length > 0) && (
                     <motion.div
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 5 }}
-                      className="absolute top-[calc(100%+8px)] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-xl shadow-lg overflow-hidden py-2 z-50"
+                      className="absolute top-[calc(100%+8px)] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-850 rounded-xl shadow-lg overflow-hidden py-3 z-50 max-h-[460px] overflow-y-auto"
                     >
                       {addressSuggestions.length > 0 ? (
                         addressSuggestions.map(suggestion => (
@@ -1780,34 +1541,76 @@ export default function App() {
                           </div>
                         ))
                       ) : (
-                        <>
-                          <div className="flex items-center justify-between px-4 pb-2 mb-1 border-b border-slate-100 dark:border-slate-800">
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.18em]">
-                              <Clock className="w-3 h-3" /> 最近搜尋
-                            </span>
-                            <button
-                              type="button"
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={clearRecentSearches}
-                              className="text-[10px] font-bold text-slate-400 hover:text-coral-500 transition-colors"
-                            >
-                              清除
-                            </button>
-                          </div>
-                          {recentSearches.map(query => (
-                            <div
-                              key={query}
-                              className="flex items-center gap-2 px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-coral-500/10 hover:text-coral-600 dark:hover:text-coral-400 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors"
-                              onClick={() => {
-                                setShowSuggestions(false);
-                                fetchData(query);
-                              }}
-                            >
-                              <Clock className="w-3.5 h-3.5 opacity-40 shrink-0" />
-                              <span className="truncate">{query}</span>
+                        <div className="flex flex-col gap-4">
+                          {/* Recent Searches Block */}
+                          {recentSearches.length > 0 && (
+                            <div>
+                              <div className="flex items-center justify-between px-4 pb-2 mb-1 border-b border-slate-100 dark:border-slate-800/80">
+                                <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.18em]">
+                                  <Clock className="w-3 h-3" /> 最近搜尋
+                                </span>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={clearRecentSearches}
+                                  className="text-[10px] font-bold text-slate-400 hover:text-coral-500 transition-colors"
+                                >
+                                  清除
+                                </button>
+                              </div>
+                              <div className="flex flex-col">
+                                {recentSearches.map(query => (
+                                  <div
+                                    key={query}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-coral-500/5 hover:text-coral-600 dark:hover:text-coral-400 cursor-pointer transition-colors"
+                                    onClick={() => {
+                                      setShowSuggestions(false);
+                                      fetchData(query);
+                                    }}
+                                  >
+                                    <Clock className="w-3.5 h-3.5 opacity-40 shrink-0" />
+                                    <span className="truncate">{query}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          ))}
-                        </>
+                          )}
+
+                          {/* Trending Searches Block */}
+                          {trendingSearches.length > 0 && (
+                            <div>
+                              <div className="flex items-center justify-between px-4 pb-2 mb-2 border-b border-slate-100 dark:border-slate-800/80">
+                                <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.18em]">
+                                  <TrendingUp className="w-3 h-3 text-coral-500" /> 熱門搜尋 (Trending)
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 px-4">
+                                {trendingSearches.map((item, idx) => (
+                                  <div
+                                    key={item.query}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    className="flex items-center justify-between px-3 py-2 text-[12px] font-bold text-slate-700 dark:text-slate-300 bg-slate-50 hover:bg-coral-500/10 hover:text-coral-600 dark:bg-slate-850 dark:hover:bg-coral-500/10 dark:hover:text-coral-400 cursor-pointer border border-slate-100/80 dark:border-slate-800/60 rounded-xl transition-all duration-200 shadow-sm"
+                                    onClick={() => handleTrendingClick(item)}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className={`flex items-center justify-center w-4-5 h-4-5 rounded-md text-[10px] font-black shrink-0 ${
+                                        idx < 3 
+                                          ? "bg-coral-500 text-white shadow-sm" 
+                                          : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                                      }`} style={{ width: "18px", height: "18px" }}>
+                                        {idx + 1}
+                                      </span>
+                                      <span className="truncate pr-1">{item.query}</span>
+                                    </div>
+                                    <span className="text-[9px] text-slate-400 dark:text-slate-500 scale-90 origin-right shrink-0">
+                                      {item.count}次
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </motion.div>
                   )}
@@ -2462,268 +2265,21 @@ export default function App() {
 
                 <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-3 px-1.5 sm:px-6 pb-2">
                   <AnimatePresence mode="popLayout">
-                    {paginatedData.map((item, idx) => {
-                      let nearestStation = null;
-                      let nearestSchool = null;
-                      let minStDist = Infinity;
-                      let minScDist = Infinity;
-                      
-                      const itemLat = typeof item.lat === 'string' ? parseFloat(item.lat) : item.lat;
-                      const itemLng = typeof item.lng === 'string' ? parseFloat(item.lng) : item.lng;
-                      
-                      if(itemLat && itemLng && globalFacilities.length > 0) {
-                        globalFacilities.forEach(f => {
-                          const flat = f.lat || f.center?.lat;
-                          const flng = f.lon || f.center?.lon;
-                          if(!flat || !flng) return;
-                          
-                          const d = calculateDistance(itemLat, itemLng, flat, flng);
-                          if(d > 5) return;
-                          
-                          const isSchool = f.tags?.amenity === "school";
-                          if(isSchool) {
-                            if(d < minScDist) { minScDist = d; nearestSchool = f; }
-                          } else {
-                            if(d < minStDist) { minStDist = d; nearestStation = f; }
-                          }
-                        });
-                      }
-
-                      let hasHistory = false;
-                      if (item.buildCase) {
-                        hasHistory = (historyCounts.buildCaseMap[item.buildCase] || 0) > 1;
-                      } else {
-                        const baseAddressMatch = item.address.match(/(.+?[路街道巷弄號])/);
-                        if (baseAddressMatch && baseAddressMatch[1] && baseAddressMatch[1].length >= 3) {
-                          const baseAddr = baseAddressMatch[1];
-                          const key = `${item.district}_${baseAddr}_${item.buildingType}`;
-                          hasHistory = (historyCounts.addressMap[key] || 0) > 1;
-                        }
-                      }
-
-                      let priceDiffPercentage = 0;
-                      let showPriceIndicator = false;
-                      const itemUnitPrice = parseFloat(item.unitPrice);
-                      const avgPrice = districtAveragePrices[item.district];
-                      if (hasHistory && itemUnitPrice > 0 && avgPrice > 0) {
-                        priceDiffPercentage = ((itemUnitPrice - avgPrice) / avgPrice) * 100;
-                        showPriceIndicator = true;
-                      }
-
-                      return (
-                      <motion.div
-                        layout
-                        initial={{ opacity: 0, scale: 0.96, y: 30, filter: "blur(8px)" }}
-                        animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
-                        exit={{ opacity: 0, scale: 0.95, filter: "blur(5px)", transition: { duration: 0.2, delay: 0 } }}
-                        whileHover={{ y: -4, scale: 1.01, boxShadow: "0 20px 40px -10px rgba(0,0,0,0.1)" }}
-                        whileTap={{ scale: 0.98 }}
-                        transition={{ 
-                          duration: 0.5, 
-                          ease: [0.16, 1, 0.3, 1],
-                          delay: Math.min(idx, 8) * 0.04,
-                          layout: { type: "spring", bounce: 0.2, duration: 0.6, delay: 0 }
-                        }}
+                    {paginatedData.map((item, idx) => (
+                      <TransactionCard
                         key={item.id}
-                        onClick={() => setSelectedItem(item)}
-                        className="group relative liquid-glass-panel rounded-[1.5rem] p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 cursor-pointer overflow-hidden ring-1 ring-black/5 dark:ring-white/10 hover:border-coral-500/30 dark:hover:border-coral-500/30 transition-all duration-300"
-                      >
-                        {/* Interactive Left Indicator line */}
-                        <div className="absolute left-0 top-0 bottom-0 w-[5px] bg-gradient-to-b from-coral-400 to-coral-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[0_0_12px_rgba(237,111,92,0.8)]" />
-                        
-                        <button
-                          onClick={(e) => toggleFavorite(item, e)}
-                          className={`absolute top-2.5 right-2.5 sm:top-3 sm:right-3 p-1.5 rounded-full transition-all z-10 ${
-                            favorites.some(f => f.id === item.id)
-                              ? 'text-red-500 bg-red-500/10'
-                              : 'text-slate-300 dark:text-slate-600 hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                          }`}
-                        >
-                          <Heart 
-                            size={16} 
-                            className={favorites.some(f => f.id === item.id) ? 'fill-current' : ''} 
-                            strokeWidth={2.5} 
-                          />
-                        </button>
-
-                        {/* Content Grid */}
-                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-[80px_minmax(0,1fr)_minmax(130px,auto)] gap-3 sm:gap-6 items-center pl-1 sm:pl-2 w-full min-w-0">
-                          
-                          {/* Date Block */}
-                          <div className="flex sm:flex-col items-center sm:items-start justify-between border-b sm:border-y-0 border-slate-200/50 dark:border-slate-800 pb-2 sm:pb-0">
-                            <div className="text-xl sm:text-2xl leading-none font-display font-medium text-ink/80 dark:text-white/80 tracking-tight">
-                              {formatDate(item.date).replace(/-/g, '.')}
-                            </div>
-                          </div>
-
-                          {/* Info Tags & Address */}
-                          <div className="flex flex-col justify-center items-start sm:items-center min-w-0 py-0.5">
-                            <div className="flex flex-wrap items-center justify-start sm:justify-center gap-1.5 mb-1.5 overflow-hidden max-h-[40px] sm:max-h-[20px]">
-                               <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold tracking-widest uppercase border border-slate-200/60 dark:border-slate-700/60 shadow-sm leading-none shrink-0 truncate max-w-[80px]">
-                                 {item.district}
-                               </span>
-                               <span className="px-2 py-0.5 rounded-md bg-coral-50 dark:bg-coral-500/10 text-coral-600 dark:text-coral-400 text-[10px] font-bold tracking-widest uppercase border border-coral-100 dark:border-coral-500/20 shadow-sm leading-none shrink-0 truncate max-w-[60px]">
-                                 {item.buildingType.split("(")[0] || "土地"}
-                               </span>
-                               <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold tracking-widest uppercase border border-amber-100 dark:border-amber-500/20 shadow-sm leading-none shrink-0 truncate max-w-[80px]">
-                                 {item.transactionType}
-                               </span>
-                               {typeName === "預售屋" && item.buildCase && (
-                                 <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold tracking-widest uppercase border border-emerald-100 dark:border-emerald-500/20 shadow-sm leading-none truncate max-w-[120px] shrink-0">
-                                   建案: {item.buildCase}
-                                 </span>
-                               )}
-                            </div>
-                            <h3 className="text-base sm:text-lg font-bold text-ink dark:text-slate-50 truncate group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-snug w-full text-left sm:text-center">
-                              {item.address}
-                            </h3>
-                            
-                            {getSpecialTags(item.remarks).length > 0 && (
-                              <div className="flex flex-wrap items-center justify-start sm:justify-center gap-1.5 mt-1">
-                                {getSpecialTags(item.remarks).map(tag => (
-                                  <span key={tag.label} className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-black tracking-widest uppercase border leading-none shadow-sm flex items-center gap-1 ${tag.class}`}>
-                                    <ShieldCheck size={10} />
-                                    {tag.label}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-
-                            <div className="text-[11px] font-bold mt-1.5 flex flex-wrap items-center justify-start sm:justify-center gap-1.5">
-                              <span className="flex items-center gap-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-[6px]">
-                                <Maximize2 className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.buildingArea ? (parseFloat(item.buildingArea) * 0.3025).toFixed(2) : "0.00"} 坪</span>
-                              </span>
-                              {item.floor && (
-                                <span className="flex items-center gap-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 px-1.5 py-0.5 rounded-[6px]">
-                                  <Layers className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.floor}{item.totalFloor ? ` / ${item.totalFloor}` : ''}</span>
-                                </span>
-                              )}
-                              {item.rooms && item.rooms !== '0' && (
-                                <>
-                                  <div className="flex items-center justify-start sm:justify-center gap-1.5">
-                                    <span className="flex items-center gap-1 bg-coral-500/10 text-coral-600 dark:text-coral-400 px-1.5 py-0.5 rounded-[6px]"><Bed className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.rooms}</span></span>
-                                    {item.halls && item.halls !== '0' && <span className="flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-[6px]"><Sofa className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.halls}</span></span>}
-                                    {item.bathrooms && item.bathrooms !== '0' && <span className="flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-[6px]"><Bath className="w-[10px] h-[10px]" /> <span className="text-[10px] font-bold leading-none">{item.bathrooms}</span></span>}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                            
-                            {(nearestStation || nearestSchool) && (
-                              <div className="text-[10px] font-bold mt-1.5 flex flex-wrap items-center justify-start sm:justify-center gap-1.5">
-                                {nearestStation && (
-                                  <span className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-[6px] border border-blue-100 dark:border-blue-800/30">
-                                    <Train className="w-3 h-3" />
-                                    <span>
-                                      {nearestStation.tags?.name || "捷運/車站"} 
-                                      <span className="ml-1 opacity-70">
-                                        {minStDist < 1 ? `${Math.round(minStDist * 1000)}m` : `${minStDist.toFixed(1)}km`}
-                                      </span>
-                                    </span>
-                                  </span>
-                                )}
-                                {nearestSchool && (
-                                  <span className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-[6px] border border-amber-100 dark:border-amber-800/30">
-                                    <GraduationCap className="w-3 h-3" />
-                                    <span>
-                                      {nearestSchool.tags?.name || "學校"}
-                                      <span className="ml-1 opacity-70">
-                                        {minScDist < 1 ? `${Math.round(minScDist * 1000)}m` : `${minScDist.toFixed(1)}km`}
-                                      </span>
-                                    </span>
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Price Block */}
-                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-200/50 dark:border-slate-800 pt-3 sm:pt-0 pl-1 sm:pl-5 sm:pr-4 mt-2 sm:mt-0 relative sm:h-full min-w-0 gap-2 shrink-0">
-                            <div className="flex flex-row sm:flex-col items-baseline sm:items-end sm:flex-1 sm:justify-center gap-2 sm:gap-1.5 min-w-0 flex-wrap">
-                              <div className="flex items-baseline gap-1.5 sm:gap-2 order-2 sm:order-1 shrink-0 overflow-hidden">
-                                 <span className="text-xs font-bold text-slate-400 shrink-0">總價</span>
-                                 <span className="text-xl sm:text-3xl leading-none font-display font-medium text-coral-600 dark:text-coral-400 tracking-tight truncate">
-                                   {formatPrice(item.totalPrice)}
-                                 </span>
-                              </div>
-                              {item.parkingPrice && parseFloat(item.parkingPrice) > 0 ? (
-                                <div className="flex flex-col items-end gap-0.5 order-1 sm:order-2 shrink-0 truncate max-w-full">
-                                   <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 bg-slate-100/80 dark:bg-slate-800/80 px-2 py-0.5 rounded-md backdrop-blur-sm shadow-sm ring-1 ring-black/5 dark:ring-white/5">
-                                     <span className="flex items-center gap-1 text-slate-400"><Home size={10} /> 房 {formatPrice((parseFloat(item.totalPrice) - parseFloat(item.parkingPrice)).toString())}</span>
-                                     <span className="text-slate-300 dark:text-slate-600">|</span>
-                                     <span className="flex items-center gap-1 text-slate-400"><Car size={10} /> 車 {formatPrice(item.parkingPrice)}</span>
-                                   </div>
-                                   <div className="flex items-center justify-end gap-1.5 w-full mt-1">
-                                      <div className="text-xs font-bold text-slate-400 truncate text-right">
-                                        {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : "-"}
-                                      </div>
-                                      {showPriceIndicator && (
-                                        <span 
-                                          title={`與同區域(${item.district})平均成交單價 ${(avgPrice * 3.30578 / 10000).toFixed(1)} 萬/坪 相比的差異`}
-                                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black leading-none ${
-                                            priceDiffPercentage >= 0 
-                                              ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30" 
-                                              : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
-                                          }`}
-                                        >
-                                          {priceDiffPercentage >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                          <span>{Math.abs(priceDiffPercentage).toFixed(1)}%</span>
-                                        </span>
-                                      )}
-                                   </div>
-                                </div>
-                              ) : (
-                                <div className="text-xs font-bold text-slate-400 sm:mt-0.5 order-1 sm:order-2 shrink-0 truncate max-w-full flex items-center justify-end gap-1.5">
-                                  <span>
-                                    {item.unitPrice ? `${(parseFloat(item.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪` : "-"}
-                                  </span>
-                                  {showPriceIndicator && (
-                                    <span 
-                                      title={`與同區域(${item.district})平均成交單價 ${(avgPrice * 3.30578 / 10000).toFixed(1)} 萬/坪 相比的差異`}
-                                      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black leading-none ${
-                                        priceDiffPercentage >= 0 
-                                          ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30" 
-                                          : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
-                                      }`}
-                                    >
-                                      {priceDiffPercentage >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                      <span>{Math.abs(priceDiffPercentage).toFixed(1)}%</span>
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 ml-auto sm:ml-0 sm:self-end self-center flex-shrink-0">
-                              <Button 
-                                 variant="ghost" 
-                                 size="sm" 
-                                 className="h-8 px-3 text-xs bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-coral-600 dark:hover:text-coral-400 rounded-xl font-bold transition-all shadow-sm flex items-center gap-1"
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   setTrendDistrict(item.district);
-                                 }}
-                              >
-                                 <TrendingUp className="w-3.5 h-3.5 text-coral-500" />
-                                 <span>區域熱度</span>
-                              </Button>
-                              <Button 
-                                 variant="ghost" 
-                                 size="sm" 
-                                 className="h-8 px-4 text-xs bg-slate-100 hover:bg-coral-500 hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-coral-500/80 dark:hover:text-white rounded-xl font-bold tracking-widest uppercase transition-all shadow-sm"
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   setSelectedItem(item);
-                                 }}
-                              >
-                                 詳情 <ChevronRight className="w-3 h-3 ml-1" />
-                              </Button>
-                            </div>
-                          </div>
-
-                        </div>
-                      </motion.div>
-                      );
-                    })}
+                        item={item}
+                        idx={idx}
+                        typeName={typeName}
+                        favorites={favorites}
+                        toggleFavorite={toggleFavorite}
+                        setSelectedItem={setSelectedItem}
+                        setTrendDistrict={setTrendDistrict}
+                        globalFacilities={globalFacilities}
+                        historyCounts={historyCounts}
+                        districtAveragePrices={districtAveragePrices}
+                      />
+                    ))}
                   </AnimatePresence>
                 </motion.div>
               </div>
@@ -2967,7 +2523,7 @@ export default function App() {
           </DialogHeader>
           
           {trendDistrict && (() => {
-            const trendData = getLatestThreeMonthsForDistrict(trendDistrict);
+            const trendData = getLatestThreeMonthsForDistrict(trendDistrict, data);
             const totalVolume = trendData.reduce((acc, curr) => acc + curr.count, 0);
             
             let changeText = "";

@@ -5,6 +5,46 @@ import xlsx from "xlsx";
 const app = express();
 app.use(express.json());
 
+const CITY_CODE_TO_NAME: Record<string, string> = {
+  "A": "臺北市", "B": "臺中市", "C": "基隆市", "D": "臺南市",
+  "E": "高雄市", "F": "新北市", "G": "宜蘭縣", "H": "桃園市",
+  "I": "嘉義市", "J": "新竹縣", "K": "苗栗縣", "M": "南投縣",
+  "N": "彰化縣", "O": "新竹市", "P": "雲林縣", "Q": "嘉義縣",
+  "T": "屏東縣", "U": "花蓮縣", "V": "臺東縣", "W": "金門縣",
+  "X": "澎湖縣", "Z": "連江縣"
+};
+
+interface TrendingQueryItem {
+  query: string;
+  count: number;
+  type: "city" | "district" | "keyword";
+}
+
+let trendingQueries: TrendingQueryItem[] = [
+  { query: "臺北市 信義區", count: 125, type: "district" },
+  { query: "新北市 板橋區", count: 98, type: "district" },
+  { query: "臺中市 西屯區", count: 87, type: "district" },
+  { query: "和平東路", count: 64, type: "keyword" },
+  { query: "桃園市 中壢區", count: 52, type: "district" },
+  { query: "高雄市 鼓山區", count: 48, type: "district" },
+  { query: "中山路", count: 43, type: "keyword" },
+  { query: "臺北市 大安區", count: 39, type: "district" },
+];
+
+function updateTrendingQuery(query: string, type: "city" | "district" | "keyword") {
+  const existing = trendingQueries.find(item => item.query.toLowerCase() === query.toLowerCase());
+  if (existing) {
+    existing.count += 1;
+  } else {
+    trendingQueries.push({ query, count: 1, type });
+  }
+}
+
+app.get("/api/trending-searches", (_req, res) => {
+  const sorted = [...trendingQueries].sort((a, b) => b.count - a.count).slice(0, 8);
+  return res.json({ success: true, data: sorted });
+});
+
 let currentActivePages = 0;
 
 app.post("/api/proxy-search", async (req, res) => {
@@ -17,6 +57,16 @@ app.post("/api/proxy-search", async (req, res) => {
   try {
     const { cityCode, district, propertyTypes, transactionType, period, unitPrice, area, age, keyword } = req.body;
     
+    // Track query location
+    const cName = CITY_CODE_TO_NAME[String(cityCode || "A").toUpperCase()] || "臺北市";
+    if (keyword && String(keyword).trim()) {
+      updateTrendingQuery(String(keyword).trim(), "keyword");
+    } else if (district && district !== "全部") {
+      updateTrendingQuery(`${cName} ${district}`, "district");
+    } else {
+      updateTrendingQuery(cName, "city");
+    }
+
     const txCode = String(transactionType).toLowerCase() || "a";
     const cCode = String(cityCode).toLowerCase() || "a";
     
