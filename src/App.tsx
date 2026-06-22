@@ -63,6 +63,7 @@ import {
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
 import { TransactionCard } from "./components/TransactionCard";
+import { AffiliateMarquee } from "./components/AffiliateMarquee";
 import { useGeocoding } from "./hooks/useGeocoding";
 import { 
   YEARS, 
@@ -2625,6 +2626,8 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {filteredData.length > 0 && <AffiliateMarquee />}
 
               {filteredData.length === 0 && !loading && !error && (
                 <motion.div 
