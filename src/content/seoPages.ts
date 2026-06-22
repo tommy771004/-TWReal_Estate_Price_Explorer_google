@@ -386,6 +386,181 @@ export const SEO_CONTENT_PAGES: SeoContentPage[] = [
       { href: "/guides/renovation-budget/", label: "新居裝潢預算規劃指南" },
     ],
   },
+  {
+    path: "/buying-guides/",
+    title: "各縣市購屋指南",
+    description: "六都首購與換屋的在地重點整理，搭配實價登錄查詢掌握各區成交行情、生活機能與選屋方向。",
+    intro: "不同縣市的房市結構、產品型態與生活圈差異很大。這些在地購屋指南整理各都會的選屋重點與注意方向，並連到對應的實價登錄查詢，讓你用實際成交資料驗證行情；內容為一般性說明，不預測房價，也非投資建議。",
+    sections: [
+      { heading: "怎麼使用這些指南", paragraphs: ["先看目標縣市的指南掌握區域輪廓與選屋重點，再回到實價登錄查詢，鎖定行政區、期間與坪數比對實際成交，避免只憑印象判斷行情。"] },
+      { heading: "跨縣市比較提醒", paragraphs: ["跨縣市比較時，應維持相同交易類型與期間，並考量建物型態（透天、公寓、電梯大樓）、屋齡、公設比與車位計價方式的差異。"] },
+    ],
+    links: [
+      { href: "/buying-guides/taipei/", label: "臺北市首購指南" },
+      { href: "/buying-guides/new-taipei/", label: "新北市購屋指南" },
+      { href: "/buying-guides/taoyuan/", label: "桃園市買房指南" },
+      { href: "/buying-guides/taichung/", label: "臺中市買房指南" },
+      { href: "/buying-guides/tainan/", label: "臺南市購屋指南" },
+      { href: "/buying-guides/kaohsiung/", label: "高雄市購屋指南" },
+    ],
+  },
+  {
+    path: "/buying-guides/taipei/",
+    title: "臺北市首購指南",
+    description: "臺北市首購族的選屋重點：蛋黃區與蛋白區取捨、中古屋與老屋比例、捷運生活圈與預算配置方向。",
+    intro: "臺北市是全台房價最高的都會，首購族多半需要在地段、坪數與屋齡之間取捨。本頁整理選屋思考方向，並連到臺北市實價登錄查詢，協助你用實際成交資料檢視預算可負擔的區域。",
+    sections: [
+      { heading: "地段與預算的取捨", paragraphs: ["核心行政區（如大安、信義、中正）單價較高，預算有限時可往文山、北投、內湖等相對外圍或交通節點周邊評估；先確定可負擔總價，再回推可選的行政區與坪數。"] },
+      { heading: "屋齡與產品型態", paragraphs: ["市區中古屋與老屋比例高，需留意屋況、管線、有無電梯與後續整修成本；新成屋與重劃案相對稀少且單價較高。"] },
+      { heading: "用成交資料驗證", paragraphs: ["鎖定通勤可接受的捷運生活圈後，於實價登錄查詢比對同區、同型態、相近屋齡的成交，避免買在偏離行情的價格。"] },
+    ],
+    links: [
+      { href: "/prices/%E8%87%BA%E5%8C%97%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "臺北市買賣實價登錄查詢" },
+      { href: "/guides/mortgage-calculator/", label: "房貸試算與首購貸款指南" },
+      { href: "/buying-guides/", label: "各縣市購屋指南" },
+    ],
+  },
+  {
+    path: "/buying-guides/new-taipei/",
+    title: "新北市購屋指南",
+    description: "新北市購屋重點：板橋、新莊、三重、淡水、林口等生活圈差異，通勤取向與重劃區的選擇方向。",
+    intro: "新北市幅員廣、各區生活圈差異大，常是雙北通勤族的首購主戰場。本頁說明不同生活圈的取向與選屋注意點，並連到新北市實價登錄查詢驗證行情。",
+    sections: [
+      { heading: "依通勤決定生活圈", paragraphs: ["靠近臺北的板橋、三重、新莊、中和通勤便利、單價較高；淡水、林口、三峽、樹林等地產品較新、單價相對親民，但要評估通勤時間與交通方式。"] },
+      { heading: "重劃區與新成屋", paragraphs: ["林口、三重二重疏洪道周邊、新莊副都心等重劃區新案較多，留意公設比、生活機能成熟度與交屋時程。"] },
+      { heading: "用成交資料驗證", paragraphs: ["先界定可接受的通勤範圍，再於實價登錄比對同生活圈、同型態的成交價與坪數，逐步縮小目標。"] },
+    ],
+    links: [
+      { href: "/prices/%E6%96%B0%E5%8C%97%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "新北市買賣實價登錄查詢" },
+      { href: "/guides/mortgage-approval-factors/", label: "影響房貸核貸與成數的關鍵因素" },
+      { href: "/buying-guides/", label: "各縣市購屋指南" },
+    ],
+  },
+  {
+    path: "/buying-guides/taoyuan/",
+    title: "桃園市買房指南",
+    description: "桃園市買房重點：青埔高鐵特區、機場捷運沿線與各區重劃案的選屋方向與生活機能評估。",
+    intro: "桃園市以重劃區與相對親民的單價吸引不少首購與雙北外溢族群。本頁整理選屋重點，並連到桃園市實價登錄查詢檢視行情。",
+    sections: [
+      { heading: "重劃區與交通建設", paragraphs: ["青埔高鐵特區、機場捷運沿線與中路、經國重劃區等地新案密集，購買前留意機能成熟度、嫌惡設施與生活便利性。"] },
+      { heading: "自住與通勤評估", paragraphs: ["桃園往返雙北多依賴高鐵、台鐵與國道，評估時把通勤成本與時間納入長期負擔考量。"] },
+      { heading: "用成交資料驗證", paragraphs: ["新案與中古屋的單價與公設比差異大，於實價登錄比對同區、同類型成交，較能掌握合理價位。"] },
+    ],
+    links: [
+      { href: "/prices/%E6%A1%83%E5%9C%92%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "桃園市買賣實價登錄查詢" },
+      { href: "/guides/first-home-loan-subsidy/", label: "首購族貸款優惠與補貼方案總覽" },
+      { href: "/buying-guides/", label: "各縣市購屋指南" },
+    ],
+  },
+  {
+    path: "/buying-guides/taichung/",
+    title: "臺中市買房指南",
+    description: "臺中市買房重點：七期與各重劃區、透天與電梯大樓產品差異，以及生活機能與通勤的評估方向。",
+    intro: "臺中市重劃區多、產品型態多元，透天與電梯大樓並存。本頁說明選屋重點，並連到臺中市實價登錄查詢比對行情。",
+    sections: [
+      { heading: "重劃區與產品型態", paragraphs: ["七期、十四期、北屯與水湳等重劃區新案多；同時也有不少透天產品，購買前先確認自身對格局、車位與管理型態的需求。"] },
+      { heading: "生活機能與發展", paragraphs: ["重劃區初期機能可能尚未成熟，評估學區、商圈、醫療與交通的現況與發展計畫，避免只看建案行銷。"] },
+      { heading: "用成交資料驗證", paragraphs: ["透天與大樓的計價基礎不同，於實價登錄分別比對同型態成交，較能正確判讀單價與總價。"] },
+    ],
+    links: [
+      { href: "/prices/%E8%87%BA%E4%B8%AD%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "臺中市買賣實價登錄查詢" },
+      { href: "/guides/renovation-budget/", label: "新居裝潢預算規劃指南" },
+      { href: "/buying-guides/", label: "各縣市購屋指南" },
+    ],
+  },
+  {
+    path: "/buying-guides/tainan/",
+    title: "臺南市購屋指南",
+    description: "臺南市購屋重點：透天文化、南科帶動的區域發展，以及市區與郊區生活機能的選擇方向。",
+    intro: "臺南市透天產品比例高，近年受科學園區發展帶動部分區域需求。本頁整理選屋重點，並連到臺南市實價登錄查詢檢視行情。",
+    sections: [
+      { heading: "透天與大樓的選擇", paragraphs: ["臺南透天文化盛行，但市區與重劃區也有電梯大樓；依家庭結構、管理需求與預算決定產品型態。"] },
+      { heading: "區域發展與機能", paragraphs: ["科學園區周邊與安平、東區等地各有不同的生活圈特性，留意通勤、學區與生活便利性的實際情況。"] },
+      { heading: "用成交資料驗證", paragraphs: ["於實價登錄比對同區、同型態的成交，並注意土地與建物面積的計價方式，避免單純以表面總價判斷。"] },
+    ],
+    links: [
+      { href: "/prices/%E8%87%BA%E5%8D%97%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "臺南市買賣實價登錄查詢" },
+      { href: "/guides/transaction-records/", label: "如何閱讀實價登錄成交紀錄" },
+      { href: "/buying-guides/", label: "各縣市購屋指南" },
+    ],
+  },
+  {
+    path: "/buying-guides/kaohsiung/",
+    title: "高雄市購屋指南",
+    description: "高雄市購屋重點：亞洲新灣區與各重劃區、透天與大樓產品，以及產業發展對區域需求的影響。",
+    intro: "高雄市產品型態多元，亞洲新灣區與多個重劃區帶動部分區域發展。本頁說明選屋重點，並連到高雄市實價登錄查詢比對行情。",
+    sections: [
+      { heading: "重劃區與都會發展", paragraphs: ["亞洲新灣區、美術館特區、農十六與大樓重劃區等地各有特色；購買前評估機能成熟度與長期發展計畫。"] },
+      { heading: "產品型態與需求", paragraphs: ["透天與電梯大樓並存，依生活型態、車位與管理需求選擇；新案與中古屋的單價、公設比差異需一併考量。"] },
+      { heading: "用成交資料驗證", paragraphs: ["於實價登錄比對同區、同型態成交，並留意特殊交易與車位拆分，避免被單一數字誤導。"] },
+    ],
+    links: [
+      { href: "/prices/%E9%AB%98%E9%9B%84%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "高雄市買賣實價登錄查詢" },
+      { href: "/guides/mortgage-calculator/", label: "房貸試算與首購貸款指南" },
+      { href: "/buying-guides/", label: "各縣市購屋指南" },
+    ],
+  },
+  {
+    path: "/renting-guides/",
+    title: "租屋族指南",
+    description: "租屋族必看：租金行情怎麼查、押金與租約注意事項、以及租屋權益與報稅補貼的方向整理。",
+    intro: "租屋同樣需要做功課。這些指南協助你查租金行情、看懂租約與押金規則，並了解租屋族的權益與補助方向；內容為一般性說明，個別情形與最新規定請以官方公告與契約為準。",
+    sections: [
+      { heading: "租屋前先做的功課", paragraphs: ["先用實價登錄的租賃資料了解目標區域的租金區間，再看屋、議約；簽約前確認租約內容、押金與屋況點交。"] },
+    ],
+    links: [
+      { href: "/renting-guides/rent-market/", label: "租金行情怎麼查與判讀" },
+      { href: "/renting-guides/deposit-and-lease/", label: "租屋押金與租約注意事項" },
+      { href: "/renting-guides/tenant-rights/", label: "租屋族權益與報稅補貼" },
+    ],
+  },
+  {
+    path: "/renting-guides/rent-market/",
+    title: "租金行情怎麼查與判讀",
+    description: "說明如何利用實價登錄租賃資料查詢租金行情，以及判讀租金時應注意的條件差異。",
+    intro: "租金和買賣一樣有公開的實價登錄資料可參考。本頁說明如何查租金行情，以及比較時要注意的面向，避免只看單一數字。",
+    sections: [
+      { heading: "用實價登錄查租金", paragraphs: ["於查詢工具選擇『租賃』交易類型與目標行政區，觀察租金的分布區間，再對照坪數、屋齡與型態，掌握合理範圍。"] },
+      { heading: "判讀租金的注意點", paragraphs: ["租金會受到屋況、樓層、是否含管理費或車位、傢俱家電配備與租期影響；比較時盡量挑選條件相近的案例。"] },
+    ],
+    links: [
+      { href: "/prices/%E8%87%BA%E5%8C%97%E5%B8%82/%E7%A7%9F%E8%B3%83/", label: "臺北市租賃實價登錄查詢" },
+      { href: "/renting-guides/deposit-and-lease/", label: "租屋押金與租約注意事項" },
+      { href: "/renting-guides/", label: "租屋族指南" },
+    ],
+  },
+  {
+    path: "/renting-guides/deposit-and-lease/",
+    title: "租屋押金與租約注意事項",
+    description: "整理租屋押金的一般規則、租約應確認的重點，以及點交與押金返還的注意事項。",
+    intro: "押金與租約是租屋糾紛的常見來源。本頁整理一般性的注意方向，協助你在簽約前後保護自身權益；實際規定與權利義務以現行法令與契約內容為準。",
+    sections: [
+      { heading: "押金的一般規則", paragraphs: ["依土地法相關規定，租屋擔保金（押金）一般以不超過二個月租金總額為限，超過部分租客得主張抵充租金；實際情形仍應確認契約與現行法令。"] },
+      { heading: "租約要看清楚的項目", paragraphs: ["確認租期、租金與調整方式、押金金額與返還條件、修繕責任歸屬、提前終止的條件與違約金，以及是否含管理費、水電與網路。"], items: ["可參考內政部公告的房屋租賃定型化契約應記載及不得記載事項。", "點交時拍照記錄屋況與既有設備，作為退租時的依據。", "重要約定盡量以書面留存，避免僅口頭承諾。"] },
+      { heading: "退租與押金返還", paragraphs: ["退租時依約完成點交與回復原狀，確認無欠費後請求返還押金；對於正常使用的耗損與人為損壞，責任歸屬應依契約與法令判斷。"] },
+    ],
+    links: [
+      { href: "/renting-guides/tenant-rights/", label: "租屋族權益與報稅補貼" },
+      { href: "/renting-guides/rent-market/", label: "租金行情怎麼查與判讀" },
+      { href: "/renting-guides/", label: "租屋族指南" },
+    ],
+  },
+  {
+    path: "/renting-guides/tenant-rights/",
+    title: "租屋族權益與報稅補貼",
+    description: "說明租屋族常見的權益保障方向、政府租金補貼概念，以及租金支出在綜所稅上的處理原則。",
+    intro: "除了租約本身，租屋族還可留意政府補貼與報稅相關權益。本頁以一般性概念說明方向，實際資格、額度與申辦方式請以內政部、財政部與各主管機關最新公告為準。",
+    sections: [
+      { heading: "租金補貼的概念", paragraphs: ["政府會不定期推動住宅租金補貼，協助符合條件的租屋族減輕負擔；申請資格、補貼額度與受理期間依當年度公告而定，建議至內政部相關專區查詢最新內容。"] },
+      { heading: "租金支出與報稅", paragraphs: ["符合條件的自用住宅租金支出，可依規定在綜合所得稅中列報扣除，但有排除情形（例如同時有自用住宅購屋借款利息扣除等）；額度、條件與申報方式以財政部最新規定為準。"] },
+      { heading: "保障自身權益", paragraphs: ["保留租約、繳費紀錄與溝通往來，遇到爭議可洽詢地方政府消費者服務或租賃住宅相關主管機關尋求協助。"] },
+    ],
+    links: [
+      { href: "/renting-guides/deposit-and-lease/", label: "租屋押金與租約注意事項" },
+      { href: "/renting-guides/rent-market/", label: "租金行情怎麼查與判讀" },
+      { href: "/renting-guides/", label: "租屋族指南" },
+    ],
+  },
 ];
 
 export const getSeoContentPage = (pathname: string) =>
