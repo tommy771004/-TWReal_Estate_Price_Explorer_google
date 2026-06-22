@@ -26,7 +26,7 @@ test("SEO modification date is injected once at build time", async () => {
   const lastModifiedValues = [
     ...builtSitemap.matchAll(/<lastmod>(.*?)<\/lastmod>/g),
   ].map((match) => match[1]);
-  assert.equal(lastModifiedValues.length, 94);
+  assert.equal(lastModifiedValues.length, 100);
   assert.deepEqual(new Set(lastModifiedValues), new Set([OVERRIDE_DATE]));
 
   for (const source of [appSource, seoSource, sourceHtml, sourceSitemap]) {

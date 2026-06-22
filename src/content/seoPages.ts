@@ -1,3 +1,5 @@
+import { CITY_DISTRICTS } from "../constants";
+
 export type SeoContentSection = {
   heading: string;
   paragraphs: string[];
@@ -13,7 +15,7 @@ export type SeoContentPage = {
   links?: { href: string; label: string }[];
 };
 
-export const SEO_CONTENT_PAGES: SeoContentPage[] = [
+const STATIC_PAGES: SeoContentPage[] = [
   {
     path: "/prices/",
     title: "台灣各縣市實價登錄查詢",
@@ -416,6 +418,7 @@ export const SEO_CONTENT_PAGES: SeoContentPage[] = [
     ],
     links: [
       { href: "/prices/%E8%87%BA%E5%8C%97%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "臺北市買賣實價登錄查詢" },
+      { href: "/buying-guides/taipei/districts/", label: "臺北市各行政區索引" },
       { href: "/guides/mortgage-calculator/", label: "房貸試算與首購貸款指南" },
       { href: "/buying-guides/", label: "各縣市購屋指南" },
     ],
@@ -432,6 +435,7 @@ export const SEO_CONTENT_PAGES: SeoContentPage[] = [
     ],
     links: [
       { href: "/prices/%E6%96%B0%E5%8C%97%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "新北市買賣實價登錄查詢" },
+      { href: "/buying-guides/new-taipei/districts/", label: "新北市各行政區索引" },
       { href: "/guides/mortgage-approval-factors/", label: "影響房貸核貸與成數的關鍵因素" },
       { href: "/buying-guides/", label: "各縣市購屋指南" },
     ],
@@ -448,6 +452,7 @@ export const SEO_CONTENT_PAGES: SeoContentPage[] = [
     ],
     links: [
       { href: "/prices/%E6%A1%83%E5%9C%92%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "桃園市買賣實價登錄查詢" },
+      { href: "/buying-guides/taoyuan/districts/", label: "桃園市各行政區索引" },
       { href: "/guides/first-home-loan-subsidy/", label: "首購族貸款優惠與補貼方案總覽" },
       { href: "/buying-guides/", label: "各縣市購屋指南" },
     ],
@@ -464,6 +469,7 @@ export const SEO_CONTENT_PAGES: SeoContentPage[] = [
     ],
     links: [
       { href: "/prices/%E8%87%BA%E4%B8%AD%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "臺中市買賣實價登錄查詢" },
+      { href: "/buying-guides/taichung/districts/", label: "臺中市各行政區索引" },
       { href: "/guides/renovation-budget/", label: "新居裝潢預算規劃指南" },
       { href: "/buying-guides/", label: "各縣市購屋指南" },
     ],
@@ -480,6 +486,7 @@ export const SEO_CONTENT_PAGES: SeoContentPage[] = [
     ],
     links: [
       { href: "/prices/%E8%87%BA%E5%8D%97%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "臺南市買賣實價登錄查詢" },
+      { href: "/buying-guides/tainan/districts/", label: "臺南市各行政區索引" },
       { href: "/guides/transaction-records/", label: "如何閱讀實價登錄成交紀錄" },
       { href: "/buying-guides/", label: "各縣市購屋指南" },
     ],
@@ -496,6 +503,7 @@ export const SEO_CONTENT_PAGES: SeoContentPage[] = [
     ],
     links: [
       { href: "/prices/%E9%AB%98%E9%9B%84%E5%B8%82/%E8%B2%B7%E8%B3%A3/", label: "高雄市買賣實價登錄查詢" },
+      { href: "/buying-guides/kaohsiung/districts/", label: "高雄市各行政區索引" },
       { href: "/guides/mortgage-calculator/", label: "房貸試算與首購貸款指南" },
       { href: "/buying-guides/", label: "各縣市購屋指南" },
     ],
@@ -562,6 +570,45 @@ export const SEO_CONTENT_PAGES: SeoContentPage[] = [
     ],
   },
 ];
+
+// 六都行政區索引頁：每都一頁，列出所有行政區並連到該區的實價登錄查詢（真實資料頁）。
+const METRO_DISTRICT_INDEX_CITIES: { slug: string; city: string }[] = [
+  { slug: "taipei", city: "臺北市" },
+  { slug: "new-taipei", city: "新北市" },
+  { slug: "taoyuan", city: "桃園市" },
+  { slug: "taichung", city: "臺中市" },
+  { slug: "tainan", city: "臺南市" },
+  { slug: "kaohsiung", city: "高雄市" },
+];
+
+const districtQueryHref = (city: string, district: string) =>
+  `/districts/${encodeURIComponent(city)}/${encodeURIComponent(district)}/${encodeURIComponent("買賣")}/`;
+
+const METRO_DISTRICT_INDEX_PAGES: SeoContentPage[] = METRO_DISTRICT_INDEX_CITIES.map(({ slug, city }) => {
+  const districts = (CITY_DISTRICTS[city] ?? []).map((d) => d.name);
+  return {
+    path: `/buying-guides/${slug}/districts/`,
+    title: `${city}各行政區實價登錄與購屋指南`,
+    description: `${city}各行政區的實價登錄查詢入口與購屋重點，點選行政區即可查看該區買賣成交總價、單價、坪數與地圖。`,
+    intro: `想了解${city}不同行政區的房價，先從下方選擇目標行政區，進入該區的實價登錄查詢，比對同區、同型態、相近屋齡的實際成交，再縮小看屋範圍。各區生活圈、產品型態與屋齡差異大，建議搭配購屋與貸款指南一起評估。`,
+    sections: [
+      {
+        heading: `如何使用${city}行政區查詢`,
+        paragraphs: [
+          `點選下方任一行政區，會進入該區的實價登錄查詢，可再依期間、總價、單價、坪數與屋齡篩選，並切換地圖檢視周邊。`,
+          `跨區比較時，盡量維持相同交易類型與期間，並考量建物型態、公設比與車位計價方式的差異，避免只看單一每坪單價。`,
+        ],
+      },
+    ],
+    links: [
+      ...districts.map((district) => ({ href: districtQueryHref(city, district), label: `${city}${district}實價登錄` })),
+      { href: `/buying-guides/${slug}/`, label: `${city}購屋指南` },
+      { href: "/buying-guides/", label: "各縣市購屋指南" },
+    ],
+  };
+});
+
+export const SEO_CONTENT_PAGES: SeoContentPage[] = [...STATIC_PAGES, ...METRO_DISTRICT_INDEX_PAGES];
 
 export const getSeoContentPage = (pathname: string) =>
   SEO_CONTENT_PAGES.find((page) => page.path === pathname) ?? null;

@@ -63,7 +63,7 @@ import {
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
 import { TransactionCard } from "./components/TransactionCard";
-import { AffiliateMarquee } from "./components/AffiliateMarquee";
+import { AffiliateMarquee, AffiliateChips } from "./components/AffiliateMarquee";
 import { SiteNav, SiteFooterNav } from "./components/SiteNav";
 import { useGeocoding } from "./hooks/useGeocoding";
 import { 
@@ -2695,6 +2695,7 @@ export default function App() {
                   totalToGeocode={totalToGeocode}
                 />
               </Suspense>
+              <AffiliateMarquee />
             </motion.div>
           )}
         </AnimatePresence>
@@ -3254,6 +3255,11 @@ export default function App() {
                       </div>
                     </motion.div>
                   )}
+
+                  {/* 情境式導購：看完物件後的家具/家電/居家推薦（僅在設定連結時顯示） */}
+                  <motion.div variants={modalItemVariants}>
+                    <AffiliateChips title="入手這間房後，順手準備" />
+                  </motion.div>
                 </motion.div>
               </div>
 

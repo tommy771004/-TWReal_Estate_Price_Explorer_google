@@ -41,6 +41,12 @@ test("production build emits crawlable trust and guide pages", async () => {
     "renting-guides/rent-market",
     "renting-guides/deposit-and-lease",
     "renting-guides/tenant-rights",
+    "buying-guides/taipei/districts",
+    "buying-guides/new-taipei/districts",
+    "buying-guides/taoyuan/districts",
+    "buying-guides/taichung/districts",
+    "buying-guides/tainan/districts",
+    "buying-guides/kaohsiung/districts",
   ];
 
   for (const pathname of paths) {
@@ -68,5 +74,5 @@ test("production build emits crawlable trust and guide pages", async () => {
 
   const sitemap = await readFile(new URL("../dist/sitemap.xml", import.meta.url), "utf8");
   const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]);
-  assert.equal(locations.length, 94);
+  assert.equal(locations.length, 100);
 });
