@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { SeoContentPage as SeoContentPageData } from "../content/seoPages";
 import { AffiliateSlot, MortgageCalculatorCta } from "./AffiliateSlot";
+import { SiteNav, SiteFooterNav } from "./SiteNav";
 
 const SITE_NAME = "實價登錄查詢";
 
@@ -10,6 +11,8 @@ export default function SeoContentPage({ page }: { page: SeoContentPageData }) {
   }, [page]);
 
   return (
+    <>
+    <SiteNav />
     <main data-seo-content-page className="mx-auto min-h-screen max-w-4xl px-5 py-12 text-slate-800 dark:text-slate-100 sm:px-8">
       <a href="/" className="text-sm font-bold text-coral-600 hover:underline">← 返回實價登錄查詢</a>
       <article className="mt-8 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 sm:p-10">
@@ -34,10 +37,11 @@ export default function SeoContentPage({ page }: { page: SeoContentPageData }) {
             </ul>
           </nav>
         )}
-        <nav aria-label="資訊頁導覽" className="mt-12 flex flex-wrap gap-4 border-t border-slate-200 pt-6 text-sm font-bold dark:border-slate-800">
-          <a href="/methodology/">方法說明</a><a href="/data-sources/">資料來源</a><a href="/privacy/">隱私權</a><a href="/contact/">聯絡</a>
-        </nav>
       </article>
+      <div className="mt-12">
+        <SiteFooterNav />
+      </div>
     </main>
+    </>
   );
 }
