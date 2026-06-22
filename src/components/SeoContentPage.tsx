@@ -2,13 +2,28 @@ import { useEffect } from "react";
 import type { SeoContentPage as SeoContentPageData } from "../content/seoPages";
 import { AffiliateSlot, MortgageCalculatorCta } from "./AffiliateSlot";
 import { SiteNav, SiteFooterNav } from "./SiteNav";
+import { FeedbackForm } from "./FeedbackForm";
 
 const SITE_NAME = "實價登錄查詢";
+
+// 純資訊頁不顯示導購／房貸工具
+const INFO_PATHS = new Set(["/about/", "/contact/", "/privacy/", "/methodology/", "/data-sources/"]);
+// 與房貸高度相關的頁面才顯示房貸試算
+const FINANCE_GUIDES = new Set([
+  "/guides/mortgage-calculator/",
+  "/guides/first-home-loan-subsidy/",
+  "/guides/mortgage-approval-factors/",
+  "/guides/refinance-mortgage/",
+]);
 
 export default function SeoContentPage({ page }: { page: SeoContentPageData }) {
   useEffect(() => {
     document.title = `${page.title} | ${SITE_NAME}`;
   }, [page]);
+
+  const isContact = page.path === "/contact/";
+  const showMortgage = page.path.startsWith("/buying-guides/") || FINANCE_GUIDES.has(page.path);
+  const showAffiliate = !INFO_PATHS.has(page.path);
 
   return (
     <>
@@ -25,9 +40,11 @@ export default function SeoContentPage({ page }: { page: SeoContentPageData }) {
             {section.items && <ul className="mt-4 list-disc space-y-2 pl-6 text-slate-600 dark:text-slate-300">{section.items.map((item) => <li key={item}>{item}</li>)}</ul>}
           </section>
         ))}
-        {/* 房貸試算 + 情境式聯盟導購：僅在 .env 設定連結時才會顯示 */}
-        <MortgageCalculatorCta />
-        <AffiliateSlot />
+        {/* 聯絡頁：意見回饋表單（寫入 feedbacks 資料表） */}
+        {isContact && <FeedbackForm />}
+        {/* 房貸試算 + 情境式聯盟導購：僅在相關頁面、且 .env 設定連結時才會顯示 */}
+        {showMortgage && <MortgageCalculatorCta />}
+        {showAffiliate && <AffiliateSlot />}
 
         {page.links && (
           <nav aria-label="本頁相關入口" className="mt-10">
