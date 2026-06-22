@@ -23,6 +23,7 @@ test("production build emits crawlable trust and guide pages", async () => {
     "guides/transaction-records",
     "guides/presale-vs-resale",
     "guides/map-location-limitations",
+    "guides/mortgage-calculator",
   ];
 
   for (const pathname of paths) {
@@ -50,5 +51,5 @@ test("production build emits crawlable trust and guide pages", async () => {
 
   const sitemap = await readFile(new URL("../dist/sitemap.xml", import.meta.url), "utf8");
   const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]);
-  assert.equal(locations.length, 76);
+  assert.equal(locations.length, 77);
 });
