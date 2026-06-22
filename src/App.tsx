@@ -64,6 +64,7 @@ import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
 import { TransactionCard } from "./components/TransactionCard";
 import { AffiliateMarquee } from "./components/AffiliateMarquee";
+import { SiteNav, SiteFooterNav } from "./components/SiteNav";
 import { useGeocoding } from "./hooks/useGeocoding";
 import { 
   YEARS, 
@@ -101,7 +102,6 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { syncSeoMetadata } from "./lib/seo";
-import { SEO_CONTENT_PAGES } from "./content/seoPages";
 import { parseSelectionFromUrl, buildSelectionPath } from "./lib/urlState";
 import { calculateDistance } from "./lib/utils";
 import type { Transaction } from "./types/real-estate";
@@ -1477,6 +1477,7 @@ export default function App() {
         animate={{ opacity: 1, y: 0 }}
         className="relative w-full flex-1 flex flex-col z-10"
       >
+        <SiteNav />
         {/* Header */}
         <div className="px-4 sm:px-6 pt-6 pb-2 shrink-0 relative z-20">
           <div className="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4 px-2 sm:px-6 rounded-[2rem] relative z-10 group transition-all">
@@ -2812,9 +2813,7 @@ export default function App() {
               </details>
             </div>
           </section>
-          <nav aria-label="網站資訊與使用指南" className="flex flex-wrap gap-3 border-t border-white/40 pt-6 text-sm font-bold text-slate-600 dark:border-white/10 dark:text-slate-300">
-            {SEO_CONTENT_PAGES.map((page) => <a key={page.path} href={page.path} className="rounded-full border border-white/60 bg-white/45 px-4 py-2 hover:text-coral-600 dark:border-white/10 dark:bg-slate-900/35">{page.title}</a>)}
-          </nav>
+          <SiteFooterNav />
         </div>
 
       </motion.div>

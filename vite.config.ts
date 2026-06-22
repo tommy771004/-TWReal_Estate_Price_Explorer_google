@@ -5,6 +5,7 @@ import path from 'path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { INDEXABLE_SELECTIONS, buildSelectionPath, buildSeoCopy } from './src/lib/seoRoutes';
 import { SEO_CONTENT_PAGES } from './src/content/seoPages';
+import { NAV_GROUPS } from './src/content/siteNav';
 
 const SEO_LAST_MODIFIED_TOKEN = '__SEO_LAST_MODIFIED__';
 const GOOGLE_SITE_VERIFICATION_MARKER = '<!-- GOOGLE_SITE_VERIFICATION -->';
@@ -50,15 +51,19 @@ const renderContentPage = (page: (typeof SEO_CONTENT_PAGES)[number]) => {
       <ul>${page.links.map((link) => `<li><a href="${link.href}">${link.label}</a></li>`).join('')}</ul>
     </nav>` : '';
 
+  const siteMapNav = `<nav aria-label="網站地圖">
+      ${NAV_GROUPS.map((group) => `<section>
+        <h2>${group.label}</h2>
+        <ul>${group.links.map((link) => `<li><a href="${link.href}">${link.label}</a></li>`).join('')}</ul>
+      </section>`).join('\n      ')}
+    </nav>`;
+
   return `<main data-seo-content-page class="seo-shell">
     <p><a href="/">← 返回實價登錄查詢</a></p>
     <article>
       <h1>${page.title}</h1>
       <p>${page.intro}</p>${sections}${relatedLinks}
-      <nav aria-label="資訊頁導覽">
-        <h2>相關資訊</h2>
-        <ul><li><a href="/methodology/">方法說明</a></li><li><a href="/data-sources/">資料來源</a></li><li><a href="/privacy/">隱私權</a></li><li><a href="/contact/">聯絡</a></li></ul>
-      </nav>
+      ${siteMapNav}
     </article>
   </main>`;
 };
