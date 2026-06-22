@@ -1,6 +1,7 @@
 import express from "express";
 import https from "https";
 import xlsx from "xlsx";
+import { query } from "./db";
 
 const app = express();
 app.use(express.json());
@@ -140,6 +141,82 @@ app.post("/api/proxy-search", async (req, res) => {
     return res.status(500).json({ success: false, error: error.message });
   } finally {
     currentActivePages--;
+  }
+});
+
+// 意見回饋 API Endpoint
+app.post("/api/feedback", async (req, res) => {
+  const { category, content, contact, latitude, longitude, county, district, location_method } = req.body;
+
+  if (!category || !content) {
+    return res.status(400).json({ success: false, error: "為必填欄位：分類與內容未填寫！" });
+  }
+
+  try {
+    const sql = `
+      INSERT INTO feedbacks (category, content, contact, latitude, longitude, county, district, location_method)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id
+    `;
+    const params = [
+      category, 
+      content, 
+      contact || null, 
+      latitude !== undefined && latitude !== null ? Number(latitude) : null, 
+      longitude !== undefined && longitude !== null ? Number(longitude) : null, 
+      county || null, 
+      district || null, 
+      location_method || "unknown"
+    ];
+
+    const result = await query(sql, params);
+    const newId = result.rows[0]?.id;
+
+    return res.json({ 
+      success: true, 
+      message: "意見回饋已成功送出！", 
+      data: { id: newId, isSimulation: (result as any).isSimulation || false } 
+    });
+  } catch (err: any) {
+    console.error("❌ 送出意見回饋失敗:", err.message);
+    return res.status(500).json({ success: false, error: "資料庫寫入失敗：" + err.message });
+  }
+});
+
+// 行動追蹤日誌 (Audit Log) API Endpoint
+app.post("/api/audit-log", async (req, res) => {
+  const { action_type, details, latitude, longitude, county, district, location_method } = req.body;
+
+  if (!action_type) {
+    return res.status(400).json({ success: false, error: "action_type 為必填欄位" });
+  }
+
+  try {
+    const sql = `
+      INSERT INTO audit_logs (action_type, details, latitude, longitude, county, district, location_method)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id
+    `;
+    const params = [
+      action_type, 
+      details || null, 
+      latitude !== undefined && latitude !== null ? Number(latitude) : null, 
+      longitude !== undefined && longitude !== null ? Number(longitude) : null, 
+      county || null, 
+      district || null, 
+      location_method || "unknown"
+    ];
+
+    const result = await query(sql, params);
+    const newId = result.rows[0]?.id;
+
+    return res.json({ 
+      success: true, 
+      data: { id: newId, isSimulation: (result as any).isSimulation || false } 
+    });
+  } catch (err: any) {
+    console.error("❌ 送出使用者行為日誌失敗:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

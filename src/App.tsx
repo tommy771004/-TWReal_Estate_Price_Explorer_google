@@ -53,6 +53,12 @@ import {
   Leaf,
   TrendingUp,
   TrendingDown,
+  MessageSquare,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  MapPinOff,
+  Navigation,
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
@@ -236,6 +242,191 @@ export default function App() {
   });
   const [showFavorites, setShowFavorites] = useState(false);
 
+  // === 位置分享與與定位權限 ===
+  interface UserLocation {
+    latitude: number | null;
+    longitude: number | null;
+    county: string | null;
+    district: string | null;
+    location_method: "gps" | "base_station" | "unknown";
+  }
+
+  const [userLocation, setUserLocation] = useState<UserLocation>({
+    latitude: null,
+    longitude: null,
+    county: null,
+    district: null,
+    location_method: "unknown",
+  });
+  
+  const userLocationRef = useRef<UserLocation>({
+    latitude: null,
+    longitude: null,
+    county: null,
+    district: null,
+    location_method: "unknown",
+  });
+
+  useEffect(() => {
+    userLocationRef.current = userLocation;
+  }, [userLocation]);
+
+  const [showLocationModal, setShowLocationModal] = useState(false);
+
+  // === 意見回饋狀態 ===
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackCategory, setFeedbackCategory] = useState("系統錯誤");
+  const [feedbackContent, setFeedbackContent] = useState("");
+  const [feedbackContact, setFeedbackContact] = useState("");
+  const [feedbackStatus, setFeedbackStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [feedbackErrorMsg, setFeedbackErrorMsg] = useState("");
+
+  // 根據 GPS 座標在 CITIES 以及 CITY_DISTRICTS 算歐氏距離，選出距離最近的縣市與鄉鎮
+  const getClosestTaiwanLocation = React.useCallback((lat: number, lng: number): { county: string; district: string } => {
+    let closestCity = CITIES[0]?.name || "臺北市";
+    let minCityDist = Infinity;
+
+    for (const city of CITIES) {
+      if (city.lat && city.lng) {
+        const dist = Math.hypot(lat - city.lat, lng - city.lng);
+        if (dist < minCityDist) {
+          minCityDist = dist;
+          closestCity = city.name;
+        }
+      }
+    }
+
+    const districts = CITY_DISTRICTS[closestCity] || [];
+    let closestDistrict = "全部";
+    if (districts.length > 0) {
+      let minDist = Infinity;
+      for (const dist of districts) {
+        if (dist.lat && dist.lng) {
+          const d = Math.hypot(lat - dist.lat, lng - dist.lng);
+          if (d < minDist) {
+            minDist = d;
+            closestDistrict = dist.name;
+          }
+        }
+      }
+    }
+
+    return { county: closestCity, district: closestDistrict };
+  }, []);
+
+  const triggerBaseStationLocation = React.useCallback(async () => {
+    try {
+      const res = await fetch("https://ipapi.co/json/");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.latitude && data.longitude) {
+          const lat = Number(data.latitude);
+          const lng = Number(data.longitude);
+          const resolved = getClosestTaiwanLocation(lat, lng);
+          const loc: UserLocation = {
+            latitude: lat,
+            longitude: lng,
+            county: resolved.county,
+            district: resolved.district,
+            location_method: "base_station",
+          };
+          setUserLocation(loc);
+          if (resolved.county) {
+            setCityName(resolved.county);
+            setDistrict(resolved.district || "全部");
+          }
+          return loc;
+        }
+      }
+    } catch (error) {
+      console.warn("Base station fallback failed, estimating Taipei:", error);
+    }
+    const defaultCity = CITIES[0] || { name: "臺北市", lat: 25.0330, lng: 121.5654 };
+    const defaultCityDistricts = CITY_DISTRICTS[defaultCity.name] || [];
+    const defaultDistrict = defaultCityDistricts[0]?.name || "全部";
+
+    const defaultLoc: UserLocation = {
+      latitude: defaultCity.lat || 25.0330,
+      longitude: defaultCity.lng || 121.5654,
+      county: defaultCity.name,
+      district: defaultDistrict,
+      location_method: "unknown",
+    };
+    setUserLocation(defaultLoc);
+    setCityName(defaultCity.name);
+    setDistrict(defaultDistrict);
+    return defaultLoc;
+  }, [getClosestTaiwanLocation]);
+
+  const triggerGpsLocation = React.useCallback(async () => {
+    if (!navigator.geolocation) {
+      return await triggerBaseStationLocation();
+    }
+    return new Promise<UserLocation>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const resolved = getClosestTaiwanLocation(lat, lng);
+          const loc: UserLocation = {
+            latitude: lat,
+            longitude: lng,
+            county: resolved.county,
+            district: resolved.district,
+            location_method: "gps",
+          };
+          setUserLocation(loc);
+          localStorage.setItem("location_sharing_permisson_decision", "allow");
+          
+          if (resolved.county) {
+            setCityName(resolved.county);
+            setDistrict(resolved.district || "全部");
+          }
+          resolve(loc);
+        },
+        async (error) => {
+          console.warn("GPS Geolocation failed, using base station:", error);
+          const loc = await triggerBaseStationLocation();
+          resolve(loc);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+      );
+    });
+  }, [getClosestTaiwanLocation, triggerBaseStationLocation]);
+
+  const addAuditLog = React.useCallback(async (actionType: string, details?: string, overrideLoc?: UserLocation) => {
+    const loc = overrideLoc || userLocationRef.current;
+    try {
+      await fetch("/api/audit-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action_type: actionType,
+          details: details || "",
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          county: loc.county,
+          district: loc.district,
+          location_method: loc.location_method,
+        }),
+      });
+    } catch (error) {
+      console.error("AuditLog upload error:", error);
+    }
+  }, []);
+
+  // Esc key closes feedback pop-card
+  useEffect(() => {
+    const handleFeedbackKeys = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowFeedback(false);
+      }
+    };
+    window.addEventListener("keydown", handleFeedbackKeys);
+    return () => window.removeEventListener("keydown", handleFeedbackKeys);
+  }, []);
+
+
   // Recent keyword searches (last 5), persisted to localStorage
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
@@ -281,6 +472,12 @@ export default function App() {
     if (e) {
       e.stopPropagation();
     }
+    const isFav = favorites.some(f => f.id === item.id);
+    addAuditLog("toggle_favorite", JSON.stringify({
+      id: item.id,
+      address: item.address,
+      action: isFav ? "remove" : "add"
+    }));
     setFavorites(prev => {
       const exists = prev.some(f => f.id === item.id);
       let updated;
@@ -366,17 +563,43 @@ export default function App() {
 
   const [dataSource, setDataSource] = useState<string | null>(null);
 
-  const fetchData = React.useCallback(async (keywordOverride?: string) => {
+  const fetchData = React.useCallback(async (
+    keywordOverride?: string,
+    cityOverride?: string,
+    districtOverride?: string
+  ) => {
     if (isFetchingRef.current) return;
 
     // keywordOverride lets callers (e.g. Recent Searches) run a query without
     // waiting for setSearch to flush. Guard with typeof so passing fetchData
     // directly as an event handler (event arg) falls back to current search.
     const activeKeyword = typeof keywordOverride === "string" ? keywordOverride : search;
+    const activeCity = cityOverride || cityName;
+    const activeDistrict = districtOverride || district;
+
     if (typeof keywordOverride === "string" && keywordOverride !== search) {
       setSearch(keywordOverride);
     }
+    
+    // Sync React states if overridden via location or direct triggers
+    if (cityOverride) {
+      setCityName(cityOverride);
+    }
+    if (districtOverride) {
+      setDistrict(districtOverride);
+    }
+
     addRecentSearch(activeKeyword);
+    addAuditLog("search_properties", JSON.stringify({
+      cityName: activeCity,
+      district: activeDistrict,
+      propertyTypes,
+      keyword: activeKeyword,
+      period,
+      unitPrice,
+      area,
+      age
+    }));
 
     isFetchingRef.current = true;
     setLoading(true);
@@ -397,7 +620,7 @@ export default function App() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
-      const cityCode = CITIES.find(c => c.name === cityName)?.code || "A";
+      const cityCode = CITIES.find(c => c.name === activeCity)?.code || "A";
       const typeCode = TRANSACTION_TYPES.find(t => t.name === typeName)?.code || "A";
       
       const response = await fetch(`/api/proxy-search`, {
@@ -408,7 +631,7 @@ export default function App() {
         signal: controller.signal,
         body: JSON.stringify({
           cityCode,
-          district,
+          district: activeDistrict,
           propertyTypes,
           transactionType: typeCode,
           period,
@@ -584,6 +807,7 @@ export default function App() {
 
   const handleTrendingClick = React.useCallback((item: { query: string; type: "city" | "district" | "keyword" }) => {
     setShowSuggestions(false);
+    addAuditLog("click_trending_search", JSON.stringify(item));
     if (item.type === "keyword") {
       setSearch(item.query);
       fetchData(item.query);
@@ -614,14 +838,34 @@ export default function App() {
   useEffect(() => {
     // Automatically trigger data loading on mounting to display valid records instantly
     // and support query state setups passed via shared links
-    fetchData();
-    fetchTrendingSearches();
+    const initLocationAndFetch = async () => {
+      const decision = localStorage.getItem("location_sharing_permisson_decision");
+      let activeLoc: UserLocation;
+      if (decision === "allow") {
+        activeLoc = await triggerGpsLocation();
+      } else if (decision === "deny") {
+        activeLoc = await triggerBaseStationLocation();
+      } else {
+        setShowLocationModal(true);
+        // Default to base station silently first
+        activeLoc = await triggerBaseStationLocation();
+      }
+      
+      // Load initial search data based on dynamic geographical location and trending searches
+      fetchData("", activeLoc.county || undefined, activeLoc.district || undefined);
+      fetchTrendingSearches();
+      
+      // Submit audit log for initial entry
+      addAuditLog("app_mount", "User opened price explorer", activeLoc);
+    };
+
+    initLocationAndFetch();
 
     return () => {
       abortControllerRef.current?.abort();
       isFetchingRef.current = false;
     };
-  }, []); // Only on mount
+  }, [triggerGpsLocation, triggerBaseStationLocation, fetchTrendingSearches, addAuditLog]);
 
   // Smoothly scroll to the results block when changing page numbers
   useEffect(() => {
@@ -1284,12 +1528,34 @@ export default function App() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setDarkMode(!darkMode)}
+                      onClick={() => {
+                        const nextMode = !darkMode;
+                        setDarkMode(nextMode);
+                        addAuditLog("toggle_dark_mode", nextMode ? "dark" : "light");
+                      }}
                       className="w-8 h-8 rounded-full bg-slate-500/10 hover:bg-slate-500/20 text-slate-600 dark:text-slate-400 transition-all shadow-sm"
                       title={darkMode ? "切換至淺色模式" : "切換至深色模式"}
                       aria-label={darkMode ? "切換至淺色模式" : "切換至深色模式"}
                     >
                       {darkMode ? <Sun size={14} /> : <Moon size={14} />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setShowFeedback(!showFeedback);
+                        addAuditLog("feedback_button_click", !showFeedback ? "open" : "close");
+                      }}
+                      className={`w-8 h-8 rounded-full shadow-sm transition-all flex items-center justify-center ${
+                        showFeedback 
+                          ? "bg-coral-500 text-white hover:bg-coral-600" 
+                          : "bg-slate-500/10 hover:bg-slate-500/20 text-slate-600 dark:text-slate-400"
+                      }`}
+                      title="意見回饋"
+                      aria-label="意見回饋"
+                      id="feedback_floating_trigger"
+                    >
+                      <MessageSquare size={14} />
                     </Button>
                   </div>
                 </div>
@@ -2971,6 +3237,263 @@ export default function App() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Location Sharing Dialog */}
+      <AnimatePresence>
+        {showLocationModal && (
+          <div className="fixed inset-0 z-[100] bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-24 h-24 bg-coral-500/5 rounded-full blur-xl pointer-events-none" />
+              
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-coral-500/10 flex items-center justify-center text-coral-500">
+                  <MapPin className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">位置分享以優化定位</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Location Services</p>
+                </div>
+              </div>
+              
+              <p className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed mb-4">
+                是否允許本系統讀取並分享您的位置資訊？允許後將協助我們<b>自動帶入您附近的縣市與區域進行價格分析</b>，能大幅提升您的瀏覽體驗。若拒絕，本系統將依據估算網路基地台為您提供匿名的區域估測。
+              </p>
+              
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowLocationModal(false);
+                    localStorage.setItem("location_sharing_permisson_decision", "allow");
+                    const loc = await triggerGpsLocation();
+                    addAuditLog("location_permission_accept", "GPS Location Allowed", loc);
+                    fetchData("", loc.county || undefined, loc.district || undefined);
+                  }}
+                  className="flex-1 py-1.5 px-3 bg-coral-500 hover:bg-coral-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                >
+                  是，啟用自動定位
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowLocationModal(false);
+                    localStorage.setItem("location_sharing_permisson_decision", "deny");
+                    const loc = await triggerBaseStationLocation();
+                    addAuditLog("location_permission_deny", "Fallback to Base Station", loc);
+                    fetchData("", loc.county || undefined, loc.district || undefined);
+                  }}
+                  className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  暫不分享
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Feedback Form Modal */}
+      <AnimatePresence>
+        {showFeedback && (
+          <div 
+            className="fixed inset-0 z-[100] bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4"
+            onClick={() => {
+              setShowFeedback(false);
+              addAuditLog("feedback_modal_close", "click_outside");
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-2xl relative overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-coral-500/10 rounded-full blur-2xl pointer-events-none" />
+              
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-coral-500/10 flex items-center justify-center text-coral-500">
+                    <MessageSquare className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">系統改進與意見回饋</h3>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Feedback & System Improvements</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFeedback(false);
+                    addAuditLog("feedback_modal_close", "click_close_btn");
+                  }}
+                  className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-coral-500 hover:bg-coral-500/10 transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {feedbackStatus === "success" ? (
+                <motion.div 
+                  initial={{ scale: 0.9 }} 
+                  animate={{ scale: 1 }} 
+                  className="py-6 flex flex-col items-center justify-center text-center"
+                >
+                  <div className="w-14 h-14 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-3">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">謝謝您的回饋！</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mb-4">
+                    資料已成功送出並寫入資料庫，我們非常感謝您抽空提供建議，本系統將因您的回饋獲得最佳改善！
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFeedback(false);
+                      setFeedbackStatus("idle");
+                      setFeedbackContent("");
+                    }}
+                    className="py-1.5 px-6 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-755 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                  >
+                    關閉視窗
+                  </button>
+                </motion.div>
+              ) : (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!feedbackContent.trim()) return;
+
+                  setFeedbackStatus("submitting");
+                  addAuditLog("feedback_submit_attempt", feedbackCategory);
+
+                  try {
+                    const res = await fetch("/api/feedback", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        category: feedbackCategory,
+                        content: feedbackContent,
+                        contact: feedbackContact || null,
+                        latitude: userLocation.latitude,
+                        longitude: userLocation.longitude,
+                        county: userLocation.county,
+                        district: userLocation.district,
+                        location_method: userLocation.location_method,
+                      })
+                    });
+
+                    if (res.ok) {
+                      setFeedbackStatus("success");
+                      addAuditLog("feedback_submit_success", feedbackCategory);
+                    } else {
+                      const data = await res.json();
+                      throw new Error(data.error || "送出失敗，請稍後重試");
+                    }
+                  } catch (err: any) {
+                    setFeedbackStatus("error");
+                    setFeedbackErrorMsg(err.message || "網路連線異常");
+                    addAuditLog("feedback_submit_error", err.message);
+                  }
+                }} className="flex flex-col gap-3.5">
+                  
+                  {/* Category Chips Selection */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5 block">
+                      意見分類 (Category) *
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                      {["系統錯誤", "功能建議", "介面優化", "其它"].map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setFeedbackCategory(cat)}
+                          className={`py-1.5 px-2 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${
+                            feedbackCategory === cat
+                              ? "bg-coral-500/10 text-coral-500 border-coral-500/30"
+                              : "bg-slate-50 dark:bg-slate-850 text-slate-600 dark:text-slate-350 border-slate-100 dark:border-slate-800/80 hover:bg-slate-100"
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Suggestions Textarea */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 block">
+                      詳細內容描述 (Content) *
+                    </label>
+                    <textarea
+                      required
+                      value={feedbackContent}
+                      onChange={(e) => setFeedbackContent(e.target.value)}
+                      placeholder="請詳述您遇見的狀況或對系統的想法..."
+                      rows={4}
+                      className="w-full text-xs font-medium p-3 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-xl focus:border-coral-500/40 focus:ring-1 focus:ring-coral-500/20 outline-none transition-all placeholder:text-slate-400 resize-none"
+                    />
+                  </div>
+
+                  {/* Contact Information */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 block">
+                      聯絡方式 (Contact - Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={feedbackContact}
+                      onChange={(e) => setFeedbackContact(e.target.value)}
+                      placeholder="Email 或 手機號碼 (方便我們向您回報進度)"
+                      className="w-full text-xs font-medium px-3 py-2 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-xl focus:border-coral-500/40 focus:ring-1 focus:ring-coral-500/20 outline-none transition-all placeholder:text-slate-400"
+                    />
+                  </div>
+
+
+
+                  {feedbackStatus === "error" && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-bold">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{feedbackErrorMsg || "送出失敗，請重試"}</span>
+                    </div>
+                  )}
+
+                  {/* Footer Buttons */}
+                  <div className="flex gap-2 mt-1">
+                    <button
+                      type="submit"
+                      disabled={feedbackStatus === "submitting" || !feedbackContent.trim()}
+                      className="flex-1 py-1.5 px-4 bg-coral-500 hover:bg-coral-600 disabled:bg-coral-500/50 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {feedbackStatus === "submitting" ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          處理中...
+                        </>
+                      ) : "送出回饋"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowFeedback(false);
+                        setFeedbackStatus("idle");
+                        addAuditLog("feedback_modal_close", "click_cancel");
+                      }}
+                      className="py-1.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-755 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </form>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
