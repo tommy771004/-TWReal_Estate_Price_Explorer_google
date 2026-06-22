@@ -42,6 +42,33 @@ function MarqueeRow({ ariaHidden }: { ariaHidden?: boolean }) {
   );
 }
 
+// 緊湊版導購：用於物件詳情彈窗等空間有限處。無動畫、自動換行。
+export function AffiliateChips({ title = "為這間房準備", limit = 8 }: { title?: string; limit?: number }) {
+  const partners = MARQUEE_PARTNERS.slice(0, limit);
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{title}</span>
+        <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">廣告</span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {partners.map((p) => (
+          <a
+            key={p.name}
+            href={p.url}
+            target="_blank"
+            rel={LINK_REL}
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:border-coral-400 hover:text-coral-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:text-coral-400"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-coral-500/70" />
+            {p.name}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function AffiliateMarquee() {
   return (
     <section

@@ -24,6 +24,17 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: "各區索引",
+    links: [
+      { href: "/buying-guides/taipei/districts/", label: "臺北市各行政區" },
+      { href: "/buying-guides/new-taipei/districts/", label: "新北市各行政區" },
+      { href: "/buying-guides/taoyuan/districts/", label: "桃園市各行政區" },
+      { href: "/buying-guides/taichung/districts/", label: "臺中市各行政區" },
+      { href: "/buying-guides/tainan/districts/", label: "臺南市各行政區" },
+      { href: "/buying-guides/kaohsiung/districts/", label: "高雄市各行政區" },
+    ],
+  },
+  {
     label: "租屋指南",
     links: [
       { href: "/renting-guides/", label: "租屋族指南" },

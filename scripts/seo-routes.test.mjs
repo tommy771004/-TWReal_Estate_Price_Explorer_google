@@ -32,7 +32,7 @@ test("production build prerenders semantic city and transaction routes", async (
   assert.match(homepage, /window\.location\.replace/);
 
   const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]);
-  assert.equal(locations.length, 94);
+  assert.equal(locations.length, 100);
   assert.equal(locations.filter((url) => url.includes("/prices/")).length, 66);
   assert.ok(locations.every((url) => !url.includes("?")));
   assert.ok(locations.includes(canonical));
