@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { SeoContentPage as SeoContentPageData } from "../content/seoPages";
+import { AffiliateSlot, MortgageCalculatorCta } from "./AffiliateSlot";
 
 const SITE_NAME = "實價登錄查詢";
 
@@ -21,6 +22,10 @@ export default function SeoContentPage({ page }: { page: SeoContentPageData }) {
             {section.items && <ul className="mt-4 list-disc space-y-2 pl-6 text-slate-600 dark:text-slate-300">{section.items.map((item) => <li key={item}>{item}</li>)}</ul>}
           </section>
         ))}
+        {/* 房貸試算 + 情境式聯盟導購：僅在 .env 設定連結時才會顯示 */}
+        <MortgageCalculatorCta />
+        <AffiliateSlot />
+
         {page.links && (
           <nav aria-label="本頁相關入口" className="mt-10">
             <h2 className="text-2xl font-black">相關頁面</h2>
