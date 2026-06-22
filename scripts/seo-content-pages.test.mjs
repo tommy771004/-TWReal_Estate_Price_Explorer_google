@@ -24,6 +24,12 @@ test("production build emits crawlable trust and guide pages", async () => {
     "guides/presale-vs-resale",
     "guides/map-location-limitations",
     "guides/mortgage-calculator",
+    "guides/first-home-loan-subsidy",
+    "guides/mortgage-approval-factors",
+    "guides/refinance-mortgage",
+    "guides/moving-in-checklist",
+    "guides/renovation-budget",
+    "guides/small-space-furnishing",
   ];
 
   for (const pathname of paths) {
@@ -51,5 +57,5 @@ test("production build emits crawlable trust and guide pages", async () => {
 
   const sitemap = await readFile(new URL("../dist/sitemap.xml", import.meta.url), "utf8");
   const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]);
-  assert.equal(locations.length, 77);
+  assert.equal(locations.length, 83);
 });
