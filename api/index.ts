@@ -1,7 +1,7 @@
 import express from "express";
 import https from "https";
 import xlsx from "xlsx";
-import { query } from "./db";
+import { query } from "./db.js";
 
 const app = express();
 app.use(express.json());
@@ -194,7 +194,7 @@ app.post("/api/audit-log", async (req, res) => {
   try {
     const sql = `
       INSERT INTO audit_logs (action_type, details, latitude, longitude, county, district, location_method)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
     `;
     const params = [

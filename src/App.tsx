@@ -315,6 +315,35 @@ export default function App() {
   }, []);
 
   const triggerBaseStationLocation = React.useCallback(async () => {
+    // 1. First attempt: IP-API (highly CORS-friendly and less rate-limited)
+    try {
+      const res = await fetch("https://ip-api.com/json/");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === "success" && data.lat !== undefined && data.lon !== undefined) {
+          const lat = Number(data.lat);
+          const lng = Number(data.lon);
+          const resolved = getClosestTaiwanLocation(lat, lng);
+          const loc: UserLocation = {
+            latitude: lat,
+            longitude: lng,
+            county: resolved.county,
+            district: resolved.district,
+            location_method: "base_station",
+          };
+          setUserLocation(loc);
+          if (resolved.county) {
+            setCityName(resolved.county);
+            setDistrict(resolved.district || "全部");
+          }
+          return loc;
+        }
+      }
+    } catch (e) {
+      console.warn("ip-api.com location tracking failed, trying fallback:", e);
+    }
+
+    // 2. Second attempt: ipapi.co fallback (might have CORS or rate-limiting)
     try {
       const res = await fetch("https://ipapi.co/json/");
       if (res.ok) {
@@ -341,6 +370,7 @@ export default function App() {
     } catch (error) {
       console.warn("Base station fallback failed, estimating Taipei:", error);
     }
+
     const defaultCity = CITIES[0] || { name: "臺北市", lat: 25.0330, lng: 121.5654 };
     const defaultCityDistricts = CITY_DISTRICTS[defaultCity.name] || [];
     const defaultDistrict = defaultCityDistricts[0]?.name || "全部";
@@ -353,6 +383,7 @@ export default function App() {
       location_method: "unknown",
     };
     setUserLocation(defaultLoc);
+
     setCityName(defaultCity.name);
     setDistrict(defaultDistrict);
     return defaultLoc;

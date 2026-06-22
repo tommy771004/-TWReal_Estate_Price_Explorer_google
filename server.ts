@@ -2,7 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import http from "http";
 import path from "path";
-import apiApp from "./api/index";
+import apiApp from "./api/index.js";
 
 export async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
