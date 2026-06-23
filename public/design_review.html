@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>5-Dimension Expert Design Review</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+  </style>
+</head>
+<body class="antialiased min-h-screen p-6 md:p-12 lg:px-24">
+  <div class="max-w-6xl mx-auto space-y-12">
+    <!-- Header -->
+    <header class="border-b border-slate-200 pb-8">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-wider rounded-full">Automated Audit</span>
+        <span class="text-sm text-slate-500">Taiwan Real Estate Price Explorer</span>
+      </div>
+      <h1 class="text-4xl font-extrabold tracking-tight text-slate-900 mt-4">5-Dimension Design Review</h1>
+      <p class="text-lg text-slate-600 mt-4 max-w-3xl">Comprehensive UX/UI evaluation covering Philosophy, Visual Hierarchy, Detail, Functionality, and Innovation. Assessing architectural craftsmanship and interface execution.</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+      <!-- Radar Chart -->
+      <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center">
+        <h2 class="text-2xl font-bold mb-6 w-full text-left">Performance Radar</h2>
+        <div class="relative w-full max-w-md aspect-square">
+          <canvas id="designRadar"></canvas>
+        </div>
+      </div>
+
+      <!-- Evidence-Backed Scores -->
+      <div class="space-y-6">
+        <h2 class="text-2xl font-bold">Dimension Breakdown</h2>
+        
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <div class="flex justify-between items-end mb-2">
+            <h3 class="font-bold text-lg text-slate-800">Philosophy</h3>
+            <span class="font-mono text-xl font-bold text-indigo-600">7.5<span class="text-sm text-slate-400">/10</span></span>
+          </div>
+          <p class="text-slate-600 text-sm leading-relaxed"><strong>Evidence:</strong> The app embraces high data density, delivering a seamless single-pane experience without unnecessary routing. However, the monolith issue remains—despite lazy loading some components, `App.tsx` still holds ~3,500 lines of tightly coupled logic and UI elements (such as the massive filter panel).</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <div class="flex justify-between items-end mb-2">
+            <h3 class="font-bold text-lg text-slate-800">Visual Hierarchy</h3>
+            <span class="font-mono text-xl font-bold text-emerald-600">8.5<span class="text-sm text-slate-400">/10</span></span>
+          </div>
+          <p class="text-slate-600 text-sm leading-relaxed"><strong>Evidence:</strong> Strong spatial chunking and excellent typographic contrast. The newly implemented sticky headers improve list-based scanning immensely. The filter sidebar, however, could be structured with clearer visual borders or a subtle background tint to better separate it from the main results grid visually.</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <div class="flex justify-between items-end mb-2">
+            <h3 class="font-bold text-lg text-slate-800">Detail</h3>
+            <span class="font-mono text-xl font-bold text-amber-500">8.5<span class="text-sm text-slate-400">/10</span></span>
+          </div>
+          <p class="text-slate-600 text-sm leading-relaxed"><strong>Evidence:</strong> The details have significantly leveled up. Empty states are now gorgeous with SVG illustrations, and the new skeleton loaders replace raw spinners beautifully. Padding is mostly consistent, although mobile views could still be slightly tweaked around the comparison chips to avoid cramped tap targets.</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <div class="flex justify-between items-end mb-2">
+            <h3 class="font-bold text-lg text-slate-800">Functionality</h3>
+            <span class="font-mono text-xl font-bold text-blue-600">9.0<span class="text-sm text-slate-400">/10</span></span>
+          </div>
+          <p class="text-slate-600 text-sm leading-relaxed"><strong>Evidence:</strong> Robust caching, dynamic fallback location tracking, and comprehensive sorting interactions. It successfully handles complex real estate data payloads locally and fails gracefully via Neon backend simulations when endpoints or DB instances are unreachable.</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <div class="flex justify-between items-end mb-2">
+            <h3 class="font-bold text-lg text-slate-800">Innovation</h3>
+            <span class="font-mono text-xl font-bold text-purple-600">8.5<span class="text-sm text-slate-400">/10</span></span>
+          </div>
+          <p class="text-slate-600 text-sm leading-relaxed"><strong>Evidence:</strong> Creative use of fallback data techniques (IP-API -> Base station estimation). Fusing advanced charting, spatial map previews, and high-density list views into a cohesive open-data client is executed with above-par architectural pragmatism.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actionable Lists -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12 bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+      
+      <!-- Keep -->
+      <div>
+        <h3 class="text-lg font-bold text-emerald-700 flex items-center gap-2 mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+          Keep (Strengths)
+        </h3>
+        <ul class="space-y-3 text-sm text-slate-700">
+          <li class="flex items-start gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0"></div>
+            <strong>Skeleton Loading States:</strong> The newly added structured skeletal loaders provide an incredibly polished perceived performance boost over simple spinners.
+          </li>
+          <li class="flex items-start gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0"></div>
+            <strong>Rich Empty States:</strong> The custom SVG illustration empty states + "Reset Filters" action provide excellent guardrails for search dead-ends.
+          </li>
+          <li class="flex items-start gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0"></div>
+            <strong>Real-time Local Aggregation:</strong> Sophisticated memoization prevents sluggish UI when dealing with deep price/area filtering arrays.
+          </li>
+        </ul>
+      </div>
+
+      <!-- Fix -->
+      <div>
+        <h3 class="text-lg font-bold text-rose-700 flex items-center gap-2 mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          Fix (Critical Issues)
+        </h3>
+        <ul class="space-y-3 text-sm text-slate-700">
+          <li class="flex items-start gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0"></div>
+            <strong>Component Monolith:</strong> The `return` statement has too much raw JSX (e.g. the complex filter forms). Extract `FilterSidebar` immediately.
+          </li>
+          <li class="flex items-start gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0"></div>
+            <strong>Mobile Filter UX:</strong> The filter panel dominates small screens. Implement a bottom-sheet (drawer) approach instead of stacking it infinitely.
+          </li>
+          <li class="flex items-start gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0"></div>
+            <strong>CORS & Failed Calls:</strong> Ensure all unhandled proxy-search rate limits (500s/429s) trigger localized error snackbars rather than silent log failures.
+          </li>
+        </ul>
+      </div>
+
+      <!-- Quick wins -->
+      <div>
+        <h3 class="text-lg font-bold text-amber-600 flex items-center gap-2 mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          Quick-Wins
+        </h3>
+        <ul class="space-y-3 text-sm text-slate-700">
+          <li class="flex items-start gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+            <strong>Number Formatting:</strong> Format large numbers uniformly to use human-readable "萬", "億" in dense table cells to reduce visual noise.
+          </li>
+          <li class="flex items-start gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+            <strong>Chart Tooltip Styling:</strong> Override native Recharts tooltips with custom CSS to match the Tailwind `shadow-xl border-slate-200` aesthetic.
+          </li>
+          <li class="flex items-start gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+            <strong>Bookmark Feedback:</strong> Add a micro-toast (e.g. using Sonner) when toggling "我的收藏", rather than relying on silent heart-icon state switches.
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('designRadar').getContext('2d');
+    
+    // Tailwind slate-900 / indigo-500
+    new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: ['Philosophy', 'Visual Hierarchy', 'Detail', 'Functionality', 'Innovation'],
+        datasets: [{
+          label: 'Design Score',
+          data: [7.0, 8.0, 7.5, 9.0, 8.5],
+          backgroundColor: 'rgba(99, 102, 241, 0.2)',
+          borderColor: 'rgba(99, 102, 241, 1)',
+          pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: 'rgba(99, 102, 241, 1)',
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+          r: {
+            angleLines: { color: 'rgba(0, 0, 0, 0.05)' },
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+            pointLabels: {
+              font: {
+                family: "'Inter', sans-serif",
+                size: 13,
+                weight: '600'
+              },
+              color: '#334155'
+            },
+            ticks: {
+              min: 0,
+              max: 10,
+              stepSize: 2,
+              display: false
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1e293b',
+            titleFont: { family: "'Inter', sans-serif" },
+            bodyFont: { family: "'Inter', sans-serif" },
+            padding: 12,
+            cornerRadius: 8,
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
