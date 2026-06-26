@@ -1,4 +1,9 @@
 import { buildSelectionPath, buildSeoCopy } from "./seoRoutes";
+import {
+  buildSeoContentStructuredData,
+  buildSeoContentTitle,
+} from "./seoContent";
+import type { SeoContentPage } from "../content/seoPages";
 
 const SITE_NAME = "實價登錄查詢";
 const SITE_ALT_NAME = "Taiwan Real Estate Price Explorer";
@@ -217,4 +222,64 @@ export const syncSeoMetadata = (input: SeoInput) => {
       },
     ],
   });
+};
+
+export const syncSeoContentMetadata = (page: SeoContentPage) => {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const title = buildSeoContentTitle(page);
+  const canonicalUrl = buildAbsoluteUrl(page.path);
+  const imageUrl = buildAbsoluteUrl("/og-image.png");
+  const origin = getSiteOrigin();
+
+  document.title = title;
+  document.documentElement.lang = "zh-Hant-TW";
+
+  upsertMetaTag('meta[name="description"]', { name: "description", content: page.description });
+  upsertMetaTag('meta[name="robots"]', {
+    name: "robots",
+    content: "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1",
+  });
+  upsertMetaTag('meta[property="og:type"]', { property: "og:type", content: "article" });
+  upsertMetaTag('meta[property="og:locale"]', { property: "og:locale", content: "zh_TW" });
+  upsertMetaTag('meta[property="og:site_name"]', {
+    property: "og:site_name",
+    content: SITE_NAME,
+  });
+  upsertMetaTag('meta[property="og:title"]', { property: "og:title", content: title });
+  upsertMetaTag('meta[property="og:description"]', {
+    property: "og:description",
+    content: page.description,
+  });
+  upsertMetaTag('meta[property="og:url"]', { property: "og:url", content: canonicalUrl });
+  upsertMetaTag('meta[property="og:image"]', { property: "og:image", content: imageUrl });
+  upsertMetaTag('meta[property="og:image:alt"]', {
+    property: "og:image:alt",
+    content: "實價登錄查詢的台灣房價地圖與成交資料預覽圖",
+  });
+  upsertMetaTag('meta[name="twitter:card"]', {
+    name: "twitter:card",
+    content: "summary_large_image",
+  });
+  upsertMetaTag('meta[name="twitter:title"]', { name: "twitter:title", content: title });
+  upsertMetaTag('meta[name="twitter:description"]', {
+    name: "twitter:description",
+    content: page.description,
+  });
+  upsertMetaTag('meta[name="twitter:image"]', {
+    name: "twitter:image",
+    content: imageUrl,
+  });
+  upsertLinkTag("canonical", canonicalUrl);
+
+  if (!origin) {
+    return;
+  }
+
+  upsertStructuredData(
+    "webpage",
+    buildSeoContentStructuredData(page, origin, CONTENT_LAST_MODIFIED),
+  );
 };

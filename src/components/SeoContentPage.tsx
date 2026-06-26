@@ -3,8 +3,7 @@ import type { SeoContentPage as SeoContentPageData } from "../content/seoPages";
 import { AffiliateSlot, MortgageCalculatorCta } from "./AffiliateSlot";
 import { SiteNav, SiteFooterNav } from "./SiteNav";
 import { FeedbackForm } from "./FeedbackForm";
-
-const SITE_NAME = "實價登錄查詢";
+import { syncSeoContentMetadata } from "../lib/seo";
 
 // 純資訊頁不顯示導購／房貸工具
 const INFO_PATHS = new Set(["/about/", "/contact/", "/privacy/", "/methodology/", "/data-sources/"]);
@@ -18,7 +17,7 @@ const FINANCE_GUIDES = new Set([
 
 export default function SeoContentPage({ page }: { page: SeoContentPageData }) {
   useEffect(() => {
-    document.title = `${page.title} | ${SITE_NAME}`;
+    syncSeoContentMetadata(page);
   }, [page]);
 
   const isContact = page.path === "/contact/";

@@ -58,6 +58,7 @@ test("production build emits crawlable trust and guide pages", async () => {
     assert.match(html, /<h1>[^<]+<\/h1>/);
     assert.ok(html.includes(`https://tw-real-estate-price-explorer-googl.vercel.app/${pathname}/`));
     assert.match(html, /"@type": "WebPage"/);
+    assert.match(html, /"@type": "BreadcrumbList"/);
   }
 
   const homepage = await readFile(new URL("../dist/index.html", import.meta.url), "utf8");
@@ -71,6 +72,14 @@ test("production build emits crawlable trust and guide pages", async () => {
 
   const guidesHub = await readFile(new URL("../dist/guides/index.html", import.meta.url), "utf8");
   assert.match(guidesHub, /href="\/guides\/transaction-records\/"/);
+  assert.match(guidesHub, /"@type": "ItemList"/);
+
+  const transactionGuide = await readFile(
+    new URL("../dist/guides/transaction-records/index.html", import.meta.url),
+    "utf8",
+  );
+  assert.match(transactionGuide, /"@type": "Article"/);
+  assert.match(transactionGuide, /"publisher": \{\s+"@id": "https:\/\/tw-real-estate-price-explorer-googl\.vercel\.app\/#organization"\s+\}/);
 
   const sitemap = await readFile(new URL("../dist/sitemap.xml", import.meta.url), "utf8");
   const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]);

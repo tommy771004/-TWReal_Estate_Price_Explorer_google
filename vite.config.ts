@@ -6,6 +6,10 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { INDEXABLE_SELECTIONS, buildSelectionPath, buildSeoCopy } from './src/lib/seoRoutes';
 import { SEO_CONTENT_PAGES } from './src/content/seoPages';
 import { NAV_GROUPS } from './src/content/siteNav';
+import {
+  buildSeoContentStructuredData,
+  buildSeoContentTitle,
+} from './src/lib/seoContent';
 
 const SEO_LAST_MODIFIED_TOKEN = '__SEO_LAST_MODIFIED__';
 const GOOGLE_SITE_VERIFICATION_MARKER = '<!-- GOOGLE_SITE_VERIFICATION -->';
@@ -128,18 +132,8 @@ const seoBuildMetadata = () => ({
 
     for (const page of SEO_CONTENT_PAGES) {
       const canonicalUrl = `${siteOrigin}${page.path}`;
-      const title = `${page.title} | 實價登錄查詢`;
-      const structuredData = {
-        '@context': 'https://schema.org',
-        '@type': 'WebPage',
-        '@id': `${canonicalUrl}#webpage`,
-        url: canonicalUrl,
-        name: page.title,
-        description: page.description,
-        inLanguage: 'zh-Hant-TW',
-        dateModified: seoLastModified,
-        isPartOf: { '@id': `${siteOrigin}/#website` },
-      };
+      const title = buildSeoContentTitle(page);
+      const structuredData = buildSeoContentStructuredData(page, siteOrigin, seoLastModified);
       const pageHtml = homepage
         .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
         .replace(/(<meta\s+name="description"\s+content=")[^"]*(")/s, `$1${page.description}$2`)
