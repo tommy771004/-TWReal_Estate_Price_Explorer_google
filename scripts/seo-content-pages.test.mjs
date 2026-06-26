@@ -81,6 +81,40 @@ test("production build emits crawlable trust and guide pages", async () => {
   assert.match(transactionGuide, /"@type": "Article"/);
   assert.match(transactionGuide, /"publisher": \{\s+"@id": "https:\/\/tw-real-estate-price-explorer-googl\.vercel\.app\/#organization"\s+\}/);
 
+  const methodology = await readFile(new URL("../dist/methodology/index.html", import.meta.url), "utf8");
+  assert.match(methodology, /欄位與計算保守原則/);
+  assert.match(methodology, /內容與資料處理說明查核日期：2026-06-26/);
+
+  const contact = await readFile(new URL("../dist/contact/index.html", import.meta.url), "utf8");
+  assert.match(contact, /本頁意見回饋表單/);
+  assert.match(contact, /官方資料更正/);
+
+  const subsidyGuide = await readFile(
+    new URL("../dist/guides/first-home-loan-subsidy/index.html", import.meta.url),
+    "utf8",
+  );
+  assert.match(subsidyGuide, /本頁內容查核日期：2026-06-26/);
+  assert.match(subsidyGuide, /住宅補貼線上申請系統/);
+
+  const tenantRights = await readFile(
+    new URL("../dist/renting-guides/tenant-rights/index.html", import.meta.url),
+    "utf8",
+  );
+  assert.match(tenantRights, /財政部稅務入口網/);
+  assert.match(tenantRights, /全國法規資料庫/);
+
+  const taipeiDistricts = await readFile(
+    new URL("../dist/buying-guides/taipei/districts/index.html", import.meta.url),
+    "utf8",
+  );
+  assert.match(taipeiDistricts, /捷運生活圈與屋齡差異/);
+
+  const kaohsiungDistricts = await readFile(
+    new URL("../dist/buying-guides/kaohsiung/districts/index.html", import.meta.url),
+    "utf8",
+  );
+  assert.match(kaohsiungDistricts, /港灣與重劃區生活圈/);
+
   const sitemap = await readFile(new URL("../dist/sitemap.xml", import.meta.url), "utf8");
   const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]);
   assert.equal(locations.length, 100);

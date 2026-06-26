@@ -46,6 +46,25 @@
 - 指南型頁面增加 `Article` mainEntity，hub / index 頁增加 `ItemList` mainEntity。
 - 測試補上內容頁 breadcrumb、hub ItemList、leaf guide Article 的驗證。
 
+## 3.1 後續已執行改善（2026-06-26）
+
+已完成 Phase 2 / P0-P1 的第一批內容信任補強：
+
+- `/methodology/`：新增欄位與計算保守原則，說明不推估缺漏價格、坪數、屋齡或座標，並補上內容查核日期與更正流程。
+- `/about/`：新增維護與更正原則，明確說明本站不代替政府機關、銀行、地政士、律師或估價師作成判斷。
+- `/contact/`：補明本頁回饋表單是目前可用回報管道，並保留「未設定公開客服信箱前不虛構聯絡資料」原則。
+- 金融/補貼頁：`/guides/mortgage-calculator/`、`/guides/first-home-loan-subsidy/`、`/guides/mortgage-approval-factors/`、`/guides/refinance-mortgage/` 已加入查核日期、官方來源入口與非報價/非核貸保證聲明。
+- 租屋權益頁：`/renting-guides/deposit-and-lease/`、`/renting-guides/tenant-rights/` 已加入查核日期、法規/主管機關/稅務官方入口與個案爭議保留文件建議。
+- 測試新增信任訊號檢查：build 後頁面需包含查核日期、欄位保守原則、住宅補貼線上申請系統、全國法規資料庫與財政部稅務入口網。
+
+## 3.2 後續已執行改善（2026-06-26，第二批）
+
+- 六都行政區索引頁新增在地判讀：臺北市、新北市、桃園市、臺中市、臺南市、高雄市各自有生活圈、產品型態、通勤與比較提醒，不再只是行政區連結列表。
+- 新增 `SEODoc-main/README.md`：整理 `SEODoc-main` 文件索引，標記 `SEO3.md` 與 `SEO4.md` 完全重複、SHA256 相同，並指定後續引用 `SEO3.md` 作為 canonical 文件。
+- 新增 `SEODoc-main/MONTHLY_SEO_SMOKE_CHECKLIST.md`：建立每月本機驗證、部署後驗證、Search Console 月檢與內容品質月檢流程。
+- 新增 `npm run test:seo-docs`：用測試鎖定重複文件索引與每月 checklist 的必要內容。
+- 測試新增六都索引在地判讀檢查：build 後需保留臺北市「捷運生活圈與屋齡差異」與高雄市「港灣與重劃區生活圈」等城市判讀訊號。
+
 ## 4. SEO 改善 Roadmap
 
 ### Phase 1：技術基礎與可索引性（已進行）
@@ -109,6 +128,15 @@
 | P2 | 整理 `SEODoc-main` 重複文件 | 降低內部文件噪音 |
 | P2 | 建立每月 SEO smoke checklist | 避免 sitemap、canonical、schema 回歸 |
 
+目前狀態：
+
+- P0「補官方來源與查核日期到金融/租屋權益頁」：已完成第一批。
+- P0「補公開聯絡方式或明確維護者通道」：已完成站內回饋表單說明；公開客服信箱仍待部署方提供，不虛構。
+- P1「強化 `/methodology/`，加入欄位與計算限制表」：已完成文字版保守原則；後續可再升級為表格 UI。
+- P1「六都行政區索引增加在地判讀提醒」：已完成第一批。
+- P2「整理 `SEODoc-main` 重複文件」：已完成索引整理；未刪除原始重複檔，避免破壞來源脈絡。
+- P2「建立每月 SEO smoke checklist」：已完成，並新增 `test:seo-docs` 驗證。
+
 ## 6. 驗證清單
 
 - `npm run seo:check`
@@ -117,4 +145,3 @@
 - `npm run lint`
 - `npm run build`
 - 部署後執行 `npm run seo:verify-live`
-
