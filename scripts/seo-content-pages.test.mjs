@@ -115,7 +115,33 @@ test("production build emits crawlable trust and guide pages", async () => {
   );
   assert.match(kaohsiungDistricts, /港灣與重劃區生活圈/);
 
+  const collectionPage = await readFile(
+    new URL("../dist/prices/新北市/買賣/index.html", import.meta.url),
+    "utf8",
+  );
+  assert.match(collectionPage, /"@type": "Dataset"/);
+  assert.match(collectionPage, /"@type": "CollectionPage"/);
+
+  const presaleGuide = await readFile(
+    new URL("../dist/guides/presale-vs-resale/index.html", import.meta.url),
+    "utf8",
+  );
+  assert.match(presaleGuide, /data-answer-first/);
+  assert.match(presaleGuide, /<table>/);
+  assert.match(presaleGuide, /"abstract":/);
+  assert.match(presaleGuide, /預售屋 vs 成屋實價登錄判讀差異/);
+  assert.match(presaleGuide, /aria-label="breadcrumb"/);
+  assert.match(presaleGuide, /aria-current="page"/);
+  assert.match(presaleGuide, /href="\/guides\/"/);
+
   const sitemap = await readFile(new URL("../dist/sitemap.xml", import.meta.url), "utf8");
+  // Per-page dateModified overrides the build date; methodology declares 2026-06-26.
+  assert.match(
+    sitemap,
+    /<loc>https:\/\/tw-real-estate-price-explorer-googl\.vercel\.app\/methodology\/<\/loc>\s*<lastmod>2026-06-26<\/lastmod>/,
+  );
+  // Pages without an explicit date fall back to the build date.
+  assert.match(sitemap, /<lastmod>2031-12-24<\/lastmod>/);
   const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]);
   assert.equal(locations.length, 100);
 });

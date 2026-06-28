@@ -7,9 +7,11 @@ import { INDEXABLE_SELECTIONS, buildSelectionPath, buildSeoCopy } from './src/li
 import { SEO_CONTENT_PAGES } from './src/content/seoPages';
 import { NAV_GROUPS } from './src/content/siteNav';
 import {
+  buildBreadcrumbTrail,
   buildSeoContentStructuredData,
   buildSeoContentTitle,
 } from './src/lib/seoContent';
+import { buildDatasetNode } from './src/lib/seoSchema';
 
 const SEO_LAST_MODIFIED_TOKEN = '__SEO_LAST_MODIFIED__';
 const GOOGLE_SITE_VERIFICATION_MARKER = '<!-- GOOGLE_SITE_VERIFICATION -->';
@@ -43,12 +45,23 @@ const resolveGoogleSiteVerification = () => {
 
 const googleSiteVerification = resolveGoogleSiteVerification();
 
+const renderContentTable = (table: NonNullable<(typeof SEO_CONTENT_PAGES)[number]['sections'][number]['table']>) => `
+        <figure>
+          ${table.caption ? `<figcaption>${table.caption}</figcaption>` : ''}
+          <table>
+            <thead><tr>${table.headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead>
+            <tbody>${table.rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+          </table>
+        </figure>`;
+
 const renderContentPage = (page: (typeof SEO_CONTENT_PAGES)[number]) => {
+  const answer = page.answer ? `<p data-answer-first>${page.answer}</p>` : '';
   const sections = page.sections.map((section) => `
       <section>
         <h2>${section.heading}</h2>
         ${section.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('\n        ')}
         ${section.items ? `<ul>${section.items.map((item) => `<li>${item}</li>`).join('')}</ul>` : ''}
+        ${section.table ? renderContentTable(section.table) : ''}
       </section>`).join('');
   const relatedLinks = page.links ? `<nav aria-label="本頁相關入口">
       <h2>相關頁面</h2>
@@ -62,10 +75,19 @@ const renderContentPage = (page: (typeof SEO_CONTENT_PAGES)[number]) => {
       </section>`).join('\n      ')}
     </nav>`;
 
+  const breadcrumb = `<nav aria-label="breadcrumb">
+      <ol>${buildBreadcrumbTrail(page).map((crumb, index, trail) => (
+        index === trail.length - 1
+          ? `<li><span aria-current="page">${crumb.name}</span></li>`
+          : `<li><a href="${crumb.path}">${crumb.name}</a></li>`
+      )).join('')}</ol>
+    </nav>`;
+
   return `<main data-seo-content-page class="seo-shell">
-    <p><a href="/">← 返回實價登錄查詢</a></p>
+    ${breadcrumb}
     <article>
       <h1>${page.title}</h1>
+      ${answer}
       <p>${page.intro}</p>${sections}${relatedLinks}
       ${siteMapNav}
     </article>
@@ -96,15 +118,28 @@ const seoBuildMetadata = () => ({
       const canonicalUrl = `${siteOrigin}${routePath}`;
       const collectionPage = {
         '@context': 'https://schema.org',
-        '@type': 'CollectionPage',
-        '@id': `${canonicalUrl}#webpage`,
-        url: canonicalUrl,
-        name: title,
-        description,
-        inLanguage: 'zh-Hant-TW',
-        dateModified: seoLastModified,
-        isPartOf: { '@id': `${siteOrigin}/#website` },
-        about: { '@type': 'Thing', name: `${scopeLabel}${selection.typeName}房地產成交紀錄` },
+        '@graph': [
+          {
+            '@type': 'CollectionPage',
+            '@id': `${canonicalUrl}#webpage`,
+            url: canonicalUrl,
+            name: title,
+            description,
+            inLanguage: 'zh-Hant-TW',
+            dateModified: seoLastModified,
+            isPartOf: { '@id': `${siteOrigin}/#website` },
+            mainEntity: { '@id': `${canonicalUrl}#dataset` },
+            about: { '@type': 'Thing', name: `${scopeLabel}${selection.typeName}房地產成交紀錄` },
+          },
+          buildDatasetNode({
+            origin: siteOrigin,
+            canonicalUrl,
+            name: `${scopeLabel}${selection.typeName}實價登錄成交資料`,
+            description,
+            scopeLabel,
+            dateModified: seoLastModified,
+          }),
+        ],
       };
       const routeHtml = homepage
         .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
@@ -133,7 +168,8 @@ const seoBuildMetadata = () => ({
     for (const page of SEO_CONTENT_PAGES) {
       const canonicalUrl = `${siteOrigin}${page.path}`;
       const title = buildSeoContentTitle(page);
-      const structuredData = buildSeoContentStructuredData(page, siteOrigin, seoLastModified);
+      const pageDate = page.dateModified ?? seoLastModified;
+      const structuredData = buildSeoContentStructuredData(page, siteOrigin, pageDate);
       const pageHtml = homepage
         .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
         .replace(/(<meta\s+name="description"\s+content=")[^"]*(")/s, `$1${page.description}$2`)
@@ -154,11 +190,17 @@ const seoBuildMetadata = () => ({
     }
 
     const sitemapUrls = [
-      ...INDEXABLE_SELECTIONS.map((selection) => `${siteOrigin}${buildSelectionPath(selection)}`),
-      ...SEO_CONTENT_PAGES.map((page) => `${siteOrigin}${page.path}`),
+      ...INDEXABLE_SELECTIONS.map((selection) => ({
+        loc: `${siteOrigin}${buildSelectionPath(selection)}`,
+        lastmod: seoLastModified,
+      })),
+      ...SEO_CONTENT_PAGES.map((page) => ({
+        loc: `${siteOrigin}${page.path}`,
+        lastmod: page.dateModified ?? seoLastModified,
+      })),
     ];
-    const sitemapEntries = sitemapUrls.map((url) => {
-      return `  <url>\n    <loc>${url}</loc>\n    <lastmod>${seoLastModified}</lastmod>\n  </url>`;
+    const sitemapEntries = sitemapUrls.map(({ loc, lastmod }) => {
+      return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`;
     }).join('\n');
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapEntries}\n</urlset>\n`;
     await writeFile(path.join(outputDirectory, 'sitemap.xml'), sitemap, 'utf8');

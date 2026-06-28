@@ -27,37 +27,31 @@ export const buildSeoContentTitle = (page: SeoContentPage) => `${page.title} | $
 
 export const buildSeoContentUrl = (siteOrigin: string, path: string) => `${siteOrigin}${path}`;
 
+export type BreadcrumbCrumb = { name: string; path: string };
+
+// Single source of truth for both the visible breadcrumb UI and the
+// BreadcrumbList JSON-LD, so the rendered trail always matches the schema.
+export const buildBreadcrumbTrail = (page: SeoContentPage): BreadcrumbCrumb[] => {
+  const parentPage = getParentPage(page);
+  return [
+    { name: SITE_NAME, path: "/" },
+    ...(parentPage ? [{ name: parentPage.name, path: parentPage.path }] : []),
+    { name: page.title, path: page.path },
+  ];
+};
+
 export const buildSeoContentStructuredData = (
   page: SeoContentPage,
   siteOrigin: string,
   dateModified: string,
 ) => {
   const canonicalUrl = buildSeoContentUrl(siteOrigin, page.path);
-  const parentPage = getParentPage(page);
-  const breadcrumbItems = [
-    {
-      "@type": "ListItem",
-      position: 1,
-      name: SITE_NAME,
-      item: `${siteOrigin}/`,
-    },
-    ...(parentPage
-      ? [
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: parentPage.name,
-            item: buildSeoContentUrl(siteOrigin, parentPage.path),
-          },
-        ]
-      : []),
-    {
-      "@type": "ListItem",
-      position: parentPage ? 3 : 2,
-      name: page.title,
-      item: canonicalUrl,
-    },
-  ];
+  const breadcrumbItems = buildBreadcrumbTrail(page).map((crumb, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    name: crumb.name,
+    item: buildSeoContentUrl(siteOrigin, crumb.path),
+  }));
 
   const relatedLinks = page.links?.map((link, index) => ({
     "@type": "ListItem",
@@ -76,6 +70,7 @@ export const buildSeoContentStructuredData = (
         "@type": "Article",
         headline: page.title,
         description: page.description,
+        ...(page.answer ? { abstract: page.answer } : {}),
         dateModified,
         inLanguage: "zh-Hant-TW",
         author: {

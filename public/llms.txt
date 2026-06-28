@@ -2,19 +2,65 @@
 
 > 免費查詢台灣各縣市買賣、預售屋與租賃實價登錄成交紀錄的資料工具。
 
-本站提供成交總價、每坪單價、坪數、屋齡、歷史交易與地圖檢視。資料來自內政部不動產交易實價查詢服務網的公開資料；使用者不需註冊或付費。
+本站提供成交總價、每坪單價、坪數、屋齡、歷史交易與地圖檢視。資料來自內政部不動產交易實價查詢服務網的公開資料；使用者不需註冊或付費。本站為民間資料查詢介面，不代表內政部或任何政府機關，內容不構成估價、貸款招攬或投資建議。
 
 ## 主要頁面
 
-- [實價登錄查詢首頁](https://tw-real-estate-price-explorer-googl.vercel.app/): 預設顯示臺中市買賣實價登錄。
+- [實價登錄查詢首頁](https://tw-real-estate-price-explorer-googl.vercel.app/): 預設顯示臺北市買賣實價登錄。
 - [各縣市查詢入口](https://tw-real-estate-price-explorer-googl.vercel.app/prices/): 選擇買賣、預售屋或租賃的語意網址。
-- [實價登錄使用指南](https://tw-real-estate-price-explorer-googl.vercel.app/guides/): 閱讀成交紀錄與資料限制。
-- [資料方法](https://tw-real-estate-price-explorer-googl.vercel.app/methodology/): 了解資料處理、計算與比較限制。
-- [XML Sitemap](https://tw-real-estate-price-explorer-googl.vercel.app/sitemap.xml): 可索引的縣市與交易類型頁面。
+- [資料方法](https://tw-real-estate-price-explorer-googl.vercel.app/methodology/): 資料處理、欄位保守原則與計算限制。
+- [實價登錄資料來源](https://tw-real-estate-price-explorer-googl.vercel.app/data-sources/): 官方來源、使用方式與資料不包含的內容。
+- [XML Sitemap](https://tw-real-estate-price-explorer-googl.vercel.app/sitemap.xml): 可索引的縣市、交易類型與內容頁。
+
+## 使用指南
+
+- [實價登錄使用指南](https://tw-real-estate-price-explorer-googl.vercel.app/guides/): 判讀成交紀錄與資料限制的入口。
+- [如何閱讀實價登錄成交紀錄](https://tw-real-estate-price-explorer-googl.vercel.app/guides/transaction-records/)
+- [預售屋與成屋實價登錄怎麼比較](https://tw-real-estate-price-explorer-googl.vercel.app/guides/presale-vs-resale/)
+- [地圖位置為什麼可能不精確](https://tw-real-estate-price-explorer-googl.vercel.app/guides/map-location-limitations/)
+
+## 購屋指南（六都）
+
+- [各縣市購屋指南](https://tw-real-estate-price-explorer-googl.vercel.app/buying-guides/)
+- [臺北市首購指南](https://tw-real-estate-price-explorer-googl.vercel.app/buying-guides/taipei/)
+- [新北市購屋指南](https://tw-real-estate-price-explorer-googl.vercel.app/buying-guides/new-taipei/)
+- [桃園市買房指南](https://tw-real-estate-price-explorer-googl.vercel.app/buying-guides/taoyuan/)
+- [臺中市買房指南](https://tw-real-estate-price-explorer-googl.vercel.app/buying-guides/taichung/)
+- [臺南市購屋指南](https://tw-real-estate-price-explorer-googl.vercel.app/buying-guides/tainan/)
+- [高雄市購屋指南](https://tw-real-estate-price-explorer-googl.vercel.app/buying-guides/kaohsiung/)
+
+## 租屋指南
+
+- [租屋族指南](https://tw-real-estate-price-explorer-googl.vercel.app/renting-guides/)
+- [租金行情怎麼查與判讀](https://tw-real-estate-price-explorer-googl.vercel.app/renting-guides/rent-market/)
+- [租屋押金與租約注意事項](https://tw-real-estate-price-explorer-googl.vercel.app/renting-guides/deposit-and-lease/)
+- [租屋族權益與報稅補貼](https://tw-real-estate-price-explorer-googl.vercel.app/renting-guides/tenant-rights/)
+
+## 貸款 / 金融
+
+- [房貸試算與首購貸款指南](https://tw-real-estate-price-explorer-googl.vercel.app/guides/mortgage-calculator/)
+- [首購族貸款優惠與補貼方案總覽](https://tw-real-estate-price-explorer-googl.vercel.app/guides/first-home-loan-subsidy/)
+- [影響房貸核貸與成數的關鍵因素](https://tw-real-estate-price-explorer-googl.vercel.app/guides/mortgage-approval-factors/)
+- [房貸轉貸與利率比較怎麼評估](https://tw-real-estate-price-explorer-googl.vercel.app/guides/refinance-mortgage/)
+
+## 居家 / 裝潢
+
+- [交屋後入住準備清單](https://tw-real-estate-price-explorer-googl.vercel.app/guides/moving-in-checklist/)
+- [新居裝潢預算規劃指南](https://tw-real-estate-price-explorer-googl.vercel.app/guides/renovation-budget/)
+- [小坪數家具與收納規劃](https://tw-real-estate-price-explorer-googl.vercel.app/guides/small-space-furnishing/)
+
+## 網站資訊
+
+- [關於實價登錄查詢](https://tw-real-estate-price-explorer-googl.vercel.app/about/)
+- [隱私權與資料使用說明](https://tw-real-estate-price-explorer-googl.vercel.app/privacy/)
+- [聯絡與資料問題回報](https://tw-real-estate-price-explorer-googl.vercel.app/contact/)
 
 ## 資料來源與限制
 
 - 官方來源：[內政部不動產交易實價查詢服務網](https://lvr.land.moi.gov.tw/)
+- 公開資料下載：[內政部實價登錄公開資料下載](https://plvr.land.moi.gov.tw/)
 - 本站是民間資料查詢介面，不代表內政部或任何政府機關。
-- 開放資料中的門牌可能經過區間化處理，地圖位置僅供行情研究參考。
+- 涵蓋資料類型：買賣、預售屋、租賃成交紀錄；欄位含成交總價、每坪單價、坪數、屋齡、樓層與交易年月。
+- 實價登錄不是目前售價、銀行鑑價或未來價格預測；開放資料中的門牌可能經過區間化處理，地圖位置僅供行情研究參考。
+- 缺漏或無法解析的欄位不會以模型推估補值；統計只描述目前查詢條件下的已申報成交樣本。
 - 成交資料依官方發布時程同步；個別交易仍應以官方資料與專業查證為準。

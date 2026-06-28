@@ -22,6 +22,9 @@ assert(!/name="keywords"/.test(indexHtml), "Obsolete meta keywords tag should no
 assert(/property="og:image" content="\/og-image\.png"/.test(indexHtml), "Open Graph PNG image is missing");
 assert(/"@type": "WebApplication"/.test(indexHtml), "WebApplication structured data is missing");
 assert(/"isAccessibleForFree": true/.test(indexHtml), "Free-access structured data signal is missing");
+assert(/"@type": "Dataset"/.test(indexHtml), "Dataset structured data is missing");
+assert(/"@type": "ContactPoint"/.test(indexHtml), "Organization contactPoint is missing");
+assert(/"@type": "ImageObject"/.test(indexHtml), "Organization logo ImageObject is missing");
 assert(!/"@type": "FAQPage"/.test(indexHtml), "FAQPage schema is restricted and must not be used on this site");
 
 const jsonLdBlocks = [...indexHtml.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)];
@@ -48,6 +51,8 @@ assert(!/<lastmod>/.test(sitemap), "Source sitemap dates must be injected at bui
 
 assert(llms.includes("內政部不動產交易實價查詢服務網"), "llms.txt must identify the official data source");
 assert(llms.includes(`${SITE_ORIGIN}/sitemap.xml`), "llms.txt must link to the sitemap");
+assert(llms.includes(`${SITE_ORIGIN}/buying-guides/`), "llms.txt must list the buying-guides cluster");
+assert(llms.includes(`${SITE_ORIGIN}/renting-guides/`), "llms.txt must list the renting-guides cluster");
 
 if (failures.length > 0) {
   console.error(`SEO checks failed (${failures.length}):`);

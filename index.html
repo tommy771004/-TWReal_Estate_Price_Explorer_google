@@ -164,7 +164,53 @@
             "@id": "https://tw-real-estate-price-explorer-googl.vercel.app/#organization",
             "name": "實價登錄查詢",
             "url": "https://tw-real-estate-price-explorer-googl.vercel.app/",
-            "description": "整合內政部實價登錄開放資料的台灣房價查詢工具。"
+            "description": "整合內政部實價登錄開放資料的台灣房價查詢工具。",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://tw-real-estate-price-explorer-googl.vercel.app/og-image.png",
+              "width": 1200,
+              "height": 630
+            },
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "contactType": "customer support",
+              "url": "https://tw-real-estate-price-explorer-googl.vercel.app/contact/",
+              "availableLanguage": ["zh-Hant"]
+            }
+          },
+          {
+            "@type": "Dataset",
+            "@id": "https://tw-real-estate-price-explorer-googl.vercel.app/#dataset",
+            "name": "台灣實價登錄成交資料",
+            "description": "台灣各縣市買賣、預售屋與租賃實價登錄成交紀錄，包含成交總價、每坪單價、坪數、屋齡、樓層與交易年月。",
+            "url": "https://tw-real-estate-price-explorer-googl.vercel.app/",
+            "inLanguage": "zh-Hant-TW",
+            "isAccessibleForFree": true,
+            "license": "https://data.gov.tw/license",
+            "dateModified": "__SEO_LAST_MODIFIED__",
+            "temporalCoverage": "2012-08/..",
+            "variableMeasured": ["成交總價", "每坪單價", "建物坪數", "屋齡", "樓層", "交易年月"],
+            "spatialCoverage": {
+              "@type": "Place",
+              "name": "台灣"
+            },
+            "creator": {
+              "@type": "GovernmentOrganization",
+              "name": "內政部",
+              "url": "https://lvr.land.moi.gov.tw/"
+            },
+            "isBasedOn": "https://plvr.land.moi.gov.tw/",
+            "distribution": {
+              "@type": "DataDownload",
+              "encodingFormat": "text/html",
+              "contentUrl": "https://plvr.land.moi.gov.tw/"
+            },
+            "publisher": {
+              "@id": "https://tw-real-estate-price-explorer-googl.vercel.app/#organization"
+            },
+            "isPartOf": {
+              "@id": "https://tw-real-estate-price-explorer-googl.vercel.app/#website"
+            }
           },
           {
             "@type": "WebApplication",

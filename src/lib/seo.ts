@@ -3,6 +3,7 @@ import {
   buildSeoContentStructuredData,
   buildSeoContentTitle,
 } from "./seoContent";
+import { buildDatasetNode, buildOrganizationNode } from "./seoSchema";
 import type { SeoContentPage } from "../content/seoPages";
 
 const SITE_NAME = "實價登錄查詢";
@@ -98,7 +99,7 @@ export const syncSeoMetadata = (input: SeoInput) => {
     return;
   }
 
-  const { title, description } = buildSeoCopy(input);
+  const { title, description, scopeLabel } = buildSeoCopy(input);
   const canonicalUrl = buildAbsoluteUrl(buildSelectionPath(input));
   const imageUrl = buildAbsoluteUrl("/og-image.png");
   const origin = getSiteOrigin();
@@ -171,13 +172,15 @@ export const syncSeoMetadata = (input: SeoInput) => {
         description: DEFAULT_DESCRIPTION,
         inLanguage: "zh-Hant-TW",
       },
-      {
-        "@type": "Organization",
-        "@id": `${origin}/#organization`,
-        name: SITE_NAME,
-        url: `${origin}/`,
-        description: "整合內政部實價登錄開放資料的台灣房價查詢工具。",
-      },
+      buildOrganizationNode(origin, import.meta.env.VITE_ORG_SAME_AS),
+      buildDatasetNode({
+        origin,
+        canonicalUrl,
+        name: `${scopeLabel}${input.typeName}實價登錄成交資料`,
+        description,
+        scopeLabel,
+        dateModified: CONTENT_LAST_MODIFIED,
+      }),
       {
         "@type": "WebApplication",
         "@id": `${origin}/#webapp`,
@@ -280,6 +283,6 @@ export const syncSeoContentMetadata = (page: SeoContentPage) => {
 
   upsertStructuredData(
     "webpage",
-    buildSeoContentStructuredData(page, origin, CONTENT_LAST_MODIFIED),
+    buildSeoContentStructuredData(page, origin, page.dateModified ?? CONTENT_LAST_MODIFIED),
   );
 };
