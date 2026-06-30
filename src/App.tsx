@@ -1501,7 +1501,7 @@ export default function App() {
               <div className="flex flex-col">
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tighter text-ink dark:text-white leading-none">
-                    {cityName}{district !== "全部" ? district : ""}{typeName}實價登錄查詢
+                    實價登錄查詢
                   </h1>
                   <div className="flex items-center gap-1.5 relative">
                     <Button 
