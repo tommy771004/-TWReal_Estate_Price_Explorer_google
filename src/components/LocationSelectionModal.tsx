@@ -42,10 +42,10 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-slate-950/40 backdrop-blur-sm">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className="w-full h-full sm:h-[80vh] sm:max-h-[600px] sm:max-w-[500px] bg-white dark:bg-slate-900 shadow-2xl sm:rounded-[2rem] overflow-hidden flex flex-col border border-slate-200 dark:border-white/10"
       >
         {/* Header */}

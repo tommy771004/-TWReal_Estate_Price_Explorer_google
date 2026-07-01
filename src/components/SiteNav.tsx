@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { NAV_GROUPS } from "../content/siteNav";
+import { Settings } from "lucide-react";
+
+interface SiteNavProps {
+  onSettingsClick?: () => void;
+  settingsTitle?: string;
+}
 
 // 頂部分組導覽列：每個分類以下拉選單收納指南頁，減少首頁資訊堆疊。
-export function SiteNav() {
+export function SiteNav({ onSettingsClick, settingsTitle }: SiteNavProps) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
@@ -34,50 +40,64 @@ export function SiteNav() {
           實價登錄查詢
         </a>
 
-        {/* 桌面：下拉選單 */}
-        <ul className="hidden items-center gap-1 md:flex">
-          {NAV_GROUPS.map((group) => {
-            const isOpen = openGroup === group.label;
-            return (
-              <li key={group.label} className="relative">
-                <button
-                  type="button"
-                  aria-expanded={isOpen}
-                  onClick={() => setOpenGroup(isOpen ? null : group.label)}
-                  className={`rounded-lg px-3 py-2 text-sm font-bold transition ${isOpen ? "bg-coral-500/10 text-coral-600 dark:text-coral-400" : "text-slate-600 hover:text-coral-600 dark:text-slate-300 dark:hover:text-coral-400"}`}
-                >
-                  {group.label}
-                </button>
-                {isOpen && (
-                  <div className="absolute left-0 top-full z-40 mt-1 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white/95 shadow-xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95">
-                    <ul className="flex flex-col p-1.5">
-                      {group.links.map((link) => (
-                        <li key={link.href}>
-                          <a
-                            href={link.href}
-                            className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-coral-500/10 hover:text-coral-600 dark:text-slate-300 dark:hover:text-coral-400"
-                          >
-                            {link.label}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="flex items-center gap-2 md:gap-4">
+          {/* Settings Button */}
+          {onSettingsClick && (
+            <button
+              type="button"
+              onClick={onSettingsClick}
+              className="flex items-center justify-center h-9 w-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-coral-500 dark:text-slate-400 dark:hover:text-coral-400 transition cursor-pointer"
+              title={settingsTitle || "設定"}
+            >
+              <Settings className="w-5 h-5 animate-hover-spin" />
+            </button>
+          )}
 
-        {/* 行動：展開全部選單 */}
-        <button
-          type="button"
-          aria-expanded={mobileOpen}
-          onClick={() => setMobileOpen((v) => !v)}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300 md:hidden"
-        >
-          選單
-        </button>
+          {/* 桌面：下拉選單 */}
+          <ul className="hidden items-center gap-1 md:flex">
+            {NAV_GROUPS.map((group) => {
+              const isOpen = openGroup === group.label;
+              return (
+                <li key={group.label} className="relative">
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    onClick={() => setOpenGroup(isOpen ? null : group.label)}
+                    className={`rounded-lg px-3 py-2 text-sm font-bold transition ${isOpen ? "bg-coral-500/10 text-coral-600 dark:text-coral-400" : "text-slate-600 hover:text-coral-600 dark:text-slate-300 dark:hover:text-coral-400"}`}
+                  >
+                    {group.label}
+                  </button>
+                  {isOpen && (
+                    <div className="absolute left-0 top-full z-40 mt-1 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white/95 shadow-xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95">
+                      <ul className="flex flex-col p-1.5">
+                        {group.links.map((link) => (
+                          <li key={link.href}>
+                            <a
+                              href={link.href}
+                              className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-coral-500/10 hover:text-coral-600 dark:text-slate-300 dark:hover:text-coral-400"
+                            >
+                              {link.label}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* 行動：展開全部選單 */}
+          <button
+            type="button"
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((v) => !v)}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300 md:hidden"
+          >
+            選單
+          </button>
+        </div>
       </div>
 
       {/* 行動展開內容 */}

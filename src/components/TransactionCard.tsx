@@ -24,6 +24,7 @@ import {
 } from "../utils/real-estate-helpers";
 import { calculateDistance } from "../lib/utils";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_APP_TEXTS, type AppTexts } from "../constants/texts";
 
 interface TransactionCardProps {
   item: Transaction;
@@ -36,6 +37,7 @@ interface TransactionCardProps {
   globalFacilities: any[];
   historyCounts: HistoryCounts;
   districtAveragePrices: Record<string, number>;
+  appTexts?: AppTexts;
 }
 
 export const TransactionCard: React.FC<TransactionCardProps> = ({
@@ -49,6 +51,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
   globalFacilities,
   historyCounts,
   districtAveragePrices,
+  appTexts = DEFAULT_APP_TEXTS,
 }) => {
   // Nearest facilities calculation
   let nearestStation: any = null;
@@ -102,7 +105,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
   const itemUnitPrice = parseFloat(item.unitPrice || "0");
   const avgPrice = districtAveragePrices[item.district] || 0;
 
-  if (hasHistory && itemUnitPrice > 0 && avgPrice > 0) {
+  if (itemUnitPrice > 0 && avgPrice > 0) {
     priceDiffPercentage = ((itemUnitPrice - avgPrice) / avgPrice) * 100;
     showPriceIndicator = true;
   }
@@ -125,14 +128,14 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
       }}
       key={item.id}
       onClick={() => setSelectedItem(item)}
-      className="group relative liquid-glass-panel rounded-[1.5rem] p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 cursor-pointer overflow-hidden ring-1 ring-black/5 dark:ring-white/10 hover:border-coral-500/30 dark:hover:border-coral-500/30 transition-all duration-300"
+      className="group relative liquid-glass-panel rounded-2xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 cursor-pointer overflow-hidden ring-1 ring-black/5 dark:ring-white/10 hover:border-coral-500/30 dark:hover:border-coral-500/30 transition-all duration-300"
     >
       {/* Interactive Left Indicator line */}
       <div className="absolute left-0 top-0 bottom-0 w-[5px] bg-gradient-to-b from-coral-400 to-coral-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[0_0_12px_rgba(237,111,92,0.8)]" />
 
       <button
         onClick={(e) => toggleFavorite(item, e)}
-        className={`absolute top-2.5 right-2.5 sm:top-3 sm:right-3 p-1.5 rounded-full transition-all z-10 ${
+        className={`absolute top-2 right-2 sm:top-2 sm:right-2 p-1.5 rounded-full transition-all z-10 ${
           isFavorite
             ? "text-red-500 bg-red-500/10"
             : "text-slate-300 dark:text-slate-600 hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -142,17 +145,17 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
       </button>
 
       {/* Content Grid */}
-      <div className="flex-1 grid grid-cols-1 sm:grid-cols-[80px_minmax(0,1fr)_minmax(130px,auto)] gap-3 sm:gap-6 items-center pl-1 sm:pl-2 w-full min-w-0">
+      <div className="flex-1 grid grid-cols-1 sm:grid-cols-[70px_minmax(0,1fr)_minmax(120px,auto)] gap-2 sm:gap-4 items-center pl-1 sm:pl-2 w-full min-w-0">
         {/* Date Block */}
-        <div className="flex sm:flex-col items-center sm:items-start justify-between border-b sm:border-y-0 border-slate-200/50 dark:border-slate-800 pb-2 sm:pb-0">
-          <div className="text-xl sm:text-2xl leading-none font-display font-medium text-ink/80 dark:text-white/80 tracking-tight">
+        <div className="flex sm:flex-col items-center sm:items-start justify-between border-b sm:border-y-0 border-slate-200/50 dark:border-slate-800 pb-1.5 sm:pb-0">
+          <div className="text-lg sm:text-xl leading-none font-display font-medium text-ink/80 dark:text-white/80 tracking-tight">
             {formatDate(item.date).replace(/-/g, ".")}
           </div>
         </div>
 
         {/* Info Tags & Address */}
         <div className="flex flex-col justify-center items-start sm:items-center min-w-0 py-0.5">
-          <div className="flex flex-wrap items-center justify-start sm:justify-center gap-1.5 mb-1.5 overflow-hidden max-h-[40px] sm:max-h-[20px]">
+          <div className="flex flex-wrap items-center justify-start sm:justify-center gap-1 mb-1 sm:mb-2.5 overflow-hidden max-h-[40px] sm:max-h-[20px]">
             <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold tracking-widest uppercase border border-slate-200/60 dark:border-slate-700/60 shadow-sm leading-none shrink-0 truncate max-w-[80px]">
               {item.district}
             </span>
@@ -168,12 +171,12 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
               </span>
             )}
           </div>
-          <h3 className="text-base sm:text-lg font-bold text-ink dark:text-slate-50 truncate group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-snug w-full text-left sm:text-center">
+          <h3 className="text-sm sm:text-base font-bold text-ink dark:text-slate-50 truncate group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors leading-snug w-full text-left sm:text-center">
             {item.address}
           </h3>
 
           {getSpecialTags(item.remarks).length > 0 && (
-            <div className="flex flex-wrap items-center justify-start sm:justify-center gap-1.5 mt-1">
+            <div className="flex flex-wrap items-center justify-start sm:justify-center gap-1 mt-1 sm:mt-2">
               {getSpecialTags(item.remarks).map((tag) => (
                 <span
                   key={tag.label}
@@ -186,7 +189,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
             </div>
           )}
 
-          <div className="text-[11px] font-bold mt-1.5 flex flex-wrap items-center justify-start sm:justify-center gap-1.5">
+          <div className="text-[11px] font-bold mt-1 sm:mt-2.5 flex flex-wrap items-center justify-start sm:justify-center gap-1.5">
             <span className="flex items-center gap-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-[6px]">
               <Maximize2 className="w-[10px] h-[10px]" />{" "}
               <span className="text-[10px] font-bold leading-none">
@@ -204,7 +207,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
             )}
             {item.rooms && item.rooms !== "0" && (
               <>
-                <div className="flex items-center justify-start sm:justify-center gap-1.5">
+                <div className="flex items-center justify-start sm:justify-center gap-1">
                   <span className="flex items-center gap-1 bg-coral-500/10 text-coral-600 dark:text-coral-400 px-1.5 py-0.5 rounded-[6px]">
                     <Bed className="w-[10px] h-[10px]" />{" "}
                     <span className="text-[10px] font-bold leading-none">{item.rooms}</span>
@@ -227,7 +230,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
           </div>
 
           {(nearestStation || nearestSchool) && (
-            <div className="text-[10px] font-bold mt-1.5 flex flex-wrap items-center justify-start sm:justify-center gap-1.5">
+            <div className="text-[10px] font-bold mt-1 sm:mt-2 flex flex-wrap items-center justify-start sm:justify-center gap-1.5">
               {nearestStation && (
                 <span className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-[6px] border border-blue-100 dark:border-blue-800/30">
                   <Train className="w-3 h-3" />
@@ -255,11 +258,11 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
         </div>
 
         {/* Price Block */}
-        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-200/50 dark:border-slate-800 pt-3 sm:pt-0 pl-1 sm:pl-5 sm:pr-4 mt-2 sm:mt-0 relative sm:h-full min-w-0 gap-2 shrink-0">
-          <div className="flex flex-row sm:flex-col items-baseline sm:items-end sm:flex-1 sm:justify-center gap-2 sm:gap-1.5 min-w-0 flex-wrap">
-            <div className="flex items-baseline gap-1.5 sm:gap-2 order-2 sm:order-1 shrink-0 overflow-hidden">
-              <span className="text-xs font-bold text-slate-400 shrink-0">總價</span>
-              <span className="text-xl sm:text-3xl leading-none font-display font-medium text-coral-600 dark:text-coral-400 tracking-tight truncate">
+        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-200/50 dark:border-slate-800 pt-2 sm:pt-0 pl-1 sm:pl-4 sm:pr-8 mt-1.5 sm:mt-0 relative sm:h-full min-w-0 gap-1.5 shrink-0">
+          <div className="flex flex-row sm:flex-col items-baseline sm:items-end sm:flex-1 sm:justify-center gap-2 sm:gap-1 min-w-0 flex-wrap">
+            <div className="flex items-baseline gap-1.5 sm:gap-1.5 order-2 sm:order-1 shrink-0 overflow-hidden">
+              <span className="text-[11px] font-bold text-slate-400 shrink-0">{appTexts.totalPrice}</span>
+              <span className="text-lg sm:text-2xl leading-none font-display font-medium text-coral-600 dark:text-coral-400 tracking-tight truncate">
                 {formatPrice(item.totalPrice)}
               </span>
             </div>
@@ -284,8 +287,8 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
                       title={`與同區域(${item.district})平均成交單價 ${(avgPrice * 3.30578 / 10000).toFixed(1)} 萬/坪 相比的差異`}
                       className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black leading-none ${
                         priceDiffPercentage >= 0
-                          ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30"
-                          : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
+                          : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30"
                       }`}
                     >
                       {priceDiffPercentage >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
@@ -302,8 +305,8 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
                     title={`與同區域(${item.district})平均成交單價 ${(avgPrice * 3.30578 / 10000).toFixed(1)} 萬/坪 相比的差異`}
                     className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black leading-none ${
                       priceDiffPercentage >= 0
-                        ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30"
-                        : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
+                        ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
+                        : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30"
                     }`}
                   >
                     {priceDiffPercentage >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}

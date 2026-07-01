@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+:root {
+  --font-scale: 1.0;
+}
+
+html {
+  font-size: calc(16px * var(--font-scale, 1.0)) !important;
+}
+
 @theme {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Geist Variable", ui-sans-serif, system-ui, sans-serif;

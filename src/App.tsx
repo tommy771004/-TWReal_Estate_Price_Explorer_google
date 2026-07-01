@@ -59,8 +59,10 @@ import {
   AlertCircle,
   MapPinOff,
   Navigation,
+  Settings,
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
+import { DEFAULT_APP_TEXTS, type AppTexts } from "./constants/texts";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
 import { TransactionCard } from "./components/TransactionCard";
 import { AffiliateMarquee, AffiliateChips } from "./components/AffiliateMarquee";
@@ -156,9 +158,8 @@ const modalItemVariants = {
     scale: 1,
     y: 0,
     transition: {
-      type: "spring",
-      stiffness: 100,
-      damping: 17
+      duration: 0.4,
+      ease: [0.16, 1, 0.3, 1]
     }
   }
 };
@@ -183,6 +184,49 @@ export default function App() {
     }
     return true;
   });
+
+  const [fontSize, setFontSize] = useState<"small" | "medium" | "large">(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('explorer_font_size');
+      return (saved as "small" | "medium" | "large") || 'medium';
+    }
+    return 'medium';
+  });
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  const [appTexts, setAppTexts] = useState<AppTexts>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('explorer_app_texts');
+      if (saved) {
+        try {
+          return { ...DEFAULT_APP_TEXTS, ...JSON.parse(saved) };
+        } catch (e) {
+          return DEFAULT_APP_TEXTS;
+        }
+      }
+    }
+    return DEFAULT_APP_TEXTS;
+  });
+
+  const updateAppTexts = (newTexts: Partial<AppTexts>) => {
+    setAppTexts(prev => {
+      const updated = { ...prev, ...newTexts };
+      localStorage.setItem('explorer_app_texts', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  useEffect(() => {
+    localStorage.setItem('explorer_font_size', fontSize);
+    const root = document.documentElement;
+    if (fontSize === 'small') {
+      root.style.setProperty('--font-scale', '0.875');
+    } else if (fontSize === 'medium') {
+      root.style.setProperty('--font-scale', '1.0');
+    } else if (fontSize === 'large') {
+      root.style.setProperty('--font-scale', '1.15');
+    }
+  }, [fontSize]);
 
   useEffect(() => {
     if (darkMode) {
@@ -1487,7 +1531,7 @@ export default function App() {
         animate={{ opacity: 1, y: 0 }}
         className="relative w-full flex-1 flex flex-col z-10"
       >
-        <SiteNav />
+        <SiteNav onSettingsClick={() => setIsSettingsModalOpen(true)} settingsTitle={appTexts.settingsTitle} />
         {/* Header */}
         <div className="px-4 sm:px-6 pt-6 pb-2 shrink-0 relative z-20">
           <div className="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4 px-2 sm:px-6 rounded-[2rem] relative z-10 group transition-all">
@@ -1644,9 +1688,6 @@ export default function App() {
                 <h2 id="search-summary-heading" className="text-2xl sm:text-[1.75rem] font-display font-black tracking-tight text-ink dark:text-white leading-tight">
                   {cityName}{district !== "全部" ? ` · ${district}` : ""}{typeName ? ` ${typeName}` : ""}成交行情
                 </h2>
-                <p className="text-[13px] sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-xl">
-                  免費查詢{cityName}{district !== "全部" ? district : ""}{typeName}成交紀錄、每坪單價、總價、坪數與歷史走勢；資料來自內政部實價登錄開放資料。
-                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-coral-400/40 bg-coral-500/10 px-3 py-1.5 text-[12px] font-bold text-coral-700 dark:text-coral-300">
@@ -1813,7 +1854,7 @@ export default function App() {
                 </div>
                 <input 
                   type="text"
-                  placeholder="輸入關鍵字查詢..." 
+                  placeholder={appTexts.searchPlaceholder} 
                   className="w-full pl-11 liquid-glass-input h-[52px] rounded-[1rem] outline-none text-sm font-bold placeholder:text-slate-400 shadow-sm"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -1928,7 +1969,7 @@ export default function App() {
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center min-w-0">
 
               <div className="flex flex-col gap-1.5">
-                <span className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-1">交易型態</span>
+                
                 <div className="flex bg-white/40 dark:bg-black/20 p-1.5 rounded-[1rem] shadow-inner border border-white/60 dark:border-white/5">
                   {TRANSACTION_TYPES.map(t => (
                     <button 
@@ -1949,7 +1990,7 @@ export default function App() {
               <div className="w-full sm:w-px h-px sm:h-10 bg-white/40 dark:bg-white/5 mx-0 sm:mx-2" />
 
               <div className="flex flex-col gap-1.5 w-full sm:w-auto min-w-0">
-                 <span className="text-[11px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-[0.2em] ml-1 shrink-0">標的種類</span>
+                
                  <div className="flex flex-nowrap sm:flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x">
                    {["房地", "房地(車)", "建物", "車位", "土地"].map(pt => (
                       <label key={pt} className="relative cursor-pointer group shrink-0 snap-start">
@@ -1982,7 +2023,7 @@ export default function App() {
                       <motion.div id="search-dot" className="absolute -top-1 -right-1 w-2 h-2 bg-coral-500 shadow-[0_0_8px_rgba(237,111,92,0.5)] rounded-full" />
                     )}
                   </div>
-                  進階篩選
+                  {appTexts.advancedSearch}
                 </Button>
                 <Button
                   variant="ghost"
@@ -2000,7 +2041,7 @@ export default function App() {
                   className="flex-1 sm:flex-none h-11 px-4 rounded-[1.25rem] text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-coral-500/5 transition-all text-xs sm:text-sm font-bold flex items-center justify-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
-                  清除篩選
+                  {appTexts.clearAll}
                 </Button>
                 <Button
                   onClick={() => setIsSavingSearch(true)}
@@ -2124,7 +2165,7 @@ export default function App() {
                   initial={{ height: 0, opacity: 0, y: -10 }}
                   animate={{ height: "auto", opacity: 1, y: 0 }}
                   exit={{ height: 0, opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                   className="overflow-hidden mt-2"
                 >
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-5 sm:p-7 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-[2rem] shadow-sm mb-2 relative overflow-hidden">
@@ -2581,6 +2622,7 @@ export default function App() {
                         globalFacilities={globalFacilities}
                         historyCounts={historyCounts}
                         districtAveragePrices={districtAveragePrices}
+                        appTexts={appTexts}
                       />
                     ))}
                   </AnimatePresence>
@@ -2649,8 +2691,8 @@ export default function App() {
                   <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-center mb-5 shadow-sm">
                     <Compass className="w-6 h-6 text-slate-400 dark:text-slate-500" />
                   </div>
-                  <p className="font-sans font-bold text-base tracking-tight text-slate-800 dark:text-slate-200">未找到符合條件的成交紀錄</p>
-                  <p className="text-xs mt-1.5 font-medium text-slate-500 dark:text-slate-400">嘗試放寬您的篩選項目、縮小價格範圍或清除搜尋關鍵字</p>
+                  <p className="font-sans font-bold text-base tracking-tight text-slate-800 dark:text-slate-200">{appTexts.noData.includes("。") ? appTexts.noData.split("。")[0] : appTexts.noData}</p>
+                  <p className="text-xs mt-1.5 font-medium text-slate-500 dark:text-slate-400">{appTexts.noData.includes("。") ? appTexts.noData.split("。")[1] : "嘗試放寬您的篩選項目、縮小價格範圍或清除搜尋關鍵字"}</p>
                 </motion.div>
               )}
               {error && (
@@ -2967,12 +3009,11 @@ export default function App() {
         <DialogContent showCloseButton={false} className="max-w-[95vw] sm:max-w-4xl w-full p-0 overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-slate-200/80 dark:border-slate-800/80 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)]">
           {selectedItem && (
             <motion.div 
-              initial={{ y: "80px", opacity: 0 }}
+              initial={{ y: "40px", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{
-                type: "spring",
-                stiffness: 140,
-                damping: 20,
+                duration: 0.4,
+                ease: [0.16, 1, 0.3, 1],
                 staggerChildren: 0.05,
                 delayChildren: 0.05
               }}
@@ -3332,14 +3373,156 @@ export default function App() {
         </DialogContent>
       </Dialog>
 
+      {/* Settings Dialog (Font size & customizable texts) */}
+      <Dialog open={isSettingsModalOpen} onOpenChange={setIsSettingsModalOpen}>
+        <DialogContent className="max-w-[95vw] sm:max-w-xl w-full p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-[2rem] shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
+              <Settings className="w-5 h-5 text-coral-500" />
+              {appTexts.settingsTitle}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-6">
+            {/* Font Size Selector */}
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block uppercase tracking-wider">
+                {appTexts.textSizeSetting}
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: "small", label: appTexts.textSizeSmall, desc: appTexts.textSizeSmallDesc },
+                  { value: "medium", label: appTexts.textSizeMedium, desc: appTexts.textSizeMediumDesc },
+                  { value: "large", label: appTexts.textSizeLarge, desc: appTexts.textSizeLargeDesc },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    onClick={() => setFontSize(item.value as any)}
+                    className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                      fontSize === item.value
+                        ? "bg-coral-500/10 text-coral-600 dark:text-coral-400 border-coral-500/40 shadow-inner"
+                        : "bg-slate-50 dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span className={`font-bold ${item.value === 'small' ? 'text-xs' : item.value === 'medium' ? 'text-sm' : 'text-base'}`}>
+                      {item.label.split(" (")[0]}
+                    </span>
+                    <span className="text-[10px] opacity-75">{item.value === 'small' ? 'Small' : item.value === 'medium' ? 'Medium' : 'Large'}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
+                {fontSize === "small" && appTexts.textSizeSmallDesc}
+                {fontSize === "medium" && appTexts.textSizeMediumDesc}
+                {fontSize === "large" && appTexts.textSizeLargeDesc}
+              </p>
+            </div>
+
+            <div className="w-full h-px bg-slate-100 dark:bg-slate-800" />
+
+            {/* Global Texts Customizable Editor */}
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block uppercase tracking-wider flex items-center justify-between">
+                <span>編輯全域顯示文字 (Customize UI Labels)</span>
+                <button 
+                  onClick={() => {
+                    if (window.confirm("確定要重設所有自訂文字嗎？")) {
+                      updateAppTexts(DEFAULT_APP_TEXTS);
+                    }
+                  }}
+                  className="text-[10px] text-coral-500 hover:underline font-bold"
+                >
+                  重設預設值
+                </button>
+              </label>
+
+              <div className="max-h-[220px] overflow-y-auto pr-2 space-y-3.5 [scrollbar-width:thin]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1">進階篩選按鈕</label>
+                    <input
+                      type="text"
+                      value={appTexts.advancedSearch}
+                      onChange={(e) => updateAppTexts({ advancedSearch: e.target.value })}
+                      className="w-full text-xs font-medium px-3 py-2 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-xl focus:border-coral-500/40 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1">清除篩選按鈕</label>
+                    <input
+                      type="text"
+                      value={appTexts.clearAll}
+                      onChange={(e) => updateAppTexts({ clearAll: e.target.value })}
+                      className="w-full text-xs font-medium px-3 py-2 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-xl focus:border-coral-500/40 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1">卡片 - 總價</label>
+                    <input
+                      type="text"
+                      value={appTexts.totalPrice}
+                      onChange={(e) => updateAppTexts({ totalPrice: e.target.value })}
+                      className="w-full text-xs font-medium px-3 py-2 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-xl focus:border-coral-500/40 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1">搜尋佔位符</label>
+                    <input
+                      type="text"
+                      value={appTexts.searchPlaceholder}
+                      onChange={(e) => updateAppTexts({ searchPlaceholder: e.target.value })}
+                      className="w-full text-xs font-medium px-3 py-2 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-xl focus:border-coral-500/40 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1">無資料提示文字</label>
+                    <input
+                      type="text"
+                      value={appTexts.noData}
+                      onChange={(e) => updateAppTexts({ noData: e.target.value })}
+                      className="w-full text-xs font-medium px-3 py-2 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-xl focus:border-coral-500/40 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1">載入中提示文字</label>
+                    <input
+                      type="text"
+                      value={appTexts.loading}
+                      onChange={(e) => updateAppTexts({ loading: e.target.value })}
+                      className="w-full text-xs font-medium px-3 py-2 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-xl focus:border-coral-500/40 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={() => setIsSettingsModalOpen(false)}
+                className="w-full h-11 bg-coral-500 hover:bg-coral-600 active:scale-[0.985] text-white font-bold tracking-wide rounded-xl shadow-md border border-transparent transition-all"
+              >
+                {appTexts.closeBtn}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Location Sharing Dialog */}
       <AnimatePresence>
         {showLocationModal && (
-          <div className="fixed inset-0 z-[100] bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-[100] bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4"
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-coral-500/5 rounded-full blur-xl pointer-events-none" />
@@ -3387,14 +3570,18 @@ export default function App() {
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Feedback Form Modal */}
       <AnimatePresence>
         {showFeedback && (
-          <div 
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="fixed inset-0 z-[100] bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4"
             onClick={() => {
               setShowFeedback(false);
@@ -3402,9 +3589,10 @@ export default function App() {
             }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-2xl relative overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
@@ -3585,7 +3773,7 @@ export default function App() {
                 </form>
               )}
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
