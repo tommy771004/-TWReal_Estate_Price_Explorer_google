@@ -12,6 +12,7 @@ import {
   buildSeoContentTitle,
 } from './src/lib/seoContent';
 import { buildDatasetNode } from './src/lib/seoSchema';
+import { buildSitemapRecords, renderSitemapXml } from './src/lib/seoSitemap';
 
 const SEO_LAST_MODIFIED_TOKEN = '__SEO_LAST_MODIFIED__';
 const GOOGLE_SITE_VERIFICATION_MARKER = '<!-- GOOGLE_SITE_VERIFICATION -->';
@@ -189,20 +190,7 @@ const seoBuildMetadata = () => ({
       await writeFile(path.join(pageDirectory, 'index.html'), pageHtml, 'utf8');
     }
 
-    const sitemapUrls = [
-      ...INDEXABLE_SELECTIONS.map((selection) => ({
-        loc: `${siteOrigin}${buildSelectionPath(selection)}`,
-        lastmod: seoLastModified,
-      })),
-      ...SEO_CONTENT_PAGES.map((page) => ({
-        loc: `${siteOrigin}${page.path}`,
-        lastmod: page.dateModified ?? seoLastModified,
-      })),
-    ];
-    const sitemapEntries = sitemapUrls.map(({ loc, lastmod }) => {
-      return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`;
-    }).join('\n');
-    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapEntries}\n</urlset>\n`;
+    const sitemap = renderSitemapXml(buildSitemapRecords(siteOrigin, seoLastModified));
     await writeFile(path.join(outputDirectory, 'sitemap.xml'), sitemap, 'utf8');
   },
 });

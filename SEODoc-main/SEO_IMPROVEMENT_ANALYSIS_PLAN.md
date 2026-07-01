@@ -1,6 +1,6 @@
 # Taiwan Real Estate Price Explorer SEO 改善分析計畫
 
-更新日期：2026-06-26
+更新日期：2026-07-01
 
 ## 1. 文件盤點結論
 
@@ -64,6 +64,15 @@
 - 新增 `SEODoc-main/MONTHLY_SEO_SMOKE_CHECKLIST.md`：建立每月本機驗證、部署後驗證、Search Console 月檢與內容品質月檢流程。
 - 新增 `npm run test:seo-docs`：用測試鎖定重複文件索引與每月 checklist 的必要內容。
 - 測試新增六都索引在地判讀檢查：build 後需保留臺北市「捷運生活圈與屋齡差異」與高雄市「港灣與重劃區生活圈」等城市判讀訊號。
+
+## 3.3 後續已執行改善（2026-07-01，第三批）
+
+- sitemap URL inventory 集中到 `src/lib/seoSitemap.ts`，source 與 production build 共用同一份 100 URL 清單。
+- 新增 `npm run seo:sitemap` 與 `npm run test:seo-sitemap`，鎖定 URL 數、唯一性、canonical origin、XML escaping 與行政區薄頁排除規則。
+- 產出 `SITEMAP_VALIDATION_REPORT.md`，記錄 66 個查詢頁、34 個內容頁與 live crawl 未驗證限制。
+- 產出 `FULL_SEO_AUDIT_REPORT.md` 與 `SEO_ACTION_PLAN.md`，目前 repository/build evidence 的 SEO Health Score 為 83/100。
+- 產出 `COMPETITOR_COMPARISON_PAGE_PLAN.md`，競品頁在來源、查核日期、實測與利益揭露未完成前不得發布。
+- 產出 `PROGRAMMATIC_SEO_PLAN.md`，行政區深度頁採 40% unique content 門檻、30% hard stop 與小批次發布。
 
 ## 4. SEO 改善 Roadmap
 
@@ -142,6 +151,8 @@
 - `npm run seo:check`
 - `npm run test:seo-content`
 - `npm run test:seo-routes`
+- `npm run test:seo-sitemap`
+- `npm run test:seo-docs`
 - `npm run lint`
 - `npm run build`
 - 部署後執行 `npm run seo:verify-live`

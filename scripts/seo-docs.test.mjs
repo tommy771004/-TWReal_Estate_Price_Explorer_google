@@ -31,3 +31,26 @@ test("monthly SEO smoke checklist captures recurring verification commands", asy
   assert.match(checklist, /每月/);
   assert.match(checklist, /Search Console/);
 });
+
+test("SEO strategy reports document sitemap, audit, competitor, and programmatic gates", async () => {
+  const [sitemapReport, auditReport, actionPlan, competitorPlan, programmaticPlan] = await Promise.all([
+    readFile(new URL("../SEODoc-main/SITEMAP_VALIDATION_REPORT.md", import.meta.url), "utf8"),
+    readFile(new URL("../SEODoc-main/FULL_SEO_AUDIT_REPORT.md", import.meta.url), "utf8"),
+    readFile(new URL("../SEODoc-main/SEO_ACTION_PLAN.md", import.meta.url), "utf8"),
+    readFile(new URL("../SEODoc-main/COMPETITOR_COMPARISON_PAGE_PLAN.md", import.meta.url), "utf8"),
+    readFile(new URL("../SEODoc-main/PROGRAMMATIC_SEO_PLAN.md", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(sitemapReport, /100/);
+  assert.match(sitemapReport, /66/);
+  assert.match(sitemapReport, /live crawl/i);
+  assert.match(auditReport, /SEO Health Score/);
+  assert.match(auditReport, /83\/100/);
+  assert.match(actionPlan, /Critical|High|Medium|Low/);
+  assert.match(competitorPlan, /發布閘門/);
+  assert.match(competitorPlan, /不得發布/);
+  assert.match(programmaticPlan, /Programmatic SEO Score/);
+  assert.match(programmaticPlan, /行政區深度頁/);
+  assert.match(programmaticPlan, /30%/);
+  assert.match(programmaticPlan, /40%/);
+});

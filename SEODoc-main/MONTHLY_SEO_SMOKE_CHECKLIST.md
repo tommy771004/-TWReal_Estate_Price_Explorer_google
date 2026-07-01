@@ -10,6 +10,7 @@
 npm run seo:check
 npm run test:seo-content
 npm run test:seo-routes
+npm run test:seo-sitemap
 npm run test:seo-docs
 npm run lint
 npm run build
@@ -54,4 +55,3 @@ npm run seo:verify-live
 - 檢查官方來源連結是否仍可開啟。
 - 新增頁面時同步更新 `SEO_CONTENT_PAGES`、`NAV_GROUPS`、sitemap build 測試與本 checklist。
 - 若新增 AI 輔助內容，確認有人工審核、官方來源、限制說明與非個別建議聲明。
-

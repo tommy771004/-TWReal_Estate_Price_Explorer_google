@@ -19,6 +19,11 @@
 | `SEOSEARCH_Main2.md` | Search appearance topics | 保留，作為 structured data / SERP appearance 索引 |
 | `SEO_IMPROVEMENT_ANALYSIS_PLAN.md` | 專案 SEO 改善計畫 | 持續更新 |
 | `MONTHLY_SEO_SMOKE_CHECKLIST.md` | 每月 SEO smoke checklist | 每月執行 |
+| `SITEMAP_VALIDATION_REPORT.md` | 100 URL sitemap 驗證與 live crawl 限制 | sitemap 變更時更新 |
+| `FULL_SEO_AUDIT_REPORT.md` | 完整 SEO health audit | 每季更新 |
+| `SEO_ACTION_PLAN.md` | 稽核後優先行動 | 每月檢視 |
+| `COMPETITOR_COMPARISON_PAGE_PLAN.md` | 比較頁資料與發布閘門 | 比較頁上線前使用 |
+| `PROGRAMMATIC_SEO_PLAN.md` | 規模化頁面品質與索引閘門 | 新增模板頁前使用 |
 
 ## 重複文件處理原則
 
@@ -26,4 +31,3 @@
 - 為避免破壞來源資料，本次不刪除 `SEO4.md`。
 - 後續引用 helpful content、E-E-A-T、Who / How / Why 時，以 `SEO3.md` 為 canonical 文件。
 - 若未來要清理檔案，可先在版本控制中確認 `SEO4.md` 沒有外部引用，再移到 archive 或刪除。
-

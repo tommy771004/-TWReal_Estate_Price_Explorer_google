@@ -9,3 +9,9 @@ coverage/
 docs/*
 !docs/seo/
 !docs/seo/*.md
+SEODoc-main/*
+!SEODoc-main/SITEMAP_VALIDATION_REPORT.md
+!SEODoc-main/FULL_SEO_AUDIT_REPORT.md
+!SEODoc-main/SEO_ACTION_PLAN.md
+!SEODoc-main/COMPETITOR_COMPARISON_PAGE_PLAN.md
+!SEODoc-main/PROGRAMMATIC_SEO_PLAN.md
