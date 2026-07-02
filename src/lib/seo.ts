@@ -94,6 +94,15 @@ const upsertStructuredData = (id: string, payload: Record<string, unknown>) => {
   element.textContent = JSON.stringify(payload);
 };
 
+// The static/prerendered JSON-LD baselines exist for no-JS crawlers. Once the
+// runtime graph is injected, drop them so rendering crawlers don't merge two
+// nodes sharing the same @id (which shows duplicated properties in validators).
+const removePrerenderedStructuredData = () => {
+  document.head
+    .querySelectorAll('script[data-seo-id="static"], script[data-seo-id="collection"]')
+    .forEach((element) => element.remove());
+};
+
 export const syncSeoMetadata = (input: SeoInput) => {
   if (typeof document === "undefined") {
     return;
@@ -225,6 +234,8 @@ export const syncSeoMetadata = (input: SeoInput) => {
       },
     ],
   });
+
+  removePrerenderedStructuredData();
 };
 
 export const syncSeoContentMetadata = (page: SeoContentPage) => {
@@ -285,4 +296,6 @@ export const syncSeoContentMetadata = (page: SeoContentPage) => {
     "webpage",
     buildSeoContentStructuredData(page, origin, page.dateModified ?? CONTENT_LAST_MODIFIED),
   );
+
+  removePrerenderedStructuredData();
 };
