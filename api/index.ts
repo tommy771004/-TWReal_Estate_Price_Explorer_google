@@ -16,6 +16,158 @@ const CITY_CODE_TO_NAME: Record<string, string> = {
   "X": "澎湖縣", "Z": "連江縣"
 };
 
+/** 縣市+交易型態 原始表快取：避免每次查詢都重抓 plvr XLS */
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小時
+const MAX_CACHE_ENTRIES = 48; // 約 22 縣市 × 3 型態，留餘裕
+
+interface CityTypeCacheEntry {
+  rows: any[][];
+  fetchedAt: number;
+}
+
+const cityTypeCache = new Map<string, CityTypeCacheEntry>();
+/** 同一 key 下載進行中時共用 Promise，避免 stampede */
+const inflightDownloads = new Map<string, Promise<CityTypeCacheEntry>>();
+
+function cacheKey(cCode: string, txCode: string): string {
+  return `${cCode.toLowerCase()}_${txCode.toLowerCase()}`;
+}
+
+function getCachedEntry(key: string): CityTypeCacheEntry | null {
+  const entry = cityTypeCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.fetchedAt > CACHE_TTL_MS) {
+    cityTypeCache.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function setCacheEntry(key: string, entry: CityTypeCacheEntry) {
+  // 簡單 LRU：滿了先刪最舊
+  if (cityTypeCache.size >= MAX_CACHE_ENTRIES && !cityTypeCache.has(key)) {
+    let oldestKey: string | null = null;
+    let oldestAt = Infinity;
+    for (const [k, v] of cityTypeCache) {
+      if (v.fetchedAt < oldestAt) {
+        oldestAt = v.fetchedAt;
+        oldestKey = k;
+      }
+    }
+    if (oldestKey) cityTypeCache.delete(oldestKey);
+  }
+  cityTypeCache.set(key, entry);
+}
+
+function downloadXlsBuffer(url: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, (response) => {
+        if (response.statusCode !== 200) {
+          return reject(new Error(`下載失敗，狀態碼: ${response.statusCode}`));
+        }
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+        response.on("end", () => resolve(Buffer.concat(chunks)));
+      })
+      .on("error", reject);
+  });
+}
+
+function parseXlsToRows(buffer: Buffer): any[][] {
+  const workbook = xlsx.read(buffer, { type: "buffer" });
+  const sheetName =
+    workbook.SheetNames.find((s: string) => s.includes("買賣") || s.includes("租賃") || s.includes("預售")) ||
+    workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const jsonData: any[][] = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+  if (jsonData.length < 2) return [];
+  // 第 0 row 中文 Header，第 1 row 英文 Header
+  return jsonData.slice(2).filter((row) => row.length && row[0]);
+}
+
+async function loadCityTypeRows(cCode: string, txCode: string): Promise<{
+  rows: any[][];
+  source: "cache" | "live";
+  cachedAt: number;
+}> {
+  const key = cacheKey(cCode, txCode);
+  const hit = getCachedEntry(key);
+  if (hit) {
+    return { rows: hit.rows, source: "cache", cachedAt: hit.fetchedAt };
+  }
+
+  let downloadPromise = inflightDownloads.get(key);
+  if (!downloadPromise) {
+    const fileName = `${cCode}_lvr_land_${txCode}.xls`;
+    const url = `https://plvr.land.moi.gov.tw/Download?fileName=${fileName}`;
+    console.log(`\n📥 [資料下載任務] 啟動下載: ${url}`);
+
+    downloadPromise = (async () => {
+      const buffer = await downloadXlsBuffer(url);
+      const rows = parseXlsToRows(buffer);
+      const entry: CityTypeCacheEntry = { rows, fetchedAt: Date.now() };
+      setCacheEntry(key, entry);
+      console.log(`💾 [快取寫入] ${key} → ${rows.length} 筆，TTL ${CACHE_TTL_MS / 3600000}h`);
+      return entry;
+    })().finally(() => {
+      inflightDownloads.delete(key);
+    });
+
+    inflightDownloads.set(key, downloadPromise);
+  } else {
+    console.log(`⏳ [下載去重] 等待進行中的 ${key}`);
+  }
+
+  const entry = await downloadPromise;
+  return { rows: entry.rows, source: "live", cachedAt: entry.fetchedAt };
+}
+
+function applyRowFilters(
+  rawData: any[][],
+  opts: {
+    district?: string;
+    keyword?: string;
+    period?: { startY?: string; startM?: string; endY?: string; endM?: string };
+  }
+): any[][] {
+  let data = rawData;
+
+  if (opts.district && opts.district !== "全部") {
+    data = data.filter((r) => r[0] === opts.district);
+  }
+
+  if (opts.keyword) {
+    const kw = String(opts.keyword);
+    data = data.filter((r) => {
+      const addr = String(r[2] || "");
+      const remark = String(r[26] || "");
+      const buildCase = String(r[28] || "");
+      return addr.includes(kw) || remark.includes(kw) || buildCase.includes(kw);
+    });
+  }
+
+  if (opts.period) {
+    const sY = parseInt(opts.period.startY || "0", 10);
+    const sM = parseInt(opts.period.startM || "0", 10);
+    const eY = parseInt(opts.period.endY || "999", 10);
+    const eM = parseInt(opts.period.endM || "99", 10);
+
+    data = data.filter((r) => {
+      const tsDate = String(r[7] || "");
+      if (tsDate.length >= 7) {
+        const y = parseInt(tsDate.substring(0, tsDate.length - 4), 10);
+        const m = parseInt(tsDate.substring(tsDate.length - 4, tsDate.length - 2), 10);
+        if (y < sY || (y === sY && m < sM)) return false;
+        if (y > eY || (y === eY && m > eM)) return false;
+      }
+      return true;
+    });
+  }
+
+  return data;
+}
+
 interface TrendingQueryItem {
   query: string;
   count: number;
@@ -34,7 +186,7 @@ let trendingQueries: TrendingQueryItem[] = [
 ];
 
 function updateTrendingQuery(query: string, type: "city" | "district" | "keyword") {
-  const existing = trendingQueries.find(item => item.query.toLowerCase() === query.toLowerCase());
+  const existing = trendingQueries.find((item) => item.query.toLowerCase() === query.toLowerCase());
   if (existing) {
     existing.count += 1;
   } else {
@@ -47,19 +199,27 @@ app.get("/api/trending-searches", (_req, res) => {
   return res.json({ success: true, data: sorted });
 });
 
-let currentActivePages = 0;
+app.get("/api/cache-stats", (_req, res) => {
+  const entries = [...cityTypeCache.entries()].map(([key, v]) => ({
+    key,
+    rows: v.rows.length,
+    ageMinutes: Math.round((Date.now() - v.fetchedAt) / 60000),
+  }));
+  return res.json({
+    success: true,
+    ttlHours: CACHE_TTL_MS / 3600000,
+    entryCount: cityTypeCache.size,
+    inflight: [...inflightDownloads.keys()],
+    entries,
+  });
+});
+
+let currentActiveDownloads = 0;
 
 app.post("/api/proxy-search", async (req, res) => {
-  if (currentActivePages > 5) {
-    return res.status(429).json({ success: false, error: "系統忙碌中，請稍後再試。" });
-  }
-
-  currentActivePages++;
-
   try {
-    const { cityCode, district, propertyTypes, transactionType, period, unitPrice, area, age, keyword } = req.body;
-    
-    // Track query location
+    const { cityCode, district, transactionType, period, keyword } = req.body;
+
     const cName = CITY_CODE_TO_NAME[String(cityCode || "A").toUpperCase()] || "臺北市";
     if (keyword && String(keyword).trim()) {
       updateTrendingQuery(String(keyword).trim(), "keyword");
@@ -69,85 +229,47 @@ app.post("/api/proxy-search", async (req, res) => {
       updateTrendingQuery(cName, "city");
     }
 
-    const txCode = String(transactionType).toLowerCase() || "a";
-    const cCode = String(cityCode).toLowerCase() || "a";
-    
-    const fileName = `${cCode}_lvr_land_${txCode}.xls`;
-    const url = `https://plvr.land.moi.gov.tw/Download?fileName=${fileName}`;
-    
-    console.log(`\n📥 [資料下載任務] 啟動下載: ${url}`);
-    
-    const buffer = await new Promise<Buffer>((resolve, reject) => {
-       https.get(url, (response) => {
-          if (response.statusCode !== 200) {
-             return reject(new Error(`下載失敗，狀態碼: ${response.statusCode}`));
-          }
-          const data: any[] = [];
-          response.on("data", (chunk) => data.push(chunk));
-          response.on("end", () => resolve(Buffer.concat(data)));
-       }).on("error", reject);
-    });
-    
-    const workbook = xlsx.read(buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames.find((s: string) => s.includes("買賣") || s.includes("租賃")) || workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const jsonData: any[][] = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-    
-    if (jsonData.length < 2) {
-        return res.json({ success: true, data: [] });
-    }
-    
-    // 第 0 row 是中文 Header，第 1 row 是英文 Header
-    let rawData = jsonData.slice(2).filter((row) => row.length && row[0]);
-    
-    // 根據前端需要的條件過濾
-    if (district && district !== "全部") {
-       rawData = rawData.filter(r => r[0] === district); // 鄉鎮市區
-    }
-    
-    if (keyword) {
-       rawData = rawData.filter(r => {
-          const addr = String(r[2] || "");
-          const remark = String(r[26] || "");
-          return addr.includes(keyword) || remark.includes(keyword);
-       });
-    }
-    
-    // period
-    if (period) {
-       const sY = parseInt(period.startY || "0");
-       const sM = parseInt(period.startM || "0");
-       const eY = parseInt(period.endY || "999");
-       const eM = parseInt(period.endM || "99");
-       
-       rawData = rawData.filter(r => {
-           const tsDate = String(r[7] || ""); // 1130409
-           if (tsDate.length >= 7) {
-               const y = parseInt(tsDate.substring(0, tsDate.length - 4));
-               const m = parseInt(tsDate.substring(tsDate.length - 4, tsDate.length - 2));
-               if (y < sY || (y === sY && m < sM)) return false;
-               if (y > eY || (y === eY && m > eM)) return false;
-           }
-           return true;
-       });
-    }
-    
-    // 統一回傳未經過濾但符合基礎條件的資料，複雜的進階篩選可以由前端處理
-    console.log(`✅ [資料下載任務] 取得 ${rawData.length} 筆原始資料`);
-    sendTelemetry('listing_search.completed', {
-      city_code: cCode,
-      result_count: rawData.length,
-      has_district: Boolean(district && district !== '全部'),
-      transaction_type: txCode,
-    });
-    
-    return res.json({ success: true, data: rawData });
+    const txCode = String(transactionType || "a").toLowerCase();
+    const cCode = String(cityCode || "a").toLowerCase();
+    const key = cacheKey(cCode, txCode);
+    const alreadyCached = Boolean(getCachedEntry(key));
 
+    // 僅對「需要實際下載」的請求做並發限制；快取命中不佔額度
+    if (!alreadyCached && !inflightDownloads.has(key) && currentActiveDownloads > 5) {
+      return res.status(429).json({ success: false, error: "系統忙碌中，請稍後再試。" });
+    }
+
+    const needsDownload = !alreadyCached && !inflightDownloads.has(key);
+    if (needsDownload) currentActiveDownloads++;
+
+    try {
+      const { rows, source, cachedAt } = await loadCityTypeRows(cCode, txCode);
+      const filtered = applyRowFilters(rows, { district, keyword, period });
+
+      console.log(
+        `✅ [查詢完成] ${key} source=${source} raw=${rows.length} filtered=${filtered.length}`
+      );
+      sendTelemetry("listing_search.completed", {
+        city_code: cCode,
+        result_count: filtered.length,
+        has_district: Boolean(district && district !== "全部"),
+        transaction_type: txCode,
+        cache_source: source,
+      });
+
+      return res.json({
+        success: true,
+        data: filtered,
+        source,
+        cachedAt: new Date(cachedAt).toISOString(),
+        rawCount: rows.length,
+      });
+    } finally {
+      if (needsDownload) currentActiveDownloads--;
+    }
   } catch (error: any) {
     console.error(`❌ [任務失敗]:`, error.message);
     return res.status(500).json({ success: false, error: error.message });
-  } finally {
-    currentActivePages--;
   }
 });
 
@@ -166,24 +288,24 @@ app.post("/api/feedback", async (req, res) => {
       RETURNING id
     `;
     const params = [
-      category, 
-      content, 
-      contact || null, 
-      latitude !== undefined && latitude !== null ? Number(latitude) : null, 
-      longitude !== undefined && longitude !== null ? Number(longitude) : null, 
-      county || null, 
-      district || null, 
-      location_method || "unknown"
+      category,
+      content,
+      contact || null,
+      latitude !== undefined && latitude !== null ? Number(latitude) : null,
+      longitude !== undefined && longitude !== null ? Number(longitude) : null,
+      county || null,
+      district || null,
+      location_method || "unknown",
     ];
 
     const result = await query(sql, params);
     const newId = result.rows[0]?.id;
-    sendTelemetry('feedback.submitted', { category: String(category).slice(0, 80) });
+    sendTelemetry("feedback.submitted", { category: String(category).slice(0, 80) });
 
-    return res.json({ 
-      success: true, 
-      message: "意見回饋已成功送出！", 
-      data: { id: newId, isSimulation: (result as any).isSimulation || false } 
+    return res.json({
+      success: true,
+      message: "意見回饋已成功送出！",
+      data: { id: newId, isSimulation: (result as any).isSimulation || false },
     });
   } catch (err: any) {
     console.error("❌ 送出意見回饋失敗:", err.message);
@@ -206,22 +328,22 @@ app.post("/api/audit-log", async (req, res) => {
       RETURNING id
     `;
     const params = [
-      action_type, 
-      details || null, 
-      latitude !== undefined && latitude !== null ? Number(latitude) : null, 
-      longitude !== undefined && longitude !== null ? Number(longitude) : null, 
-      county || null, 
-      district || null, 
-      location_method || "unknown"
+      action_type,
+      details || null,
+      latitude !== undefined && latitude !== null ? Number(latitude) : null,
+      longitude !== undefined && longitude !== null ? Number(longitude) : null,
+      county || null,
+      district || null,
+      location_method || "unknown",
     ];
 
     const result = await query(sql, params);
     const newId = result.rows[0]?.id;
-    sendTelemetry('audit.recorded', { action_type: String(action_type).slice(0, 80) });
+    sendTelemetry("audit.recorded", { action_type: String(action_type).slice(0, 80) });
 
-    return res.json({ 
-      success: true, 
-      data: { id: newId, isSimulation: (result as any).isSimulation || false } 
+    return res.json({
+      success: true,
+      data: { id: newId, isSimulation: (result as any).isSimulation || false },
     });
   } catch (err: any) {
     console.error("❌ 送出使用者行為日誌失敗:", err.message);

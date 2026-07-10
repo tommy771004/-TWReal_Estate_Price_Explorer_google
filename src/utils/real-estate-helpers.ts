@@ -3,6 +3,41 @@ import { Transaction } from "../types/real-estate";
 export const YEARS = Array.from({ length: 15 }, (_, i) => (101 + i).toString());
 export const MONTHS = Array.from({ length: 12 }, (_, i) => (1 + i).toString());
 
+export type PeriodRange = { startY: string; startM: string; endY: string; endM: string };
+
+/** 民國年月：以「今天」為終點，回溯約 12 個月作為預設查詢區間。 */
+export const getDefaultPeriod = (now: Date = new Date()): PeriodRange => {
+  const rocY = now.getFullYear() - 1911;
+  const month = now.getMonth() + 1;
+  let startY = rocY;
+  let startM = month - 11;
+  if (startM <= 0) {
+    startY -= 1;
+    startM += 12;
+  }
+  // YEARS 目前涵蓋 101–115；若超出則夾到可用範圍
+  const clampY = (y: number) => Math.min(115, Math.max(101, y));
+  return {
+    startY: String(clampY(startY)),
+    startM: String(startM),
+    endY: String(clampY(rocY)),
+    endM: String(month),
+  };
+};
+
+export const formatPeriodLabel = (period: PeriodRange): string =>
+  `${period.startY}/${period.startM}–${period.endY}/${period.endM}`;
+
+export const isDefaultPeriod = (period: PeriodRange, now: Date = new Date()): boolean => {
+  const def = getDefaultPeriod(now);
+  return (
+    period.startY === def.startY &&
+    period.startM === def.startM &&
+    period.endY === def.endY &&
+    period.endM === def.endM
+  );
+};
+
 export const getPeriodValue = (y: string, m: string): number => {
   const yearIdx = parseInt(y) - 101;
   const monthIdx = parseInt(m) - 1;
@@ -13,6 +48,96 @@ export const getPeriodFromValue = (val: number): { y: string; m: string } => {
   const year = 101 + Math.floor(val / 12);
   const month = 1 + (val % 12);
   return { y: year.toString(), m: month.toString() };
+};
+
+/** 數值陣列中位數；空陣列回傳 null。 */
+export const median = (values: number[]): number | null => {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  return sorted[mid];
+};
+
+const csvEscape = (value: string | number | undefined | null): string => {
+  const raw = value == null ? "" : String(value);
+  if (/[",\n\r]/.test(raw)) {
+    return `"${raw.replace(/"/g, '""')}"`;
+  }
+  return raw;
+};
+
+/** 將篩選後成交列匯出為 UTF-8 BOM CSV（Excel 可正確開中文）。 */
+export const exportTransactionsCsv = (
+  rows: Transaction[],
+  typeName: string,
+  filenameBase = "real-estate-results"
+): void => {
+  if (typeof window === "undefined" || rows.length === 0) return;
+
+  const headers = [
+    "鄉鎮市區",
+    "交易標的",
+    "土地位置建物門牌",
+    "交易年月日",
+    "總價元",
+    "單價元平方公尺",
+    "建物移轉總面積平方公尺",
+    "建物型態",
+    "移轉層次",
+    "總樓層數",
+    "建物現況格局-房",
+    "建物現況格局-廳",
+    "建物現況格局-衛",
+    "有無管理組織",
+    "車位總價元",
+    "車位移轉總面積平方公尺",
+    "備註",
+    "建案名稱",
+  ];
+
+  const lines = [
+    headers.join(","),
+    ...rows.map((r) =>
+      [
+        r.district,
+        r.transactionType,
+        r.address,
+        r.date,
+        r.totalPrice,
+        r.unitPrice,
+        r.buildingArea || r.area,
+        r.buildingType,
+        r.floor,
+        r.totalFloor,
+        r.rooms,
+        r.halls,
+        r.bathrooms,
+        r.hasManagement,
+        r.parkingPrice,
+        r.parkingArea,
+        r.remarks,
+        r.buildCase || "",
+      ]
+        .map(csvEscape)
+        .join(",")
+    ),
+  ];
+
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `${filenameBase}-${typeName}-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 
 export const formatPrice = (price: string): string => {

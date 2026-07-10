@@ -238,6 +238,11 @@ export function TransactionMapPreview({ selectedItem }: TransactionMapPreviewPro
             <MapController center={[lat, lng]} />
           </MapContainer>
 
+          <div className="absolute top-2 left-2 right-2 z-[1000]">
+            <p className="rounded-lg bg-black/55 px-2 py-1 text-[9px] font-bold text-white/95 backdrop-blur-sm">
+              地圖位置可能為近似座標，請以門牌資訊為準
+            </p>
+          </div>
           <div className="absolute bottom-3 right-3 z-[1000] flex flex-col sm:flex-row gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <a
               href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
@@ -315,6 +320,32 @@ export default function ResultsMap({
   return (
     <div className="flex-1 flex flex-col bg-transparent relative min-h-[500px] sm:min-h-[600px]">
       <div className="flex-1 relative">
+        {/* 定位精度說明：地址 geocode 與行政區近似點並存，避免誤判為精準門牌 */}
+        <div className="absolute top-3 left-3 right-3 z-[1000] pointer-events-none sm:right-auto sm:max-w-md">
+          <div className="pointer-events-auto rounded-2xl border border-amber-200/80 bg-amber-50/95 px-3 py-2 text-[10px] font-bold leading-relaxed text-amber-900 shadow-lg backdrop-blur-md dark:border-amber-500/30 dark:bg-amber-950/90 dark:text-amber-100">
+            <span className="mr-1.5 inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-700 dark:text-amber-300">
+              位置說明
+            </span>
+            地圖點位可能為<strong className="font-black">地址校正</strong>或<strong className="font-black">行政區近似</strong>
+            ，非精準門牌。
+            <a
+              href="/guides/map-location-limitations/"
+              className="ml-1 underline decoration-amber-400/60 underline-offset-2 hover:text-coral-600 dark:hover:text-coral-300"
+            >
+              了解限制
+            </a>
+            {isGeocoding ? (
+              <span className="mt-1 block text-[9px] font-medium text-amber-700/80 dark:text-amber-200/70">
+                精準校正中 {geocodedCount}/{totalToGeocode || "…"}
+              </span>
+            ) : geocodedCount > 0 ? (
+              <span className="mt-1 block text-[9px] font-medium text-amber-700/80 dark:text-amber-200/70">
+                已校正約 {geocodedCount} 筆；其餘可能為近似座標
+              </span>
+            ) : null}
+          </div>
+        </div>
+
         <MapContainer
           center={center}
           zoom={district !== "全部" ? 14 : 12}
