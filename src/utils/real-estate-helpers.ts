@@ -217,13 +217,74 @@ export const getLatestThreeMonthsForDistrict = (dist: string, data: Transaction[
   });
 };
 
+/** 親友／關係人等非市場行情成交（會嚴重扭曲中位價）。 */
+export const isSpecialRelationTransaction = (remarks?: string): boolean =>
+  Boolean(remarks && /(親友|關係人|員工|特殊關係)/.test(remarks));
+
 export const getSpecialTags = (remarks?: string): { label: string; class: string }[] => {
   if (!remarks) return [];
   const result: { label: string; class: string }[] = [];
-  if (/(親友|關係人|員工|特殊關係)/.test(remarks)) result.push({ label: "特殊交易", class: "bg-red-50 text-red-600 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30" });
+  if (isSpecialRelationTransaction(remarks)) result.push({ label: "特殊交易", class: "bg-red-50 text-red-600 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30" });
   if (/(增建|加蓋|頂加)/.test(remarks)) result.push({ label: "含增建", class: "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30" });
   if (/(毛胚|未隔間)/.test(remarks)) result.push({ label: "毛胚屋", class: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/30" });
   if (/(瑕疵|漏水|凶宅|非自然|死亡)/.test(remarks)) result.push({ label: "屋況瑕疵", class: "bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/30" });
   if (/(地上權|使用權)/.test(remarks)) result.push({ label: "限制產權", class: "bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/30" });
   return result;
+};
+
+/** 同建案／同路段鍵，供歷史筆數對照。 */
+export const getCommunityHistoryKey = (item: {
+  district: string;
+  address: string;
+  buildingType: string;
+  buildCase?: string;
+}): { kind: "buildCase" | "address"; key: string } | null => {
+  if (item.buildCase && item.buildCase.trim()) {
+    return { kind: "buildCase", key: item.buildCase.trim() };
+  }
+  const baseAddressMatch = item.address.match(/(.+?[路街道巷弄號])/);
+  if (baseAddressMatch?.[1] && baseAddressMatch[1].length >= 3) {
+    return {
+      kind: "address",
+      key: `${item.district}_${baseAddressMatch[1]}_${item.buildingType}`,
+    };
+  }
+  return null;
+};
+
+/**
+ * 等額本息月付估算（元）。
+ * @param totalPrice 總價（元）
+ * @param ltv 成數 0–1（例 0.8 = 八成）
+ * @param annualRatePct 年利率 %（例 2.1）
+ * @param years 貸款年期
+ */
+export const estimateMortgageMonthly = (
+  totalPrice: number,
+  ltv: number,
+  annualRatePct: number,
+  years: number
+): number | null => {
+  if (!Number.isFinite(totalPrice) || totalPrice <= 0) return null;
+  if (!Number.isFinite(ltv) || ltv <= 0 || ltv > 1) return null;
+  if (!Number.isFinite(years) || years <= 0) return null;
+  const principal = totalPrice * ltv;
+  const months = Math.round(years * 12);
+  if (months <= 0) return null;
+  const monthlyRate = (Number.isFinite(annualRatePct) ? annualRatePct : 0) / 100 / 12;
+  if (monthlyRate <= 0) return principal / months;
+  const factor = Math.pow(1 + monthlyRate, months);
+  return (principal * monthlyRate * factor) / (factor - 1);
+};
+
+/** 後端 cachedAt ISO 字串 → 顯示用短時間。 */
+export const formatCachedAtLabel = (iso?: string | null): string | null => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${mm}/${dd} ${hh}:${mi}`;
 };

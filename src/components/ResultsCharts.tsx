@@ -52,7 +52,7 @@ export default function ResultsCharts({
       <div className="lg:hidden">
         <Button
           variant="outline"
-          className="w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl h-12 font-bold shadow-sm flex items-center justify-between"
+          className="w-full bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl h-12 font-bold shadow-none flex items-center justify-between"
           onClick={onToggleCharts}
         >
           <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
@@ -70,7 +70,7 @@ export default function ResultsCharts({
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm rounded-3xl"
+            className="p-5 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 shadow-none rounded-3xl"
           >
             <div className="flex items-center gap-2 mb-4 px-2">
               <div className="w-8 h-8 rounded-xl bg-coral-500/10 flex items-center justify-center border border-coral-500/10">
@@ -113,7 +113,7 @@ export default function ResultsCharts({
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm rounded-3xl"
+            className="p-5 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 shadow-none rounded-3xl"
           >
             <div className="flex items-center gap-2 mb-4 px-2">
               <div className="w-8 h-8 rounded-xl bg-teal-500/10 flex items-center justify-center border border-teal-500/10">

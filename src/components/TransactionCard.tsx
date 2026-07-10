@@ -16,12 +16,15 @@ import {
   TrendingDown,
   ArrowRight,
   GitCompare,
+  MapPinOff,
+  History,
 } from "lucide-react";
 import { Transaction, HistoryCounts } from "../types/real-estate";
 import {
   formatDate,
   formatPrice,
   getSpecialTags,
+  getCommunityHistoryKey,
 } from "../utils/real-estate-helpers";
 import { calculateDistance } from "../lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,6 +46,8 @@ interface TransactionCardProps {
   isInCompare?: boolean;
   /** 切換比較；回傳 false 表示已滿 */
   toggleCompare?: (item: Transaction, e: React.MouseEvent) => boolean | void;
+  /** 點社區歷史徽章：聚焦同建案／路段 */
+  onFocusCommunity?: (item: Transaction, e: React.MouseEvent) => void;
 }
 
 export const TransactionCard: React.FC<TransactionCardProps> = ({
@@ -54,11 +59,12 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
   setSelectedItem,
   setTrendDistrict,
   globalFacilities,
-  historyCounts: _historyCounts,
+  historyCounts,
   districtAveragePrices,
   appTexts = DEFAULT_APP_TEXTS,
   isInCompare = false,
   toggleCompare,
+  onFocusCommunity,
 }) => {
   // Nearest facilities calculation
   let nearestStation: any = null;
@@ -68,6 +74,16 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
 
   const itemLat = typeof item.lat === "string" ? parseFloat(item.lat) : item.lat;
   const itemLng = typeof item.lng === "string" ? parseFloat(item.lng) : item.lng;
+
+  const historyKey = getCommunityHistoryKey(item);
+  let communityCount = 0;
+  if (historyKey) {
+    communityCount =
+      historyKey.kind === "buildCase"
+        ? historyCounts.buildCaseMap[historyKey.key] || 0
+        : historyCounts.addressMap[historyKey.key] || 0;
+  }
+  const hasCoords = Boolean(itemLat && itemLng && itemLat !== 0 && itemLng !== 0);
 
   if (itemLat && itemLng && globalFacilities.length > 0) {
     globalFacilities.forEach((f) => {
@@ -119,8 +135,8 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
       initial={{ opacity: 0, scale: 0.96, y: 30, filter: "blur(8px)" }}
       animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
       exit={{ opacity: 0, scale: 0.95, filter: "blur(5px)", transition: { duration: 0.2, delay: 0 } }}
-      whileHover={{ y: -3, scale: 1.005, boxShadow: "0 16px 32px -12px rgba(0,0,0,0.12)" }}
-      whileTap={{ scale: 0.985 }}
+      whileHover={{ y: -1 }}
+      whileTap={{ scale: 0.99 }}
       transition={{
         duration: 0.5,
         ease: [0.16, 1, 0.3, 1],
@@ -129,26 +145,49 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
       }}
       key={item.id}
       onClick={() => setSelectedItem(item)}
-      className="@container group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl liquid-glass-panel p-3 ring-1 ring-black/5 transition-all duration-300 hover:border-coral-500/30 dark:ring-white/10 dark:hover:border-coral-500/30 sm:p-3.5"
+      className="@container group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl liquid-glass-panel p-3 transition-all duration-300 hover:border-coral-500/35 dark:hover:border-coral-500/30 sm:p-3.5 [content-visibility:auto] [contain-intrinsic-size:auto_220px]"
     >
       {/* Hover accent */}
-      <div className="absolute bottom-0 left-0 top-0 w-[4px] bg-gradient-to-b from-coral-400 to-coral-600 opacity-0 shadow-[0_0_12px_rgba(237,111,92,0.8)] transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="absolute bottom-0 left-0 top-0 w-[3px] bg-gradient-to-b from-coral-400 to-coral-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
       {/* ── Top: tags + actions ── */}
       <div className="flex min-w-0 items-start gap-2 pl-1">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-          <span className="max-w-[6.5rem] truncate rounded-md border border-slate-200/60 bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold leading-none tracking-wide text-slate-600 shadow-sm dark:border-slate-700/60 dark:bg-slate-800 dark:text-slate-300">
+          <span className="max-w-[6.5rem] truncate rounded-md border border-slate-200/60 bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold leading-none tracking-wide text-slate-600 dark:border-slate-700/60 dark:bg-slate-800 dark:text-slate-300">
             {item.district}
           </span>
-          <span className="max-w-[5.5rem] truncate rounded-md border border-coral-100 bg-coral-50 px-1.5 py-0.5 text-[10px] font-bold leading-none tracking-wide text-coral-600 shadow-sm dark:border-coral-500/20 dark:bg-coral-500/10 dark:text-coral-400">
+          <span className="max-w-[5.5rem] truncate rounded-md border border-coral-100 bg-coral-50 px-1.5 py-0.5 text-[10px] font-bold leading-none tracking-wide text-coral-600 dark:border-coral-500/20 dark:bg-coral-500/10 dark:text-coral-400">
             {buildingTypeLabel}
           </span>
-          <span className="max-w-[7rem] truncate rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold leading-none tracking-wide text-amber-600 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
+          <span className="max-w-[7rem] truncate rounded-md border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold leading-none tracking-wide text-amber-600 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
             {item.transactionType}
           </span>
           {typeName === "預售屋" && item.buildCase && (
             <span className="max-w-[8rem] truncate rounded-md border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold leading-none tracking-wide text-emerald-600 shadow-sm dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
               建案: {item.buildCase}
+            </span>
+          )}
+          {communityCount > 1 && (
+            <button
+              type="button"
+              title={item.buildCase ? `同建案共 ${communityCount} 筆` : `同路段相近建物共 ${communityCount} 筆`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onFocusCommunity?.(item, e);
+              }}
+              className="inline-flex max-w-[7.5rem] items-center gap-0.5 truncate rounded-md border border-sky-200/80 bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold leading-none tracking-wide text-sky-700 shadow-sm transition hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300"
+            >
+              <History size={10} className="shrink-0" />
+              社區 {communityCount} 筆
+            </button>
+          )}
+          {hasCoords && (
+            <span
+              title="官方門牌多為區間遮蔽，地圖座標為約略定位"
+              className="inline-flex items-center gap-0.5 rounded-md border border-slate-200/80 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold leading-none text-slate-500 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400"
+            >
+              <MapPinOff size={10} className="shrink-0" />
+              約略
             </span>
           )}
         </div>
@@ -327,7 +366,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-1 rounded-xl border border-slate-200/60 bg-slate-50 px-2.5 text-xs font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-100 hover:text-coral-600 dark:border-slate-800/80 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-coral-400"
+          className="h-8 gap-1 rounded-xl border border-slate-200/60 bg-slate-50 px-2.5 text-xs font-bold text-slate-600 shadow-none transition-all hover:bg-slate-100 hover:text-coral-600 dark:border-slate-800/80 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-coral-400"
           onClick={(e) => {
             e.stopPropagation();
             setTrendDistrict(item.district);
@@ -339,7 +378,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-1 rounded-xl bg-slate-100 px-3 text-xs font-bold tracking-wide text-slate-700 shadow-sm transition-all hover:bg-coral-500 hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-coral-500/80 dark:hover:text-white"
+          className="h-8 gap-1 rounded-xl bg-slate-100 px-3 text-xs font-bold tracking-wide text-slate-700 shadow-none transition-all hover:bg-coral-500 hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-coral-500/80 dark:hover:text-white"
           onClick={(e) => {
             e.stopPropagation();
             setSelectedItem(item);

@@ -1,5 +1,5 @@
 import React from "react";
-import { GitCompare, X, Scale } from "lucide-react";
+import { GitCompare, X, Scale, Share2, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import type { Transaction } from "../types/real-estate";
 import { formatDate, formatPrice } from "../utils/real-estate-helpers";
@@ -12,6 +12,27 @@ import {
 } from "@/components/ui/dialog";
 
 export const MAX_COMPARE = 4;
+
+/** 將比較 id 編成 query 片段（不含 ?）。 */
+export function buildCompareQueryParam(ids: string[]): string {
+  if (!ids.length) return "";
+  return `cmp=${ids.map(encodeURIComponent).join(",")}`;
+}
+
+export function parseCompareIdsFromSearch(search: string): string[] {
+  try {
+    const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+    const raw = params.get("cmp")?.trim();
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((s) => decodeURIComponent(s.trim()))
+      .filter(Boolean)
+      .slice(0, MAX_COMPARE);
+  } catch {
+    return [];
+  }
+}
 
 function unitPriceWan(item: Transaction): string {
   const v = parseFloat(item.unitPrice || "");
@@ -72,9 +93,19 @@ interface CompareBarProps {
   onRemove: (id: string) => void;
   onClear: () => void;
   onSelectItem: (item: Transaction) => void;
+  /** 複製目前比較清單的可分享連結 */
+  onShareCompare?: () => void | Promise<void>;
+  shareStatus?: "idle" | "copied" | "error";
 }
 
-export function CompareBar({ items, onRemove, onClear, onSelectItem }: CompareBarProps) {
+export function CompareBar({
+  items,
+  onRemove,
+  onClear,
+  onSelectItem,
+  onShareCompare,
+  shareStatus = "idle",
+}: CompareBarProps) {
   const [open, setOpen] = React.useState(false);
 
   if (items.length === 0) return null;
@@ -88,7 +119,7 @@ export function CompareBar({ items, onRemove, onClear, onSelectItem }: CompareBa
           exit={{ y: 80, opacity: 0 }}
           className="fixed bottom-4 left-1/2 z-[60] w-[min(96vw,720px)] -translate-x-1/2"
         >
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-2xl backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/95 p-3 shadow-none backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-coral-500/10 text-coral-600 dark:text-coral-400">
               <Scale size={18} />
             </div>
@@ -133,6 +164,30 @@ export function CompareBar({ items, onRemove, onClear, onSelectItem }: CompareBa
                 <GitCompare size={14} className="mr-1" />
                 開始比較
               </Button>
+              {onShareCompare && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={items.length < 1}
+                  onClick={() => void onShareCompare()}
+                  className={`h-9 rounded-xl px-3 text-xs font-bold ${
+                    shareStatus === "copied"
+                      ? "border-emerald-300 text-emerald-600"
+                      : shareStatus === "error"
+                        ? "border-red-300 text-red-500"
+                        : ""
+                  }`}
+                  title="複製含比較清單的連結"
+                >
+                  {shareStatus === "copied" ? (
+                    <CheckCircle2 size={14} className="mr-1" />
+                  ) : (
+                    <Share2 size={14} className="mr-1" />
+                  )}
+                  {shareStatus === "copied" ? "已複製" : "分享比較"}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"

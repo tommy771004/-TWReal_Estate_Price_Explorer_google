@@ -96,7 +96,7 @@ export function PinnedKpiCompare({ pins, onUnpin, onClear }: PinnedKpiComparePro
 
   return (
     <section
-      className="rounded-[2rem] border border-slate-200/80 bg-white/85 p-4 shadow-sm backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/70"
+      className="rounded-[2rem] border border-slate-200/50 bg-white/90 p-4 shadow-none dark:border-slate-800/60 dark:bg-slate-900/70"
       aria-labelledby="pinned-kpi-compare"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
