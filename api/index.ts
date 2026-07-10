@@ -2,6 +2,7 @@ import express from "express";
 import https from "https";
 import xlsx from "xlsx";
 import { query } from "./db.js";
+import { sendTelemetry } from "./telemetry.js";
 
 const app = express();
 app.use(express.json());
@@ -133,6 +134,12 @@ app.post("/api/proxy-search", async (req, res) => {
     
     // 統一回傳未經過濾但符合基礎條件的資料，複雜的進階篩選可以由前端處理
     console.log(`✅ [資料下載任務] 取得 ${rawData.length} 筆原始資料`);
+    sendTelemetry('listing_search.completed', {
+      city_code: cCode,
+      result_count: rawData.length,
+      has_district: Boolean(district && district !== '全部'),
+      transaction_type: txCode,
+    });
     
     return res.json({ success: true, data: rawData });
 
@@ -171,6 +178,7 @@ app.post("/api/feedback", async (req, res) => {
 
     const result = await query(sql, params);
     const newId = result.rows[0]?.id;
+    sendTelemetry('feedback.submitted', { category: String(category).slice(0, 80) });
 
     return res.json({ 
       success: true, 
@@ -209,6 +217,7 @@ app.post("/api/audit-log", async (req, res) => {
 
     const result = await query(sql, params);
     const newId = result.rows[0]?.id;
+    sendTelemetry('audit.recorded', { action_type: String(action_type).slice(0, 80) });
 
     return res.json({ 
       success: true, 

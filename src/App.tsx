@@ -1504,6 +1504,61 @@ export default function App() {
     setSortConfig({ key, direction });
   };
 
+  const marketSnapshot = useMemo(() => {
+    const unitPrices = filteredData
+      .map((item) => parseFloat(item.unitPrice || ""))
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .map((value) => value * 3.30578 / 10000);
+    const totalPrices = filteredData
+      .map((item) => parseFloat(item.totalPrice || ""))
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .map((value) => value / 10000);
+    const districtCounts = filteredData.reduce((acc, item) => {
+      if (item.district) acc.set(item.district, (acc.get(item.district) || 0) + 1);
+      return acc;
+    }, new Map<string, number>());
+    const topDistrict = [...districtCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const latestDate = filteredData
+      .map((item) => item.date)
+      .filter(Boolean)
+      .sort()
+      .at(-1);
+
+    return {
+      avgUnitPrice: unitPrices.length ? unitPrices.reduce((sum, value) => sum + value, 0) / unitPrices.length : null,
+      avgTotalPrice: totalPrices.length ? totalPrices.reduce((sum, value) => sum + value, 0) / totalPrices.length : null,
+      latestDate: latestDate ? formatDate(latestDate) : "待查詢",
+      topDistrict: topDistrict ? `${topDistrict[0]} ${topDistrict[1]}筆` : "尚無熱區",
+    };
+  }, [filteredData]);
+
+  const marketKpis = [
+    {
+      label: "成交筆數",
+      value: filteredData.length ? filteredData.length.toLocaleString() : "0",
+      helper: `${cityName}${district !== "全部" ? ` ${district}` : ""}`,
+      icon: Database,
+    },
+    {
+      label: "平均單價",
+      value: marketSnapshot.avgUnitPrice ? marketSnapshot.avgUnitPrice.toFixed(1) : "--",
+      helper: "萬/坪",
+      icon: TrendingUp,
+    },
+    {
+      label: "平均總價",
+      value: marketSnapshot.avgTotalPrice ? marketSnapshot.avgTotalPrice.toFixed(0) : "--",
+      helper: "萬元",
+      icon: DollarSign,
+    },
+    {
+      label: "最新登錄",
+      value: marketSnapshot.latestDate,
+      helper: marketSnapshot.topDistrict,
+      icon: Calendar,
+    },
+  ];
+
   return (
     <div className="relative min-h-[100dvh] w-full flex flex-col font-sans selection:bg-coral-500/30 bg-transparent  text-ink dark:text-slate-100 pb-20 overflow-x-hidden">
       <AnimatePresence>
@@ -1518,11 +1573,11 @@ export default function App() {
           />
         )}
       </AnimatePresence>
-      {/* Clean Architectural Grid & Soft Atmospheric Sfumato */}
+      {/* Clean architectural grid */}
       <div className="immersive-bg opacity-100" />
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] max-w-[600px] bg-coral-500/5 dark:bg-coral-500/5 rounded-full blur-[120px] opacity-70" />
-        <div className="absolute bottom-[20%] right-[-10%] w-[40vw] h-[40vw] max-w-[500px] bg-amber-500/3 dark:bg-amber-500/2 rounded-full blur-[100px] opacity-50" />
+        <div className="absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-coral-50/70 via-white/30 to-transparent dark:from-slate-900/70 dark:via-slate-950/20" />
+        <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-slate-100/70 via-white/20 to-transparent dark:from-slate-950/80 dark:via-slate-950/20" />
       </div>
       
       {/* Main Container - Elegant Structure */}
@@ -1544,7 +1599,7 @@ export default function App() {
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tighter text-ink dark:text-white leading-none">
+                  <h1 className="text-xl sm:text-3xl font-display font-black tracking-tighter text-ink dark:text-white leading-none whitespace-nowrap">
                     實價登錄查詢
                   </h1>
                   <div className="flex items-center gap-1.5 relative">
@@ -1705,7 +1760,44 @@ export default function App() {
 
             </section>
 
-            <section aria-labelledby="featured-cities" className="flex flex-col gap-3">
+            <section aria-labelledby="market-summary" className="flex flex-col gap-3">
+              <div className="rounded-[1.75rem] border border-white/70 bg-white/70 p-4 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/50">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 id="market-summary" className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                      市場摘要
+                    </h3>
+                    <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+                      依目前條件即時計算
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-black text-emerald-700 dark:text-emerald-300">
+                    <ShieldCheck size={12} /> Open Data
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {marketKpis.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.label} className="rounded-2xl border border-slate-200/70 bg-white/80 p-3 dark:border-slate-800/80 dark:bg-slate-950/30">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                            {item.label}
+                          </span>
+                          <Icon size={14} className="text-coral-500" />
+                        </div>
+                        <div className="truncate text-xl font-black tracking-tight text-ink dark:text-white">
+                          {item.value}
+                        </div>
+                        <div className="mt-1 truncate text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                          {item.helper}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="flex flex-col gap-3">
                 <h3 id="featured-cities" className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
                   熱門查詢城市
@@ -2374,7 +2466,8 @@ export default function App() {
 
         {/* Content */}
         <div ref={resultsContainerRef} className="flex-none px-1.5 sm:px-6 relative z-20 w-full pb-12 flex flex-col flex-1">
-          <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-[2.5rem] w-full max-w-[1600px] mx-auto border-b-0 shadow-md mt-0 sm:mt-4 relative overflow-hidden">
+          <div className="grid w-full max-w-[1600px] mx-auto gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="flex-1 flex flex-col liquid-glass rounded-t-none sm:rounded-[2rem] w-full border-b-0 shadow-md mt-0 sm:mt-4 relative overflow-hidden">
             <div className="px-6 sm:px-8 py-5 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between bg-white dark:bg-slate-900 relative overflow-hidden">
             <div className="absolute inset-y-0 left-0 w-1 bg-coral-500" />
             <div className="flex items-center gap-3 relative z-10">
@@ -2751,6 +2844,143 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+          </div>
+          <aside className="hidden lg:flex lg:flex-col gap-4 mt-4">
+            <div className="sticky top-4 flex flex-col gap-4">
+              <section className="rounded-[2rem] border border-slate-200/80 bg-white/85 p-4 shadow-sm backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/70" aria-labelledby="rail-market-summary">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h3 id="rail-market-summary" className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                      查詢概況
+                    </h3>
+                    <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+                      {cityName}{district !== "全部" ? ` · ${district}` : ""} / {typeName}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition-all hover:border-coral-300 hover:text-coral-600 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400"
+                    title={isSearchExpanded ? "收合條件" : "展開條件"}
+                    aria-label={isSearchExpanded ? "收合條件" : "展開條件"}
+                  >
+                    <SlidersHorizontal size={16} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {marketKpis.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={`rail-${item.label}`} className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-950/35">
+                        <div className="mb-2 flex items-center justify-between text-slate-400">
+                          <span className="text-[10px] font-black uppercase tracking-[0.14em]">{item.label}</span>
+                          <Icon size={13} className="text-coral-500" />
+                        </div>
+                        <div className="truncate text-lg font-black tracking-tight text-ink dark:text-white">
+                          {item.value}
+                        </div>
+                        <div className="mt-1 truncate text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                          {item.helper}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="rounded-[2rem] border border-slate-200/80 bg-white/85 p-4 shadow-sm backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/70" aria-labelledby="rail-map">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 id="rail-map" className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                      地圖探索
+                    </h3>
+                    <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+                      {geocodedCount > 0 ? `${geocodedCount} 筆已定位` : "查詢後顯示空間分布"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("map")}
+                    className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm transition-all hover:bg-coral-600 dark:bg-white dark:text-slate-950 dark:hover:bg-coral-200"
+                  >
+                    開啟地圖
+                  </button>
+                </div>
+                {filteredData.length > 0 ? (
+                  <div className="h-[250px] overflow-hidden rounded-[1.5rem] border border-slate-200/80 dark:border-slate-800/80">
+                    <Suspense fallback={<Skeleton className="h-full w-full bg-slate-100 dark:bg-slate-800" />}>
+                      <ResultsMap
+                        cityName={cityName}
+                        district={district}
+                        filteredData={filteredData.slice(0, 60)}
+                        formatPrice={formatPrice}
+                        geocodedCount={geocodedCount}
+                        isGeocoding={isGeocoding}
+                        mapLayer={mapLayer}
+                        onMapLayerChange={setMapLayer}
+                        onSelectItem={setSelectedItem}
+                        onToggleFacilities={() => setShowFacilities(!showFacilities)}
+                        showFacilities={showFacilities}
+                        totalToGeocode={totalToGeocode}
+                      />
+                    </Suspense>
+                  </div>
+                ) : (
+                  <div className="flex h-[210px] flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 text-center dark:border-slate-800 dark:bg-slate-950/30">
+                    <MapPinOff className="mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
+                    <p className="text-sm font-black text-slate-700 dark:text-slate-200">尚無可定位資料</p>
+                    <p className="mt-1 max-w-[220px] text-xs font-bold leading-relaxed text-slate-500 dark:text-slate-400">
+                      執行查詢後，這裡會顯示成交點位與區域密度。
+                    </p>
+                  </div>
+                )}
+              </section>
+
+              <section className="rounded-[2rem] border border-slate-200/80 bg-white/85 p-4 shadow-sm backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/70" aria-labelledby="rail-actions">
+                <h3 id="rail-actions" className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                  快速動作
+                </h3>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdvancedSearchOpen(true)}
+                    className="rounded-2xl bg-coral-500/10 px-3 py-3 text-left text-xs font-black text-coral-700 transition-all hover:bg-coral-500/15 dark:text-coral-300"
+                  >
+                    <SlidersHorizontal className="mb-2 h-4 w-4" />
+                    進階篩選
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsSavingSearch(true)}
+                    className="rounded-2xl bg-slate-100 px-3 py-3 text-left text-xs font-black text-slate-700 transition-all hover:bg-slate-200 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <Bookmark className="mb-2 h-4 w-4" />
+                    儲存條件
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowFavorites(!showFavorites)}
+                    className="rounded-2xl bg-rose-500/10 px-3 py-3 text-left text-xs font-black text-rose-700 transition-all hover:bg-rose-500/15 dark:text-rose-300"
+                  >
+                    <Heart className="mb-2 h-4 w-4" />
+                    收藏清單
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFeedback(!showFeedback);
+                      addAuditLog("feedback_button_click", !showFeedback ? "open" : "close");
+                    }}
+                    className="rounded-2xl bg-blue-500/10 px-3 py-3 text-left text-xs font-black text-blue-700 transition-all hover:bg-blue-500/15 dark:text-blue-300"
+                  >
+                    <MessageSquare className="mb-2 h-4 w-4" />
+                    意見回饋
+                  </button>
+                </div>
+              </section>
+            </div>
+          </aside>
           </div>
         </div>
 
