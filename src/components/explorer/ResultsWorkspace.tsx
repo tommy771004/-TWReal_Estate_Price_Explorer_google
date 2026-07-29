@@ -186,38 +186,48 @@ export function ResultsWorkspace() {
                         </span>
                       </div>
                     </div>
-                    <div className="relative z-10 flex shrink-0 items-center bg-white/40 p-0.5 dark:bg-white/5 lg:hidden rounded-lg border border-white/40 dark:border-white/10">
+                    <div className="relative z-10 flex shrink-0 items-center rounded-lg border border-white/40 bg-white/40 p-0.5 dark:border-white/10 dark:bg-white/5">
                       <button
                         type="button"
                         onClick={() => setViewMode("list")}
-                        className={`rounded-md p-1.5 transition-all ${viewMode === "list" ? "bg-coral-500 text-white shadow-sm" : "text-slate-400"}`}
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-all ${viewMode === "list" ? "bg-coral-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
                         title="列表"
+                        aria-label="列表視圖"
                       >
                         <List size={14} />
+                        <span className="hidden xl:inline">列表</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setViewMode("table")}
-                        className={`rounded-md p-1.5 transition-all ${viewMode === "table" ? "bg-coral-500 text-white shadow-sm" : "text-slate-400"}`}
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-all ${viewMode === "table" ? "bg-coral-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
                         title="表格"
+                        aria-label="表格視圖"
                       >
                         <Table2 size={14} />
+                        <span className="hidden xl:inline">表格</span>
                       </button>
                       {typeName === "預售屋" && (
                         <button
                           type="button"
                           onClick={() => setViewMode("aggregated")}
-                          className={`rounded-md p-1.5 transition-all ${viewMode === "aggregated" ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400"}`}
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-all ${viewMode === "aggregated" ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+                          title="建案聚合"
+                          aria-label="建案聚合視圖"
                         >
                           <BarChart3 size={14} />
+                          <span className="hidden xl:inline">建案</span>
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => setViewMode("map")}
-                        className={`rounded-md p-1.5 transition-all ${viewMode === "map" ? "bg-coral-500 text-white shadow-sm" : "text-slate-400"}`}
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-all ${viewMode === "map" ? "bg-coral-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+                        title="地圖"
+                        aria-label="地圖視圖"
                       >
                         <MapIcon size={14} />
+                        <span className="hidden xl:inline">地圖</span>
                       </button>
                     </div>
                   </div>

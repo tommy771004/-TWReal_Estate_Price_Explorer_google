@@ -39,28 +39,40 @@ export function SettingsDialog({
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-xl w-full p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-[2rem] shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
+      <DialogContent className="grid max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-none grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white p-0 text-slate-900 shadow-2xl dark:border-slate-700/80 dark:bg-slate-950 dark:text-slate-100 sm:max-h-[min(90dvh,760px)] sm:max-w-xl sm:rounded-[2rem]">
+        <DialogHeader className="border-b border-slate-200/80 bg-white px-4 py-4 pr-14 dark:border-slate-800 dark:bg-slate-950 sm:px-6 sm:py-5 sm:pr-16">
+          <DialogTitle className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-slate-100">
             <Settings className="w-5 h-5 text-coral-500" />
             {appTexts.settingsTitle}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="mt-4 space-y-6">
+        <div className="min-h-0 touch-pan-y space-y-5 overflow-y-auto overscroll-contain px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:space-y-6 sm:px-6 sm:pb-6 sm:pt-5">
           <div className="space-y-3">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block uppercase tracking-wider">
+            <div className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
               本機資料備份
-            </label>
+            </div>
             <p className="text-[11px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
               匯出收藏、儲存條件、比較清單為 JSON；可在其他瀏覽器匯入還原（不經伺服器）。
             </p>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" className="rounded-xl text-xs font-bold" onClick={onExport}>
+            <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                onClick={onExport}
+              >
                 <Download size={14} className="mr-1.5" />
                 匯出 JSON
               </Button>
-              <Button type="button" variant="outline" size="sm" className="rounded-xl text-xs font-bold" onClick={onImportClick}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                onClick={onImportClick}
+              >
                 <Save size={14} className="mr-1.5" />
                 匯入 JSON
               </Button>
@@ -82,9 +94,9 @@ export function SettingsDialog({
           </div>
 
           <div className="space-y-3">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block uppercase tracking-wider">
+            <div className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
               {appTexts.textSizeSetting}
-            </label>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {(
                 [
@@ -97,10 +109,10 @@ export function SettingsDialog({
                   key={item.value}
                   type="button"
                   onClick={() => setFontSize(item.value)}
-                  className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`flex min-w-0 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 py-3 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral-500/40 ${
                     fontSize === item.value
-                      ? "bg-coral-500/10 text-coral-600 dark:text-coral-400 border-coral-500/40 shadow-inner"
-                      : "bg-slate-50 dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      ? "border-coral-500/40 bg-coral-500/10 text-coral-600 shadow-inner dark:border-coral-400/60 dark:bg-coral-500/15 dark:text-coral-300"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >
                   <span
@@ -113,7 +125,7 @@ export function SettingsDialog({
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
               {fontSize === "small" && appTexts.textSizeSmallDesc}
               {fontSize === "medium" && appTexts.textSizeMediumDesc}
               {fontSize === "large" && appTexts.textSizeLargeDesc}
@@ -127,7 +139,7 @@ export function SettingsDialog({
               </label>
               <button
                 type="button"
-                className="text-[11px] font-bold text-coral-600 hover:underline"
+                className="rounded-md px-1 py-0.5 text-[11px] font-bold text-coral-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral-500/40 dark:text-coral-400"
                 onClick={() => updateAppTexts(DEFAULT_APP_TEXTS)}
               >
                 還原預設
@@ -145,9 +157,9 @@ export function SettingsDialog({
                 ] as const
               ).map(([key, label]) => (
                 <label key={key} className="block space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</span>
                   <input
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium dark:border-slate-800 dark:bg-slate-850"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-base font-medium text-slate-800 caret-coral-500 outline-none transition focus:border-coral-500/70 focus:bg-white focus:ring-2 focus:ring-coral-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-coral-400/70 dark:focus:bg-slate-900 sm:py-2 sm:text-xs"
                     value={(appTexts as any)[key] ?? ""}
                     onChange={(e) => updateAppTexts({ [key]: e.target.value } as Partial<AppTexts>)}
                   />

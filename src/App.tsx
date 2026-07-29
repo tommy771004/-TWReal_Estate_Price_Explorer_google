@@ -24,26 +24,18 @@ import {
   Compass,
   Zap,
   Gem,
-  Waves,
-  Map as MapIcon,
-  List,
   Bookmark,
   Trash2,
   Save,
   Clock,
   Layers,
   ArrowRightCircle,
-  RotateCw,
-  Moon,
-  Sun,
-  BarChart3,
   Bed,
   Sofa,
   Bath,
   ChevronLeft,
   ArrowDown,
   ArrowUp,
-  Heart,
   Train,
   GraduationCap,
   ShieldCheck,
@@ -52,7 +44,6 @@ import {
   Leaf,
   TrendingUp,
   TrendingDown,
-  MessageSquare,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -64,7 +55,6 @@ import {
   Pin,
   Crosshair,
   Building,
-  Table2,
 } from "lucide-react";
 import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
 import { DEFAULT_APP_TEXTS, type AppTexts } from "./constants/texts";
@@ -390,7 +380,6 @@ export default function App() {
       return [];
     }
   });
-  const [showFavorites, setShowFavorites] = useState(false);
 
   // === 位置分享與與定位權限 ===
   interface UserLocation {
@@ -853,7 +842,6 @@ export default function App() {
         setSelectedItem(null);
         setIsSavingSearch(false);
         setShowSuggestions(false);
-        setShowFavorites(false);
       }
       
       if (e.key === 'Enter') {
@@ -1496,163 +1484,30 @@ export default function App() {
         animate={{ opacity: 1, y: 0 }}
         className="relative w-full flex-1 flex flex-col z-10"
       >
-        <SiteNav onSettingsClick={() => setIsSettingsModalOpen(true)} settingsTitle={appTexts.settingsTitle} />
+        <SiteNav
+          brandAsHeading
+          onSettingsClick={() => setIsSettingsModalOpen(true)}
+          settingsTitle={appTexts.settingsTitle}
+          favorites={favorites}
+          onSelectFavorite={setSelectedItem}
+          onToggleFavorite={toggleFavorite}
+          loading={loading}
+          onRefresh={fetchData}
+          darkMode={darkMode}
+          onToggleDarkMode={() => {
+            const nextMode = !darkMode;
+            setDarkMode(nextMode);
+            addAuditLog("toggle_dark_mode", nextMode ? "dark" : "light");
+          }}
+          showFeedback={showFeedback}
+          onToggleFeedback={() => {
+            const nextOpen = !showFeedback;
+            setShowFeedback(nextOpen);
+            addAuditLog("feedback_button_click", nextOpen ? "open" : "close");
+          }}
+        />
         {/* Header + explorer workspace */}
-        <div className="px-1.5 sm:px-6 pt-6 pb-2 shrink-0 relative z-20 w-full">
-          <div className="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4 px-2 sm:px-6 rounded-[2rem] relative z-10 group transition-all">
-            <div className="absolute inset-0 bg-transparent rounded-[2rem] pointer-events-none" />
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="relative">
-                <div className="w-12 h-12 rounded-xl bg-coral-500/10 dark:bg-coral-500/15 flex items-center justify-center border border-coral-500/10">
-                  <Database className="text-coral-600 dark:text-coral-400 w-6 h-6" />
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-xl sm:text-3xl font-display font-black tracking-tighter text-ink dark:text-white leading-none whitespace-nowrap">
-                    實價登錄查詢
-                  </h1>
-                  <div className="flex items-center gap-1.5 relative">
-                    <Button 
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowFavorites(!showFavorites)}
-                      className={`w-8 h-8 rounded-full transition-all shadow-sm relative ${showFavorites ? 'bg-red-500/10 text-red-500' : 'bg-slate-500/10 hover:bg-red-500/10 text-slate-600 dark:text-slate-400 hover:text-red-500'}`}
-                      title="我的最愛"
-                      aria-label="我的最愛"
-                    >
-                      <Heart size={14} className={favorites.length > 0 ? 'fill-current' : ''} />
-                      {favorites.length > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[8px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900">
-                          {favorites.length}
-                        </span>
-                      )}
-                    </Button>
-
-                    <AnimatePresence>
-                      {showFavorites && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute top-10 right-0 w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[400px]"
-                        >
-                          <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                              <Heart size={12} className="text-red-500 fill-current" /> 我的收藏
-                            </span>
-                          </div>
-                          <div className="overflow-y-auto p-2 flex flex-col gap-1.5 [scrollbar-width:none]">
-                            {favorites.length === 0 ? (
-                              <div className="py-6 text-center text-xs font-medium text-slate-400">目前沒有收藏任何物件</div>
-                            ) : (
-                              favorites.map(f => (
-                                <div key={f.id} className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer flex justify-between items-start gap-2" onClick={() => setSelectedItem(f)}>
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{f.address}</span>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                      <span className="text-[10px] text-slate-500">{f.district}</span>
-                                      {f.unitPrice && <span className="text-[10px] font-bold text-coral-500">{(parseFloat(f.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬/坪</span>}
-                                    </div>
-                                  </div>
-                                  <button onClick={(e) => toggleFavorite(f, e)} className="p-1 text-slate-300 hover:text-red-500 transition-colors">
-                                    <Heart size={12} className="fill-current" />
-                                  </button>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <Button 
-                      variant="ghost"
-                      size="icon"
-                      onClick={fetchData} 
-                      disabled={loading}
-                      className="w-8 h-8 rounded-full bg-coral-500/10 hover:bg-coral-500/20 text-coral-600 dark:text-coral-400 transition-all active:rotate-180 duration-500"
-                      title="重新整理資料"
-                      aria-label="重新整理資料"
-                    >
-                      <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        const nextMode = !darkMode;
-                        setDarkMode(nextMode);
-                        addAuditLog("toggle_dark_mode", nextMode ? "dark" : "light");
-                      }}
-                      className="w-8 h-8 rounded-full bg-slate-500/10 hover:bg-slate-500/20 text-slate-600 dark:text-slate-400 transition-all shadow-sm"
-                      title={darkMode ? "切換至淺色模式" : "切換至深色模式"}
-                      aria-label={darkMode ? "切換至淺色模式" : "切換至深色模式"}
-                    >
-                      {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setShowFeedback(!showFeedback);
-                        addAuditLog("feedback_button_click", !showFeedback ? "open" : "close");
-                      }}
-                      className={`w-8 h-8 rounded-full shadow-sm transition-all flex items-center justify-center ${
-                        showFeedback 
-                          ? "bg-coral-500 text-white hover:bg-coral-600" 
-                          : "bg-slate-500/10 hover:bg-slate-500/20 text-slate-600 dark:text-slate-400"
-                      }`}
-                      title="意見回饋"
-                      aria-label="意見回饋"
-                      id="feedback_floating_trigger"
-                    >
-                      <MessageSquare size={14} />
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mt-1 opacity-80">
-                  <span className="h-px w-6 bg-coral-500/30" />
-                  <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.3em] flex items-center gap-1.5 leading-none">
-                    <Waves size={10} className="text-coral-500 animate-pulse" />
-                    Taiwan Real Estate Price Explorer
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="hidden lg:flex items-center bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 rounded-xl p-1 shadow-inner">
-                <button 
-                  onClick={() => setViewMode("list")}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "list" ? "bg-coral-500 text-white shadow-md" : "text-slate-500 hover:text-ink dark:hover:text-white"}`}
-                >
-                  <List size={14} /> 列表視圖
-                </button>
-                <button 
-                  onClick={() => setViewMode("table")}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "table" ? "bg-coral-500 text-white shadow-md" : "text-slate-500 hover:text-ink dark:hover:text-white"}`}
-                >
-                  <Table2 size={14} /> 表格視圖
-                </button>
-                {typeName === "預售屋" && (
-                  <button 
-                    onClick={() => setViewMode("aggregated")}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "aggregated" ? "bg-emerald-500 text-white shadow-md" : "text-slate-500 hover:text-ink dark:hover:text-white"}`}
-                  >
-                    <BarChart3 size={14} /> 建案聚合
-                  </button>
-                )}
-                <button 
-                  onClick={() => setViewMode("map")}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === "map" ? "bg-coral-500 text-white shadow-md" : "text-slate-500 hover:text-ink dark:hover:text-white"}`}
-                >
-                  <MapIcon size={14} /> 地圖探索
-                </button>
-              </div>
-            </div>
-          </div>
-
+        <div className="relative z-20 w-full shrink-0 px-1.5 pb-2 pt-4 sm:px-6 sm:pt-6">
           <ExplorerUiProvider value={explorerUi}>
           <MarketHeader
             cityName={cityName}
