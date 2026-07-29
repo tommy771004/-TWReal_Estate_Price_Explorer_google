@@ -1,35 +1,46 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
-  AFFILIATE_CATEGORY_LABELS,
-  getActivePartners,
-  type AffiliateCategory,
-} from "../content/affiliatePartners";
+  AFFILIATE_LINK_REL,
+  offersByCategory,
+  trackAffiliateEvent,
+  useAffiliateImpressionTracking,
+  useAffiliateOffers,
+} from "../lib/affiliates";
 
-// 共用：聯盟連結屬性。rel="sponsored nofollow" 為 Google 規範，避免傷害 SEO。
-const LINK_REL = "sponsored nofollow noopener";
+const CATEGORY_LABELS: Record<string, string> = {
+  furniture: "家具",
+  appliance: "家電 / 3C",
+  home: "居家 / 裝潢",
+  finance: "房貸 / 金融",
+};
 
 type AffiliateSlotProps = {
-  /** 限定類別（家具/家電/居家/金融）；未指定則混合呈現 */
-  category?: AffiliateCategory;
+  /** 限定分類（家具/家電/居家/金融等）；未指定則混合呈現 */
+  category?: string;
   /** 最多顯示幾張 */
   limit?: number;
-  /** 區塊標題；預設依類別自動帶入 */
+  /** 區塊標題；預設依分類自動帶入 */
   title?: string;
   className?: string;
 };
 
 /**
- * 設定驅動的聯盟廣告位。
- * 只有在 .env 設定了對應連結時才會渲染，否則回傳 null（不佔版面）。
+ * 資料庫驅動的聯盟廣告位（見 docs/affiliate-integration-spec.md）。
+ * 資料來自 /api/affiliates；沒有符合條件的啟用資料時回傳 null，不佔版面。
  */
 export function AffiliateSlot({ category, limit = 4, title, className }: AffiliateSlotProps) {
-  const partners = useMemo(() => getActivePartners(category).slice(0, limit), [category, limit]);
+  const offers = useAffiliateOffers();
+  const containerRef = useRef<HTMLElement>(null);
+  const partners = useMemo(() => offersByCategory(offers, category).slice(0, limit), [offers, category, limit]);
+  useAffiliateImpressionTracking(containerRef, partners, "slot");
+
   if (partners.length === 0) return null;
 
-  const heading = title ?? (category ? `${AFFILIATE_CATEGORY_LABELS[category]}推薦` : "買房後，順手準備");
+  const heading = title ?? (category ? `${CATEGORY_LABELS[category] ?? category}推薦` : "買房後，順手準備");
 
   return (
     <aside
+      ref={containerRef}
       aria-label="贊助推薦"
       className={`mt-10 rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-900/40 ${className ?? ""}`}
     >
@@ -40,19 +51,21 @@ export function AffiliateSlot({ category, limit = 4, title, className }: Affilia
         </span>
       </div>
       <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-        {partners.map((p) => (
-          <li key={p.id}>
+        {partners.map((o) => (
+          <li key={o.id}>
             <a
-              href={p.url}
+              data-affiliate-id={o.id}
+              href={o.url}
               target="_blank"
-              rel={LINK_REL}
+              rel={AFFILIATE_LINK_REL}
+              onClick={() => trackAffiliateEvent("affiliate_click", o, "slot")}
               className="group flex h-full flex-col rounded-xl border border-slate-200 bg-white/80 p-4 transition hover:border-coral-400 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="font-bold text-slate-800 group-hover:text-coral-600 dark:text-slate-100">{p.name}</span>
-                <span className="text-[10px] font-medium text-slate-400">{p.networkLabel}</span>
+                <span className="font-bold text-slate-800 group-hover:text-coral-600 dark:text-slate-100">{o.partner ?? o.title}</span>
+                {o.sponsored && <span className="text-[10px] font-medium text-slate-400">贊助</span>}
               </div>
-              <p className="mt-1.5 text-sm leading-6 text-slate-500 dark:text-slate-400">{p.blurb}</p>
+              <p className="mt-1.5 text-sm leading-6 text-slate-500 dark:text-slate-400">{o.description}</p>
             </a>
           </li>
         ))}
@@ -74,7 +87,8 @@ export function MortgageCalculatorCta({ defaultPrice }: { defaultPrice?: number 
   const [years, setYears] = useState<number>(30);
   const [ratio, setRatio] = useState<number>(80); // 貸款成數 %
 
-  const loanPartner = getActivePartners("finance")[0];
+  const offers = useAffiliateOffers();
+  const loanPartner = offersByCategory(offers, "finance")[0];
 
   const monthly = useMemo(() => {
     const principal = price * 10000 * (ratio / 100); // 元
@@ -106,12 +120,14 @@ export function MortgageCalculatorCta({ defaultPrice }: { defaultPrice?: number 
       </p>
       {loanPartner && (
         <a
+          data-affiliate-id={loanPartner.id}
           href={loanPartner.url}
           target="_blank"
-          rel={LINK_REL}
+          rel={AFFILIATE_LINK_REL}
+          onClick={() => trackAffiliateEvent("affiliate_click", loanPartner, "mortgage_cta")}
           className="mt-4 inline-flex items-center justify-center rounded-xl bg-coral-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-coral-700"
         >
-          比較各家房貸利率 →
+          {loanPartner.ctaLabel} →
         </a>
       )}
     </aside>

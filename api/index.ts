@@ -2,6 +2,7 @@ import express from "express";
 import https from "https";
 import xlsx from "xlsx";
 import { query } from "./db.js";
+import { queryAffiliates } from "./affiliatesDb.js";
 import { sendTelemetry } from "./telemetry.js";
 
 const app = express();
@@ -348,6 +349,46 @@ app.post("/api/audit-log", async (req, res) => {
   } catch (err: any) {
     console.error("❌ 送出使用者行為日誌失敗:", err.message);
     return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 聯盟／合作推廣資料 API（見 docs/affiliate-integration-spec.md）
+// 讀取獨立的 SUP_DATABASE_URL 資料庫，依 AFFILIATE_PROJECT_NAME 分區查詢啟用中的資料。
+app.get("/api/affiliates", async (_req, res) => {
+  const projectName = process.env.AFFILIATE_PROJECT_NAME || "estate";
+
+  try {
+    const result = await queryAffiliates(
+      `SELECT
+         project_name AS "projectName",
+         id,
+         enabled,
+         sponsored,
+         title,
+         description,
+         cta_label AS "ctaLabel",
+         url,
+         icon,
+         categories,
+         crops,
+         priority,
+         partner
+       FROM affiliates
+       WHERE project_name = $1
+         AND enabled = TRUE
+       ORDER BY priority DESC, id ASC`,
+      [projectName]
+    );
+
+    // result 為 null 代表未設定 SUP_DATABASE_URL：不顯示推廣區塊，不阻塞主功能
+    if (!result) {
+      return res.status(503).json({ offers: [] });
+    }
+
+    return res.json({ offers: result.rows });
+  } catch (error: any) {
+    console.error("❌ [聯盟推廣資料查詢失敗]:", error.message);
+    return res.status(500).json({ offers: [] });
   }
 });
 

@@ -1,41 +1,31 @@
 // 查詢列表下方的聯盟推廣跑馬燈。
+// 資料來源：/api/affiliates（統一集中於 affiliates 資料表管理，見 docs/affiliate-integration-spec.md）。
 // 連結為實際聯盟追蹤連結，採 rel="sponsored nofollow" 符合 Google 規範。
-type MarqueePartner = { name: string; url: string };
+import { useRef } from "react";
+import {
+  AFFILIATE_LINK_REL,
+  trackAffiliateEvent,
+  useAffiliateImpressionTracking,
+  useAffiliateOffers,
+  type AffiliateOffer,
+} from "../lib/affiliates";
 
-const MARQUEE_PARTNERS: MarqueePartner[] = [
-  { name: "Dyson", url: "https://igamepark.biz/3RVRZ" },
-  { name: "momo購物", url: "https://shopsquare.co/3RVRb" },
-  { name: "蝦皮購物", url: "https://buyforfun.biz/3RVRf" },
-  { name: "Yahoo購物", url: "https://dreamstore.info/3RVRg" },
-  { name: "HOLA 和樂家居", url: "https://whitehippo.net/3RVRi" },
-  { name: "Anice 雅妮詩居家", url: "https://igrape.net/3RVRj" },
-  { name: "伊萊克斯 Electrolux", url: "https://buyforfun.biz/3RVRn" },
-  { name: "睡眠達人 irest", url: "https://dreamstore.info/3RVRp" },
-  { name: "Pure Sleep 純好眠", url: "https://onelink.one/s/BABqC" },
-  { name: "Mr. Bed 倍得先生", url: "https://onelink.one/s/1YEY7" },
-  { name: "Presto 可易家電", url: "https://linkgo.one/s/PAeKf" },
-  { name: "Emma 床墊", url: "https://onelink.one/s/05gyY" },
-  { name: "LG 樂金", url: "https://linkgo.one/s/TqD3R" },
-  { name: "hengstyle 恆隆行", url: "https://linkgo.one/s/pSCr3" },
-  { name: "LOVEFU 大島樂眠", url: "https://onelink.one/s/uCk2J" },
-];
-
-const LINK_REL = "sponsored nofollow noopener";
-
-function MarqueeRow({ ariaHidden }: { ariaHidden?: boolean }) {
+function MarqueeRow({ offers, ariaHidden }: { offers: AffiliateOffer[]; ariaHidden?: boolean }) {
   return (
     <div className="flex shrink-0 items-center gap-3 pr-3" aria-hidden={ariaHidden}>
-      {MARQUEE_PARTNERS.map((p) => (
+      {offers.map((o) => (
         <a
-          key={p.name}
-          href={p.url}
+          key={o.id}
+          data-affiliate-id={ariaHidden ? undefined : o.id}
+          href={o.url}
           target="_blank"
-          rel={LINK_REL}
+          rel={AFFILIATE_LINK_REL}
           tabIndex={ariaHidden ? -1 : undefined}
+          onClick={() => trackAffiliateEvent("affiliate_click", o, "marquee")}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-4 py-1.5 text-sm font-bold text-slate-700 transition hover:border-coral-400 hover:text-coral-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:text-coral-400"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-coral-500/70" />
-          {p.name}
+          {o.partner || o.title}
         </a>
       ))}
     </div>
@@ -44,24 +34,32 @@ function MarqueeRow({ ariaHidden }: { ariaHidden?: boolean }) {
 
 // 緊湊版導購：用於物件詳情彈窗等空間有限處。無動畫、自動換行。
 export function AffiliateChips({ title = "為這間房準備", limit = 8 }: { title?: string; limit?: number }) {
-  const partners = MARQUEE_PARTNERS.slice(0, limit);
+  const offers = useAffiliateOffers();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const partners = offers.slice(0, limit);
+  useAffiliateImpressionTracking(containerRef, partners, "chips");
+
+  if (partners.length === 0) return null;
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+    <div ref={containerRef} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{title}</span>
         <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">廣告</span>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {partners.map((p) => (
+        {partners.map((o) => (
           <a
-            key={p.name}
-            href={p.url}
+            key={o.id}
+            data-affiliate-id={o.id}
+            href={o.url}
             target="_blank"
-            rel={LINK_REL}
+            rel={AFFILIATE_LINK_REL}
+            onClick={() => trackAffiliateEvent("affiliate_click", o, "chips")}
             className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:border-coral-400 hover:text-coral-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:text-coral-400"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-coral-500/70" />
-            {p.name}
+            {o.partner || o.title}
           </a>
         ))}
       </div>
@@ -70,6 +68,12 @@ export function AffiliateChips({ title = "為這間房準備", limit = 8 }: { ti
 }
 
 export function AffiliateMarquee() {
+  const offers = useAffiliateOffers();
+  const containerRef = useRef<HTMLDivElement>(null);
+  useAffiliateImpressionTracking(containerRef, offers, "marquee");
+
+  if (offers.length === 0) return null;
+
   return (
     <section
       aria-label="贊助推廣"
@@ -85,13 +89,13 @@ export function AffiliateMarquee() {
         <span className="text-xs font-bold tracking-wide text-slate-500 dark:text-slate-400">買房後，順手準備</span>
         <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">廣告 · 合作推廣</span>
       </div>
-      <div className="group relative mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 py-3 dark:border-slate-800 dark:bg-slate-900/40">
+      <div ref={containerRef} className="group relative mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 py-3 dark:border-slate-800 dark:bg-slate-900/40">
         {/* 兩側淡出遮罩 */}
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-slate-50/90 to-transparent dark:from-slate-950/60" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-slate-50/90 to-transparent dark:from-slate-950/60" />
         <div className="affiliate-marquee-track flex w-max">
-          <MarqueeRow />
-          <MarqueeRow ariaHidden />
+          <MarqueeRow offers={offers} />
+          <MarqueeRow offers={offers} ariaHidden />
         </div>
       </div>
       <p className="mt-2 px-1 text-[11px] leading-5 text-slate-400">
