@@ -237,7 +237,7 @@ export function SearchFilterPanel() {
                             : "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
                         }}
                         transition={{ duration: 0.4 }}
-                        className="relative overflow-hidden flex flex-col gap-2 sm:gap-4 liquid-glass-panel p-3 sm:px-6 sm:py-4 rounded-[2rem] shadow-none mx-1 mb-2 sm:mb-4 mt-1 sm:mt-0"
+                      className="relative overflow-hidden flex flex-col gap-2 sm:gap-4 liquid-glass-panel p-3 sm:px-6 sm:py-4 rounded-[2rem] shadow-none mx-0 mb-2 sm:mx-1 sm:mb-4 mt-1 sm:mt-0"
                       >
                         {/* Subtle running loading animation bar inside the filter panel header */}
                         <AnimatePresence>

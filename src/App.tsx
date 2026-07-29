@@ -1498,7 +1498,7 @@ export default function App() {
       >
         <SiteNav onSettingsClick={() => setIsSettingsModalOpen(true)} settingsTitle={appTexts.settingsTitle} />
         {/* Header + explorer workspace */}
-        <div className="px-4 sm:px-6 pt-6 pb-2 shrink-0 relative z-20 w-full">
+        <div className="px-1.5 sm:px-6 pt-6 pb-2 shrink-0 relative z-20 w-full">
           <div className="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4 px-2 sm:px-6 rounded-[2rem] relative z-10 group transition-all">
             <div className="absolute inset-0 bg-transparent rounded-[2rem] pointer-events-none" />
             <div className="flex items-center gap-4 relative z-10">
@@ -1674,7 +1674,7 @@ export default function App() {
 
           {/* 手機也看得到釘選比價（桌面在右側 rail） */}
           {pinnedKpis.length > 0 && (
-            <div className="max-w-[1600px] mx-auto w-full px-1 pb-3 lg:hidden">
+            <div className="max-w-[1600px] mx-auto w-full px-0 pb-3 lg:hidden">
               <PinnedKpiCompare
                 pins={pinnedKpis}
                 onUnpin={(id) => setPinnedKpis((prev) => prev.filter((p) => p.id !== id))}
@@ -1878,4 +1878,3 @@ export default function App() {
     </div>
   );
 }
-

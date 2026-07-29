@@ -48,7 +48,7 @@ export default function ResultsCharts({
   }
 
   return (
-    <div className="flex flex-col gap-4 mx-4 sm:mx-6 mt-6 mb-2">
+    <div className="flex flex-col gap-4 mx-0 sm:mx-6 mt-6 mb-2">
       <div className="lg:hidden">
         <Button
           variant="outline"

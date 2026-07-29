@@ -160,7 +160,7 @@ export function ResultsWorkspace() {
   return (
     <>
               {/* Content */}
-              <div ref={resultsContainerRef} className="relative z-20 flex w-full flex-1 flex-none flex-col px-1.5 pb-12 sm:px-6">
+              <div ref={resultsContainerRef} className="relative z-20 flex w-full flex-1 flex-none flex-col px-0 pb-12 sm:px-6">
                 <div
                   className={`mx-auto grid w-full max-w-[1600px] gap-4 ${
                     pinnedKpis.length > 0
@@ -411,7 +411,7 @@ export function ResultsWorkspace() {
                     {!loading && (priceDistribution.length > 0 || priceTrend.length > 0) && (
                       <Suspense
                         fallback={
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mx-4 sm:mx-6 mt-6 mb-2">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mx-0 sm:mx-6 mt-6 mb-2">
                             <Skeleton className="h-[220px] rounded-3xl bg-white/40 dark:bg-slate-900/40" />
                             <Skeleton className="h-[220px] rounded-3xl bg-white/40 dark:bg-slate-900/40" />
                           </div>
@@ -483,7 +483,7 @@ export function ResultsWorkspace() {
                       </div>
       
                       {viewMode === "table" ? (
-                        <div className="mx-1.5 overflow-x-auto rounded-2xl border border-slate-200/50 bg-white/80 shadow-none dark:border-slate-800/60 dark:bg-slate-900/40 sm:mx-6">
+                        <div className="mx-0 overflow-x-auto rounded-2xl border border-slate-200/50 bg-white/80 shadow-none dark:border-slate-800/60 dark:bg-slate-900/40 sm:mx-6">
                           <Table className="min-w-[880px]">
                             <TableHeader>
                               <TableRow className="hover:bg-transparent">
@@ -565,7 +565,7 @@ export function ResultsWorkspace() {
                           )}
                         </div>
                       ) : (
-                        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-3 px-1.5 sm:px-6 pb-2">
+                        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-3 px-0 sm:px-6 pb-2">
                           <AnimatePresence mode="popLayout">
                             {paginatedData.map((item, idx) => (
                               <TransactionCard
