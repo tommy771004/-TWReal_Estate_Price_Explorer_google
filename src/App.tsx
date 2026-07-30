@@ -3,119 +3,36 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Suspense, lazy, useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  Search,
-  Building2,
-  Filter, 
-  ArrowUpDown, 
-  Info, 
-  X,
-  ChevronRight,
-  Home,
+import {
   DollarSign,
-  Maximize2,
   Calendar,
   Database,
-  SlidersHorizontal,
-  Sparkles,
-  Compass,
-  Zap,
-  Gem,
-  Bookmark,
-  Trash2,
-  Save,
-  Clock,
-  Layers,
-  ArrowRightCircle,
-  Bed,
-  Sofa,
-  Bath,
-  ChevronLeft,
-  ArrowDown,
-  ArrowUp,
-  Train,
-  GraduationCap,
-  ShieldCheck,
-  ArrowRight,
-  Car,
-  Leaf,
   TrendingUp,
-  TrendingDown,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  MapPinOff,
-  Navigation,
-  Settings,
-  Download,
-  Share2,
-  Pin,
-  Crosshair,
-  Building,
 } from "lucide-react";
-import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
+import { CITIES, CITY_DISTRICTS } from "./constants";
 import { DEFAULT_APP_TEXTS, type AppTexts } from "./constants/texts";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
-import { TransactionCard } from "./components/TransactionCard";
-import { AffiliateMarquee } from "./components/AffiliateMarquee";
+
 import { SiteNav } from "./components/SiteNav";
 import { useGeocoding } from "./hooks/useGeocoding";
-import { 
-  YEARS, 
-  MONTHS, 
-  getPeriodValue, 
-  getPeriodFromValue, 
-  formatPrice, 
-  formatDate, 
-  getDefaultPeriod,
+import {
   formatPeriodLabel,
-  isDefaultPeriod,
-  exportTransactionsCsv,
-  formatCachedAtLabel,
 } from "./utils/real-estate-helpers";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-// Table icon used for results table view
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import { syncSeoMetadata } from "./lib/seo";
 import {
   parseSelectionFromUrl,
   parseQueryFiltersFromUrl,
   buildShareableUrl,
-  DEFAULT_PROPERTY_TYPES,
   type ManagementFilter,
   type ParkingFilter,
 } from "./lib/urlState";
-import { calculateDistance } from "./lib/utils";
+
 import type { Transaction } from "./types/real-estate";
 import { CompareBar, MAX_COMPARE, buildCompareQueryParam, parseCompareIdsFromSearch } from "./components/CompareBar";
-import { QueryAssistBar } from "./components/QueryAssistBar";
-import { ResultDeltaBanner } from "./components/ResultDeltaBanner";
-import { GeocodeProgress } from "./components/GeocodeProgress";
+
 import type { QueryPreset, QueryPresetId } from "./constants/queryPresets";
 import {
   buildFilterSnapshotKey,
@@ -136,20 +53,17 @@ import { FeedbackModal } from "./components/explorer/FeedbackModal";
 import { TransactionDetailDialog } from "./components/explorer/TransactionDetailDialog";
 import { TrendDistrictDialog } from "./components/explorer/TrendDistrictDialog";
 import { MarketHeader } from "./components/explorer/MarketHeader";
-import { SearchFilterPanel } from "./components/explorer/SearchFilterPanel";
+import { SearchFilterPanel } from "./components/explorer/search/SearchFilterPanel";
 import { ResultsWorkspace } from "./components/explorer/ResultsWorkspace";
 import { ExplorerUiProvider } from "./components/explorer/ExplorerUiContext";
 import { useFetchRealEstate } from "./hooks/useFetchRealEstate";
-import type { SavedSearch, ViewMode } from "./types/app";
-import { FEATURED_CITY_NAMES } from "./constants/app-ui";
+import type { ViewMode } from "./types/app";
+
 import { PinnedKpiCompare } from "./components/PinnedKpiCompare";
 import {
   formatSnapshotLabel,
   type PinnedMarketSnapshot,
 } from "./utils/market-snapshot";
-
-const ResultsCharts = lazy(() => import("./components/ResultsCharts"));
-const ResultsMap = lazy(() => import("./components/MapViews"));
 
 export default function App() {
   const initialSelection = parseSelectionFromUrl();
@@ -172,7 +86,6 @@ export default function App() {
   /** 總價上限（萬元），預算反查用 */
   const [totalPriceMaxWan, setTotalPriceMaxWan] = useState("");
   const [activePresetId, setActivePresetId] = useState<QueryPresetId | null>(null);
-  const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "error">("idle");
   const [compareShareStatus, setCompareShareStatus] = useState<"idle" | "copied" | "error">("idle");
   const [resultDelta, setResultDelta] = useState<SnapshotDelta | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -358,18 +271,6 @@ export default function App() {
   const [showChartsMobile, setShowChartsMobile] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [globalFacilities, setGlobalFacilities] = useState<any[]>([]);
-  
-  // Saved Searches State
-  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(() => {
-    try {
-      const saved = localStorage.getItem('explorer_saved_searches');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-  const [isSavingSearch, setIsSavingSearch] = useState(false);
-  const [newSearchName, setNewSearchName] = useState("");
   
   const [favorites, setFavorites] = useState<Transaction[]>(() => {
     try {
@@ -597,7 +498,6 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleFeedbackKeys);
   }, []);
 
-
   // Recent keyword searches (last 5), persisted to localStorage
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
@@ -662,49 +562,6 @@ export default function App() {
     });
   };
 
-  const saveCurrentSearch = () => {
-    if (!newSearchName.trim()) return;
-    
-    const newSavedSearch: SavedSearch = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newSearchName,
-      cityName,
-      typeName,
-      district,
-      search,
-      propertyTypes,
-      period,
-      unitPrice,
-      area,
-      age,
-      timestamp: Date.now()
-    };
-
-    const updated = [newSavedSearch, ...savedSearches];
-    setSavedSearches(updated);
-    localStorage.setItem('explorer_saved_searches', JSON.stringify(updated));
-    setNewSearchName("");
-    setIsSavingSearch(false);
-  };
-
-  const deleteSavedSearch = (id: string | number) => {
-    const updated = savedSearches.filter(s => s.id !== id);
-    setSavedSearches(updated);
-    localStorage.setItem('explorer_saved_searches', JSON.stringify(updated));
-  };
-
-  const applySavedSearch = (s: SavedSearch) => {
-    setCityName(s.cityName);
-    setTypeName(s.typeName || "買賣");
-    setDistrict(s.district);
-    setSearch(s.search);
-    setPropertyTypes(s.propertyTypes);
-    setPeriod(s.period);
-    setUnitPrice(s.unitPrice);
-    setArea(s.area);
-    setAge(s.age);
-  };
-  
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -800,7 +657,6 @@ export default function App() {
     }
   }, [fetchData]);
 
-
   // 僅掛載時初始化一次：只做定位（交由瀏覽器原生權限提示），不自動查詢，由使用者自行按下「開始查詢」
   useEffect(() => {
     let cancelled = false;
@@ -834,31 +690,25 @@ export default function App() {
         setIsAdvancedSearchOpen(false);
         setIsLocationModalOpen(false);
         setSelectedItem(null);
-        setIsSavingSearch(false);
         setShowSuggestions(false);
       }
-      
+
       if (e.key === 'Enter') {
         const activeTag = document.activeElement?.tagName.toLowerCase();
         if (activeTag === 'button') return; // Do not conflict with default button 'Enter' click behavior
-        
-        if (isSavingSearch) {
-          saveCurrentSearch();
-          return;
-        }
 
         if (isLocationModalOpen) return;
         if (selectedItem) return;
-        
+
         // Always close suggestions on enter, trigger a fresh search
         setShowSuggestions(false);
         fetchData();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [fetchData, isSavingSearch, isLocationModalOpen, selectedItem, saveCurrentSearch]);
+  }, [fetchData, isLocationModalOpen, selectedItem]);
 
   // Handle resize for search panel
   useEffect(() => {
@@ -931,7 +781,6 @@ export default function App() {
     aggregatedPreSaleData,
     marketSnapshot: marketSnapshotFromHook,
   } = useMarketAnalytics(data, filteredData, typeName);
-
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1171,7 +1020,6 @@ export default function App() {
     // Currently disabled to guarantee stable preview performance.
   }, [cityName, district, filteredData.length]);
 
-
   // Custom Geocoding Hook to handle async Nominatim mappings & Thread-safe OSM cache
   const { isGeocoding, geocodedCount, totalToGeocode } = useGeocoding({
     cityName,
@@ -1224,15 +1072,14 @@ export default function App() {
   const exportLocalUserData = React.useCallback(() => {
     const text = exportUserDataBundle({
       favorites,
-      savedSearches,
       compare: compareList,
       pinnedKpis,
       snapshots: Object.values(loadSnapshots()),
     });
     const stamp = new Date().toISOString().slice(0, 10);
     downloadJsonFile(`tw-real-estate-backup-${stamp}.json`, text);
-    addAuditLog("export_user_data", JSON.stringify({ favorites: favorites.length, saved: savedSearches.length }));
-  }, [favorites, savedSearches, compareList, pinnedKpis, addAuditLog]);
+    addAuditLog("export_user_data", JSON.stringify({ favorites: favorites.length }));
+  }, [favorites, compareList, pinnedKpis, addAuditLog]);
 
   const importLocalUserData = React.useCallback(
     async (file: File) => {
@@ -1252,14 +1099,6 @@ export default function App() {
             /* ignore */
           }
         }
-        if (d.savedSearches.length) {
-          setSavedSearches(d.savedSearches as SavedSearch[]);
-          try {
-            localStorage.setItem("explorer_saved_searches", JSON.stringify(d.savedSearches));
-          } catch {
-            /* ignore */
-          }
-        }
         if (d.compare.length) {
           setCompareList(d.compare.slice(0, MAX_COMPARE));
         }
@@ -1267,13 +1106,12 @@ export default function App() {
           setPinnedKpis(d.pinnedKpis as any);
         }
         setImportStatus(
-          `已匯入：收藏 ${d.favorites.length}、條件 ${d.savedSearches.length}、比較 ${d.compare.length}`
+          `已匯入：收藏 ${d.favorites.length}、比較 ${d.compare.length}`
         );
         addAuditLog(
           "import_user_data",
           JSON.stringify({
             favorites: d.favorites.length,
-            saved: d.savedSearches.length,
             compare: d.compare.length,
           })
         );
@@ -1359,66 +1197,6 @@ export default function App() {
     setViewMode("list");
   }, []);
 
-  const copyShareLink = React.useCallback(async () => {
-    if (typeof window === "undefined") return;
-    const url = buildShareableUrl(
-      { cityName, typeName, district },
-      {
-        search,
-        propertyTypes,
-        period,
-        unitPrice,
-        area,
-        age,
-        roomsMin,
-        hasManagement,
-        parking: parkingFilter,
-      },
-      window.location.origin
-    );
-    try {
-      await navigator.clipboard.writeText(url);
-      setShareStatus("copied");
-      addAuditLog("share_link", url);
-    } catch {
-      try {
-        // Fallback for older browsers / insecure contexts
-        const ta = document.createElement("textarea");
-        ta.value = url;
-        ta.style.position = "fixed";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-        setShareStatus("copied");
-      } catch {
-        setShareStatus("error");
-      }
-    }
-    window.setTimeout(() => setShareStatus("idle"), 2000);
-  }, [
-    cityName,
-    typeName,
-    district,
-    search,
-    propertyTypes,
-    period,
-    unitPrice,
-    area,
-    age,
-    roomsMin,
-    hasManagement,
-    parkingFilter,
-    addAuditLog,
-  ]);
-
-  const handleExportCsv = React.useCallback(() => {
-    if (filteredData.length === 0) return;
-    exportTransactionsCsv(filteredData, typeName, `${cityName}-${district}`);
-    addAuditLog("export_csv", JSON.stringify({ count: filteredData.length, cityName, district, typeName }));
-  }, [filteredData, typeName, cityName, district, addAuditLog]);
-
   const explorerUi = {
     cityName, setCityName, typeName, setTypeName, district, setDistrict,
     search, setSearch, propertyTypes, setPropertyTypes,
@@ -1437,8 +1215,7 @@ export default function App() {
     totalPages, sortConfig, setSortConfig, handleSort, scrollSort, sortScrollRef,
     resultsContainerRef,
     addressSuggestions, recentSearches, clearRecentSearches, trendingSearches,
-    handleTrendingClick, savedSearches, applySavedSearch, deleteSavedSearch,
-    isSavingSearch, setIsSavingSearch, newSearchName, setNewSearchName, saveCurrentSearch,
+    handleTrendingClick,
     applyQueryPreset, applyBudgetWan,
     marketSnapshot, marketKpis, pinCurrentMarket, pinnedKpis, setPinnedKpis,
     priceDistribution, priceTrend, aggregatedPreSaleData, showChartsMobile, setShowChartsMobile,
@@ -1447,7 +1224,6 @@ export default function App() {
     favorites, toggleFavorite, compareList, toggleCompare,
     setSelectedItem, setTrendDistrict, setNearbyFromItem,
     mapLayer, setMapLayer, showFacilities, setShowFacilities,
-    shareStatus, copyShareLink, handleExportCsv,
     districts: (CITY_DISTRICTS[cityName] || []).map((d) => d.name),
   };
 
@@ -1533,39 +1309,6 @@ export default function App() {
           )}
 
           <SearchFilterPanel />
-
-          {/* Save Search Modal */}
-          <Dialog open={isSavingSearch} onOpenChange={setIsSavingSearch}>
-            <DialogContent className="sm:max-w-[400px] rounded-[2rem] border-none shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                  <Bookmark className="text-coral-500" /> 儲存目前搜尋設定
-                </DialogTitle>
-              </DialogHeader>
-              <div className="p-4 space-y-4">
-                <p className="text-xs text-slate-500 font-medium">請輸入一個名稱，方便下次快速載入這些篩選條件。</p>
-                <Input
-                  placeholder="例如：臺北市大安區新成屋"
-                  value={newSearchName}
-                  onChange={(e) => setNewSearchName(e.target.value)}
-                  className="liquid-glass-input border-none h-12 rounded-xl text-md font-bold"
-                  onKeyDown={(e) => e.key === "Enter" && saveCurrentSearch()}
-                />
-                <div className="pt-2 flex justify-end gap-3">
-                  <Button variant="ghost" onClick={() => setIsSavingSearch(false)} className="rounded-xl font-bold">
-                    取消
-                  </Button>
-                  <Button
-                    onClick={saveCurrentSearch}
-                    disabled={!newSearchName.trim()}
-                    className="bg-coral-600 hover:bg-coral-500 text-white rounded-xl font-bold px-6"
-                  >
-                    儲存設定
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
 
           <ResultsWorkspace />
           </ExplorerUiProvider>

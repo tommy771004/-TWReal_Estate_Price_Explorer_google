@@ -22,7 +22,6 @@ export type PortableUserData = {
   version: typeof USER_DATA_VERSION;
   exportedAt: string;
   favorites: Transaction[];
-  savedSearches: unknown[];
   compare: Transaction[];
   pinnedKpis?: unknown[];
   snapshots?: ResultSnapshot[];
@@ -134,7 +133,6 @@ export function exportUserDataBundle(data: Omit<PortableUserData, "version" | "e
     version: USER_DATA_VERSION,
     exportedAt: new Date().toISOString(),
     favorites: data.favorites || [],
-    savedSearches: data.savedSearches || [],
     compare: data.compare || [],
     pinnedKpis: data.pinnedKpis,
     snapshots: data.snapshots,
@@ -170,16 +168,16 @@ export function parseUserDataImport(raw: string): ImportResult {
     if (parsed.version !== USER_DATA_VERSION && parsed.version == null) {
       // 寬鬆：無 version 也接受
     }
-    if (!Array.isArray(parsed.favorites) && !Array.isArray(parsed.savedSearches) && !Array.isArray(parsed.compare)) {
-      return { ok: false, error: "找不到收藏、條件或比較清單欄位" };
+    if (!Array.isArray(parsed.favorites) && !Array.isArray(parsed.compare)) {
+      return { ok: false, error: "找不到收藏或比較清單欄位" };
     }
+    // 舊版備份可能含 savedSearches，該功能已移除，解析時直接忽略
     return {
       ok: true,
       data: {
         version: USER_DATA_VERSION,
         exportedAt: parsed.exportedAt || new Date().toISOString(),
         favorites: Array.isArray(parsed.favorites) ? parsed.favorites : [],
-        savedSearches: Array.isArray(parsed.savedSearches) ? parsed.savedSearches : [],
         compare: Array.isArray(parsed.compare) ? parsed.compare : [],
         pinnedKpis: parsed.pinnedKpis,
         snapshots: parsed.snapshots,

@@ -1,32 +1,46 @@
 import React, { Suspense } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Search, MapPin, Filter, ArrowUpDown, X, ChevronRight, ChevronLeft, Bookmark, Trash2,
-  Clock, List, Table2, BarChart3, Map as MapIcon, Download, Share2, CheckCircle2,
-  Compass, Crosshair, Pin, SlidersHorizontal, ArrowUp, ArrowDown,
-  Database, MapPinOff, ShieldCheck, Zap,
+  Filter,
+  ArrowUpDown,
+  X,
+  ChevronRight,
+  ChevronLeft,
+  List,
+  Table2,
+  BarChart3,
+  Map as MapIcon,
+  Compass,
+  ArrowUp,
+  ArrowDown,
+  Database,
+  MapPinOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { QueryAssistBar } from "../QueryAssistBar";
+
 import { TransactionCard } from "../TransactionCard";
 import { ResultDeltaBanner } from "../ResultDeltaBanner";
 import { GeocodeProgress } from "../GeocodeProgress";
 import { PinnedKpiCompare } from "../PinnedKpiCompare";
 import { AffiliateMarquee } from "../AffiliateMarquee";
-import { DEFAULT_PROPERTY_TYPES } from "../../lib/urlState";
-import { TRANSACTION_TYPES } from "../../constants";
+
 import {
-  YEARS, MONTHS, getPeriodValue, getPeriodFromValue,
-  getDefaultPeriod, formatPeriodLabel, isDefaultPeriod, formatPrice, formatDate,
+  getDefaultPeriod,
+  formatPeriodLabel,
+  isDefaultPeriod,
+  formatPrice,
+  formatDate,
 } from "../../utils/real-estate-helpers";
 import { useExplorerUi } from "./ExplorerUiContext";
 
@@ -38,15 +52,11 @@ export function ResultsWorkspace() {
   const [mapPeekOpen, setMapPeekOpen] = React.useState(false);
   const {
     cityName,
-    setCityName,
     typeName,
-    setTypeName,
     district,
     setDistrict,
     search,
     setSearch,
-    propertyTypes,
-    setPropertyTypes,
     period,
     setPeriod,
     unitPrice,
@@ -65,23 +75,11 @@ export function ResultsWorkspace() {
     setExcludeSpecial,
     totalPriceMaxWan,
     setTotalPriceMaxWan,
-    activePresetId,
-    setActivePresetId,
     nearbyKm,
     setNearbyKm,
-    nearbyAnchor,
     setNearbyAnchor,
     focusBuildCase,
     setFocusBuildCase,
-    userLocation,
-    isSearchExpanded,
-    setIsSearchExpanded,
-    isAdvancedSearchOpen,
-    setIsAdvancedSearchOpen,
-    isLocationModalOpen,
-    setIsLocationModalOpen,
-    showSuggestions,
-    setShowSuggestions,
     loading,
     robotStatus,
     appTexts,
@@ -90,8 +88,6 @@ export function ResultsWorkspace() {
     data,
     filteredData,
     paginatedData,
-    dataSource,
-    dataCachedAt,
     error,
     fetchData,
     currentPage,
@@ -101,28 +97,9 @@ export function ResultsWorkspace() {
     totalPages,
     sortConfig,
     setSortConfig,
-    handleSort,
     scrollSort,
     sortScrollRef,
     resultsContainerRef,
-    addressSuggestions,
-    recentSearches,
-    clearRecentSearches,
-    trendingSearches,
-    handleTrendingClick,
-    savedSearches,
-    applySavedSearch,
-    deleteSavedSearch,
-    isSavingSearch,
-    setIsSavingSearch,
-    newSearchName,
-    setNewSearchName,
-    saveCurrentSearch,
-    applyQueryPreset,
-    applyBudgetWan,
-    marketSnapshot,
-    marketKpis,
-    pinCurrentMarket,
     pinnedKpis,
     setPinnedKpis,
     priceDistribution,
@@ -144,15 +121,10 @@ export function ResultsWorkspace() {
     toggleCompare,
     setSelectedItem,
     setTrendDistrict,
-    setNearbyFromItem,
     mapLayer,
     setMapLayer,
     showFacilities,
     setShowFacilities,
-    shareStatus,
-    copyShareLink,
-    handleExportCsv,
-    districts
   } = useExplorerUi();
 
   return (
@@ -230,67 +202,6 @@ export function ResultsWorkspace() {
                     </div>
                   </div>
 
-                {/* 快速動作：單列精簡，置於結果列表上方 */}
-                <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 bg-slate-50/60 px-3 py-2 dark:border-slate-800/80 dark:bg-slate-950/30 sm:px-5">
-                  <span className="mr-1 hidden text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 sm:inline">
-                    快速
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsAdvancedSearchOpen(true);
-                      setIsSearchExpanded(true);
-                    }}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-coral-200/70 bg-coral-500/10 px-2.5 text-[11px] font-bold text-coral-700 transition hover:bg-coral-500/15 dark:border-coral-800/50 dark:text-coral-300"
-                  >
-                    <SlidersHorizontal className="h-3.5 w-3.5" />
-                    進階篩選
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsSavingSearch(true)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                  >
-                    <Bookmark className="h-3.5 w-3.5" />
-                    儲存條件
-                  </button>
-                  <button
-                    type="button"
-                    disabled={filteredData.length === 0}
-                    onClick={handleExportCsv}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200/70 bg-emerald-500/10 px-2.5 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-500/15 disabled:opacity-40 dark:border-emerald-800/50 dark:text-emerald-300"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    匯出 CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={copyShareLink}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold transition ${
-                      shareStatus === "copied"
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                        : "border-sky-200/70 bg-sky-500/10 text-sky-700 hover:bg-sky-500/15 dark:border-sky-800/50 dark:text-sky-300"
-                    }`}
-                  >
-                    {shareStatus === "copied" ? (
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    ) : (
-                      <Share2 className="h-3.5 w-3.5" />
-                    )}
-                    {shareStatus === "copied" ? "已複製" : "分享連結"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={pinCurrentMarket}
-                    disabled={marketSnapshot.count === 0}
-                    className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 transition hover:border-coral-300 hover:text-coral-600 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                    title="釘選此區 KPI 比價"
-                  >
-                    <Pin className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">釘選比價</span>
-                  </button>
-                </div>
-                
                 <AnimatePresence mode="wait">
                   {loading ? (
                     <motion.div
