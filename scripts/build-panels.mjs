@@ -20,7 +20,7 @@ const APP_KEYS = [
   "focusBuildCase", "setFocusBuildCase", "userLocation",
   // ui chrome
   "isSearchExpanded", "setIsSearchExpanded", "isAdvancedSearchOpen", "setIsAdvancedSearchOpen",
-  "isLocationModalOpen", "setIsLocationModalOpen", "showLocationModal", "setShowLocationModal",
+  "isLocationModalOpen", "setIsLocationModalOpen",
   "showSuggestions", "setShowSuggestions", "loading", "robotStatus",
   "appTexts", "viewMode", "setViewMode",
   // data / derived

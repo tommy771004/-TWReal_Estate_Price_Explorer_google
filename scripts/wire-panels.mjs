@@ -48,7 +48,7 @@ if (!src.includes("const explorerUi =")) {
     nearbyKm, setNearbyKm, nearbyAnchor, setNearbyAnchor,
     focusBuildCase, setFocusBuildCase, userLocation,
     isSearchExpanded, setIsSearchExpanded, isAdvancedSearchOpen, setIsAdvancedSearchOpen,
-    isLocationModalOpen, setIsLocationModalOpen, showLocationModal, setShowLocationModal,
+    isLocationModalOpen, setIsLocationModalOpen,
     showSuggestions, setShowSuggestions, loading, robotStatus,
     appTexts, viewMode, setViewMode,
     data, filteredData, paginatedData, dataSource, dataCachedAt,
