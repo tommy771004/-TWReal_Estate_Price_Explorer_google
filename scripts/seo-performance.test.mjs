@@ -14,12 +14,15 @@ test("critical CSS uses the bundled local font instead of a render-blocking remo
 });
 
 test("the initial app does not directly import the charting runtime", async () => {
-  const [appSource, chartSource] = await Promise.all([
+  const [appSource, detailDialogSource, chartSource] = await Promise.all([
     readFile(new URL("../src/App.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/explorer/TransactionDetailDialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/components/CommunityTrendChart.tsx", import.meta.url), "utf8").catch(() => ""),
   ]);
 
   assert.doesNotMatch(appSource, /from\s+["']recharts["']/);
-  assert.match(appSource, /lazy\(\(\) => import\(["']\.\/components\/CommunityTrendChart["']\)\)/);
+  assert.doesNotMatch(detailDialogSource, /from\s+["']recharts["']/);
+  // 社群趨勢圖只在交易詳情彈窗開啟時才載入，不進首屏 bundle
+  assert.match(detailDialogSource, /lazy\(\(\) => import\(["']\.\.\/CommunityTrendChart["']\)\)/);
   assert.match(chartSource, /from\s+["']recharts["']/);
 });
