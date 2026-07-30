@@ -84,8 +84,6 @@ export function SearchFilterPanel() {
     setIsAdvancedSearchOpen,
     isLocationModalOpen,
     setIsLocationModalOpen,
-    showLocationModal,
-    setShowLocationModal,
     showSuggestions,
     setShowSuggestions,
     loading,

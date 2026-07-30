@@ -6,9 +6,8 @@
 import React, { Suspense, lazy, useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  Search, 
-  MapPin, 
-  Building2, 
+  Search,
+  Building2,
   Filter, 
   ArrowUpDown, 
   Info, 
@@ -410,8 +409,6 @@ export default function App() {
     userLocationRef.current = userLocation;
   }, [userLocation]);
 
-  const [showLocationModal, setShowLocationModal] = useState(false);
-
   // === 意見回饋狀態 ===
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState("系統錯誤");
@@ -556,6 +553,10 @@ export default function App() {
         },
         async (error) => {
           console.warn("GPS Geolocation failed, using base station:", error);
+          // 使用者在瀏覽器原生提示中拒絕：記錄下來，之後直接改用基地台估測，不再重複詢問
+          if (error.code === error.PERMISSION_DENIED) {
+            localStorage.setItem("location_sharing_permisson_decision", "deny");
+          }
           const loc = await triggerBaseStationLocation();
           resolve(loc);
         },
@@ -800,26 +801,19 @@ export default function App() {
   }, [fetchData]);
 
 
-  // 僅掛載時初始化一次（勿把 fetchData 放進 deps，否則參數變動會重跑 + 舊版 isFetching 互鎖卡 loading）
+  // 僅掛載時初始化一次：只做定位（交由瀏覽器原生權限提示），不自動查詢，由使用者自行按下「開始查詢」
   useEffect(() => {
     let cancelled = false;
-    const initLocationAndFetch = async () => {
+    const initLocation = async () => {
       const decision = localStorage.getItem("location_sharing_permisson_decision");
-      let activeLoc: UserLocation;
-      if (decision === "allow") {
-        activeLoc = await triggerGpsLocation();
-      } else if (decision === "deny") {
-        activeLoc = await triggerBaseStationLocation();
-      } else {
-        setShowLocationModal(true);
-        activeLoc = await triggerBaseStationLocation();
-      }
+      const activeLoc = decision === "deny"
+        ? await triggerBaseStationLocation()
+        : await triggerGpsLocation();
       if (cancelled) return;
-      fetchData("", activeLoc.county || undefined, activeLoc.district || undefined);
       fetchTrendingSearches();
       addAuditLog("app_mount", "User opened price explorer", activeLoc);
     };
-    initLocationAndFetch();
+    initLocation();
     return () => {
       cancelled = true;
     };
@@ -1435,7 +1429,7 @@ export default function App() {
     nearbyKm, setNearbyKm, nearbyAnchor, setNearbyAnchor,
     focusBuildCase, setFocusBuildCase, userLocation,
     isSearchExpanded, setIsSearchExpanded, isAdvancedSearchOpen, setIsAdvancedSearchOpen,
-    isLocationModalOpen, setIsLocationModalOpen, showLocationModal, setShowLocationModal,
+    isLocationModalOpen, setIsLocationModalOpen,
     showSuggestions, setShowSuggestions, loading, robotStatus,
     appTexts, viewMode, setViewMode,
     data, filteredData, paginatedData, dataSource, dataCachedAt,
@@ -1628,71 +1622,7 @@ export default function App() {
         importStatus={importStatus}
       />
 
-      {/* Location Sharing Dialog */}
-      <AnimatePresence>
-        {showLocationModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-[100] bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-2xl relative overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-coral-500/5 rounded-full blur-xl pointer-events-none" />
-              
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-coral-500/10 flex items-center justify-center text-coral-500">
-                  <MapPin className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">位置分享以優化定位</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Location Services</p>
-                </div>
-              </div>
-              
-              <p className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed mb-4">
-                是否允許本系統讀取並分享您的位置資訊？允許後將協助我們<b>自動帶入您附近的縣市與區域進行價格分析</b>，能大幅提升您的瀏覽體驗。若拒絕，本系統將依據估算網路基地台為您提供匿名的區域估測。
-              </p>
-              
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setShowLocationModal(false);
-                    localStorage.setItem("location_sharing_permisson_decision", "allow");
-                    const loc = await triggerGpsLocation();
-                    addAuditLog("location_permission_accept", "GPS Location Allowed", loc);
-                    fetchData("", loc.county || undefined, loc.district || undefined);
-                  }}
-                  className="flex-1 py-1.5 px-3 bg-coral-500 hover:bg-coral-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
-                >
-                  是，啟用自動定位
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setShowLocationModal(false);
-                    localStorage.setItem("location_sharing_permisson_decision", "deny");
-                    const loc = await triggerBaseStationLocation();
-                    addAuditLog("location_permission_deny", "Fallback to Base Station", loc);
-                    fetchData("", loc.county || undefined, loc.district || undefined);
-                  }}
-                  className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                >
-                  暫不分享
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 位置權限一律交由瀏覽器原生提示處理，不再顯示本系統的自訂提醒 */}
       <FeedbackModal
         open={showFeedback}
         onClose={() => setShowFeedback(false)}
