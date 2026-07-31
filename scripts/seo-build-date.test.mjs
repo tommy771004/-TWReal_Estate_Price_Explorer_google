@@ -30,11 +30,11 @@ test("SEO modification dates use page dates with a build-time fallback", async (
   assert.ok(lastModifiedValues.every((value) => /^\d{4}-\d{2}-\d{2}$/.test(value)));
   assert.match(
     builtSitemap,
-    new RegExp(`<loc>https://tw-real-estate-price-explorer-googl\\.vercel\\.app/</loc>\\s*<lastmod>${OVERRIDE_DATE}</lastmod>`),
+    new RegExp(`<loc>https://tw-realestate-price\\.vercel\\.app/</loc>\\s*<lastmod>${OVERRIDE_DATE}</lastmod>`),
   );
   assert.match(
     builtSitemap,
-    /<loc>https:\/\/tw-real-estate-price-explorer-googl\.vercel\.app\/methodology\/<\/loc>\s*<lastmod>2026-06-26<\/lastmod>/,
+    /<loc>https:\/\/tw-realestate-price\.vercel\.app\/methodology\/<\/loc>\s*<lastmod>2026-06-26<\/lastmod>/,
   );
 
   for (const source of [appSource, seoSource, sourceHtml, sourceSitemap]) {

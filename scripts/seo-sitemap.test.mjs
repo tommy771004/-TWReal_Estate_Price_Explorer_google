@@ -6,7 +6,7 @@ import {
   renderSitemapXml,
 } from "../src/lib/seoSitemap.ts";
 
-const SITE_ORIGIN = "https://tw-real-estate-price-explorer-googl.vercel.app";
+const SITE_ORIGIN = "https://tw-realestate-price.vercel.app";
 
 test("sitemap generator emits the complete canonical URL inventory", () => {
   const records = buildSitemapRecords(SITE_ORIGIN, "2031-12-24");

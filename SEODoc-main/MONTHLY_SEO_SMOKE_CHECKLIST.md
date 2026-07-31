@@ -36,8 +36,8 @@ npm run seo:verify-live
 
 - 開啟首頁、`/prices/`、`/guides/`、`/methodology/`、一個六都行政區索引頁。
 - 檢查瀏覽器顯示的 canonical URL 是否為正式網域且沒有 query string 舊路由。
-- 檢查 `https://tw-real-estate-price-explorer-googl.vercel.app/sitemap.xml` 可讀，且包含內容頁與查詢頁。
-- 檢查 `https://tw-real-estate-price-explorer-googl.vercel.app/llms.txt` 可讀，並連到 sitemap。
+- 檢查 `https://tw-realestate-price.vercel.app/sitemap.xml` 可讀，且包含內容頁與查詢頁。
+- 檢查 `https://tw-realestate-price.vercel.app/llms.txt` 可讀，並連到 sitemap。
 
 ## 3. Search Console 月檢
 
