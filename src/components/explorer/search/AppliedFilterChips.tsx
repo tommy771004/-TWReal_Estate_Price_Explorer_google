@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
-import { DEFAULT_PROPERTY_TYPES } from "../../../lib/urlState";
 import type { ManagementFilter, ParkingFilter } from "../../../lib/urlState";
 import type { PeriodRange } from "../../../utils/real-estate-helpers";
 import {
@@ -89,36 +88,7 @@ function buildChips(f: AppliedFilterValues, a: AppliedFilterActions): Chip[] {
     chips.push({ id: "search", label: `關鍵字: ${f.search}`, onClear: () => a.setSearch("") });
   }
 
-  // 僅在標的種類偏離預設時顯示（避免預設三種永遠佔版面）
-  const isDefaultPts =
-    f.propertyTypes.length === DEFAULT_PROPERTY_TYPES.length &&
-    DEFAULT_PROPERTY_TYPES.every((pt) => f.propertyTypes.includes(pt));
-  if (!isDefaultPts) {
-    if (f.propertyTypes.length === 0) {
-      chips.push({
-        id: "pt-none",
-        label: "種類: 未選",
-        onClear: () => a.setPropertyTypes([...DEFAULT_PROPERTY_TYPES]),
-      });
-    } else if (f.propertyTypes.length <= 3) {
-      f.propertyTypes.forEach((pt) => {
-        chips.push({
-          id: `pt-${pt}`,
-          label: pt,
-          onClear: () => {
-            const next = f.propertyTypes.filter((p) => p !== pt);
-            a.setPropertyTypes(next.length ? next : [...DEFAULT_PROPERTY_TYPES]);
-          },
-        });
-      });
-    } else {
-      chips.push({
-        id: "pt-many",
-        label: `種類 ${f.propertyTypes.length} 項`,
-        onClear: () => a.setPropertyTypes([...DEFAULT_PROPERTY_TYPES]),
-      });
-    }
-  }
+  // 標的種類不放這裡：PropertyTypeChips 是常駐可見的主要分類，狀態直接看得到
 
   if (f.unitPrice.min || f.unitPrice.max) {
     chips.push({

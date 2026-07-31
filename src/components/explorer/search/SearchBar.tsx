@@ -1,7 +1,6 @@
 import { ChevronDown, MapPin, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KeywordInput, type TrendingSearch } from "./KeywordInput";
-import { TransactionTypeTabs } from "./TransactionTypeTabs";
 
 type Props = {
   cityName: string;
@@ -20,14 +19,11 @@ type Props = {
   onPickRecent: (q: string) => void;
   onPickTrending: (t: TrendingSearch) => void;
 
-  typeName: string;
-  onChangeType: (name: string) => void;
-
   loading: boolean;
   onSubmit: () => void;
 };
 
-/** 常駐搜尋列：區域 + 關鍵字 + 交易型態 + 查詢，就這四件事。 */
+/** 常駐搜尋列：區域 + 關鍵字 + 查詢。標的種類與交易型態在下一列的分類區。 */
 export function SearchBar({
   cityName,
   district,
@@ -43,8 +39,6 @@ export function SearchBar({
   trendingSearches,
   onPickRecent,
   onPickTrending,
-  typeName,
-  onChangeType,
   loading,
   onSubmit,
 }: Props) {
@@ -89,7 +83,6 @@ export function SearchBar({
       </div>
 
       <div className="flex items-center gap-2.5">
-        <TransactionTypeTabs value={typeName} onChange={onChangeType} />
         <Button
           onClick={onSubmit}
           disabled={loading}

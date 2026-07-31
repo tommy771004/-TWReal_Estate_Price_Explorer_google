@@ -24,7 +24,7 @@ type Props = {
 };
 
 /** 窄螢幕時收進「更多條件」的群組 */
-const XL_ONLY: FilterGroupId[] = ["propertyType", "period"];
+const XL_ONLY: FilterGroupId[] = ["period"];
 
 /** 桌機膠囊列：一顆膠囊一個 popover，取代原本一次攤開的進階篩選面板。 */
 export function FilterPillBar({

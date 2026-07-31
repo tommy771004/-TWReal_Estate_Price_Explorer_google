@@ -7,7 +7,6 @@ import { PriceFilterGroup } from "./groups/PriceFilterGroup";
 import { AreaFilterGroup } from "./groups/AreaFilterGroup";
 import { LayoutFilterGroup } from "./groups/LayoutFilterGroup";
 import { AgeFilterGroup } from "./groups/AgeFilterGroup";
-import { PropertyTypeFilterGroup } from "./groups/PropertyTypeFilterGroup";
 import { PeriodFilterGroup } from "./groups/PeriodFilterGroup";
 import { MoreFilterGroup } from "./groups/MoreFilterGroup";
 
@@ -61,14 +60,6 @@ export function FilterGroupRenderer({
 
     case "age":
       return <AgeFilterGroup value={draft.age} onChange={(age) => onPatch({ age })} />;
-
-    case "propertyType":
-      return (
-        <PropertyTypeFilterGroup
-          value={draft.propertyTypes}
-          onChange={(propertyTypes) => onPatch({ propertyTypes })}
-        />
-      );
 
     case "period":
       return <PeriodFilterGroup value={draft.period} onChange={(period) => onPatch({ period })} />;

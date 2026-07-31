@@ -13,7 +13,6 @@ import { isPriceActive, priceSummary } from "./groups/PriceFilterGroup";
 import { isAreaActive, areaSummary } from "./groups/AreaFilterGroup";
 import { isLayoutActive, layoutSummary } from "./groups/LayoutFilterGroup";
 import { isAgeActive, ageSummary } from "./groups/AgeFilterGroup";
-import { isPropertyTypeActive, propertyTypeSummary } from "./groups/PropertyTypeFilterGroup";
 import { isPeriodActive, periodSummary } from "./groups/PeriodFilterGroup";
 import { isMoreActive, moreSummary } from "./groups/MoreFilterGroup";
 
@@ -67,8 +66,6 @@ export const isGroupActive = (id: FilterGroupId, d: FilterDraft): boolean => {
       return isLayoutActive(d);
     case "age":
       return isAgeActive(d.age);
-    case "propertyType":
-      return isPropertyTypeActive(d.propertyTypes);
     case "period":
       return isPeriodActive(d.period);
     case "more":
@@ -91,8 +88,6 @@ export const groupSummary = (id: FilterGroupId, d: FilterDraft): string | null =
       return layoutSummary(d);
     case "age":
       return ageSummary(d.age);
-    case "propertyType":
-      return propertyTypeSummary(d.propertyTypes);
     case "period":
       return periodSummary(d.period);
     case "more":
@@ -109,7 +104,6 @@ export const ALL_GROUP_IDS: FilterGroupId[] = [
   "area",
   "layout",
   "age",
-  "propertyType",
   "period",
   "more",
 ];

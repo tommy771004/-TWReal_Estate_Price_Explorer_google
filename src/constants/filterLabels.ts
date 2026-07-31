@@ -40,6 +40,16 @@ export const PROPERTY_TYPE_OPTIONS: PropertyTypeOption[] = [
 export const propertyTypeLabel = (value: string): string =>
   PROPERTY_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value;
 
+/**
+ * 跟「房子」有關的標的種類。
+ * 只有選了這些，交易型態（買賣／預售屋／租屋）才有意義——
+ * 純土地或純車位不會有預售屋與租屋的實價登錄，一律屬於買賣。
+ */
+export const HOUSING_PROPERTY_TYPES = ["房地", "房地(車)", "建物"] as const;
+
+export const hasHousingPropertyType = (propertyTypes: string[]): boolean =>
+  propertyTypes.some((pt) => (HOUSING_PROPERTY_TYPES as readonly string[]).includes(pt));
+
 /* ---------- 區間預設（chip） ---------- */
 
 export type RangePreset = {
@@ -164,12 +174,12 @@ export const SORT_OPTIONS: ChoiceOption<SortOptionValue>[] = [
 
 /* ---------- 群組 ---------- */
 
+/** 篩選膠囊的群組。標的種類不在此列——它是常駐的主要大分類，見 PropertyTypeChips。 */
 export type FilterGroupId =
   | "price"
   | "area"
   | "layout"
   | "age"
-  | "propertyType"
   | "period"
   | "more";
 
@@ -178,7 +188,6 @@ export const FILTER_GROUP_LABELS: Record<FilterGroupId, string> = {
   area: "坪數",
   layout: "房型",
   age: "屋齡",
-  propertyType: "類型",
   period: "期間",
   more: "更多",
 };

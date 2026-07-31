@@ -1,12 +1,13 @@
 import { motion } from "motion/react";
-import { DEFAULT_PROPERTY_TYPES } from "../../../lib/urlState";
 import { getDefaultPeriod } from "../../../utils/real-estate-helpers";
-import type { FilterGroupId } from "../../../constants/filterLabels";
+import { hasHousingPropertyType, type FilterGroupId } from "../../../constants/filterLabels";
 import { useExplorerUi } from "../ExplorerUiContext";
 import { SearchBar } from "./SearchBar";
 import { FilterPillBar } from "./FilterPillBar";
 import { FilterSheet } from "./FilterSheet";
 import { AppliedFilterChips } from "./AppliedFilterChips";
+import { PropertyTypeChips } from "./PropertyTypeChips";
+import { TransactionTypeTabs } from "./TransactionTypeTabs";
 import { ScenarioPresetChips } from "./ScenarioPresetChips";
 import { emptyDraft, type FilterDraft } from "./filterDraft";
 
@@ -99,9 +100,6 @@ export function SearchFilterPanel() {
       case "age":
         writeDraft({ age: blank.age });
         break;
-      case "propertyType":
-        writeDraft({ propertyTypes: [...DEFAULT_PROPERTY_TYPES] });
-        break;
       case "period":
         writeDraft({ period: getDefaultPeriod() });
         break;
@@ -116,6 +114,19 @@ export function SearchFilterPanel() {
     writeDraft(emptyDraft());
     setFocusBuildCase(null);
     setActivePresetId(null);
+  };
+
+  /** 交易型態只在選了跟房子有關的標的時才有意義 */
+  const showTransactionType = hasHousingPropertyType(propertyTypes);
+
+  const handlePropertyTypesChange = (next: string[]) => {
+    writeDraft({ propertyTypes: next });
+    // 只剩土地／車位時，預售屋與租屋不存在對應的實價登錄，
+    // 必須把交易型態拉回買賣，否則會靜默篩成 0 筆
+    if (!hasHousingPropertyType(next) && typeName !== "買賣") {
+      setTypeName("買賣");
+      setViewMode("list");
+    }
   };
 
   return (
@@ -159,14 +170,30 @@ export function SearchFilterPanel() {
           trendingSearches={trendingSearches}
           onPickRecent={(q) => fetchData(q)}
           onPickTrending={handleTrendingClick}
-          typeName={typeName}
-          onChangeType={(name) => {
-            setTypeName(name);
-            setViewMode(name === "預售屋" ? "aggregated" : "list");
-          }}
           loading={loading}
           onSubmit={() => fetchData()}
         />
+
+        {/* 分類列：標的種類是主要大分類；交易型態附屬於它，
+            只有選了跟房子有關的標的才出現 */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <PropertyTypeChips value={propertyTypes} onChange={handlePropertyTypesChange} />
+
+          {showTransactionType && (
+            <div className="flex items-center gap-2">
+              <span className="hidden shrink-0 text-[10px] font-black tracking-wide text-slate-400 sm:inline">
+                交易型態
+              </span>
+              <TransactionTypeTabs
+                value={typeName}
+                onChange={(name) => {
+                  setTypeName(name);
+                  setViewMode(name === "預售屋" ? "aggregated" : "list");
+                }}
+              />
+            </div>
+          )}
+        </div>
 
         <FilterPillBar
           draft={applied}
