@@ -37,7 +37,12 @@ import {
 } from "../../utils/real-estate-helpers";
 import { DetailRow } from "../DetailRow";
 import { AffiliateChips } from "../AffiliateMarquee";
-import { MortgageCalculatorCta } from "../AffiliateSlot";
+import {
+  AFFILIATE_LINK_REL,
+  offersByCategory,
+  trackAffiliateEvent,
+  useAffiliateOffers,
+} from "../../lib/affiliates";
 import { modalContainerVariants, modalItemVariants } from "../../constants/app-ui";
 
 const CommunityTrendChart = lazy(() => import("../CommunityTrendChart"));
@@ -110,6 +115,11 @@ export function TransactionDetailDialog({
   onFocusBuildCase,
   onSearch,
 }: Props) {
+  // 貸款夥伴 CTA：原本掛在下方重複的 MortgageCalculatorCta 上，
+  // 該區塊移除後改掛在唯一保留的試算區，避免導購入口消失
+  const affiliateOffers = useAffiliateOffers();
+  const loanPartner = offersByCategory(affiliateOffers, "finance")[0];
+
   return (
     <>
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && onClose()}>
@@ -418,12 +428,28 @@ export function TransactionDetailDialog({
                                   貸款約 {formatPrice(String(loanAmt))} · 等額本息 · 僅供參考
                                 </div>
                               </div>
-                              <a
-                                href="/guides/mortgage-calculator/"
-                                className="text-[11px] font-bold text-coral-600 underline-offset-2 hover:underline dark:text-coral-400"
-                              >
-                                房貸指南 →
-                              </a>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <a
+                                  href="/guides/mortgage-calculator/"
+                                  className="text-[11px] font-bold text-coral-600 underline-offset-2 hover:underline dark:text-coral-400"
+                                >
+                                  房貸指南 →
+                                </a>
+                                {loanPartner && (
+                                  <a
+                                    data-affiliate-id={loanPartner.id}
+                                    href={loanPartner.url}
+                                    target="_blank"
+                                    rel={AFFILIATE_LINK_REL}
+                                    onClick={() =>
+                                      trackAffiliateEvent("affiliate_click", loanPartner, "mortgage_cta")
+                                    }
+                                    className="inline-flex items-center justify-center rounded-xl bg-coral-600 px-4 py-2 text-[12px] font-bold text-white transition hover:bg-coral-700"
+                                  >
+                                    {loanPartner.ctaLabel} →
+                                  </a>
+                                )}
+                              </div>
                             </div>
                           );
                         })()}
@@ -595,18 +621,6 @@ export function TransactionDetailDialog({
                       </Button>
                     )}
                   </motion.div>
-
-                  {/* 房貸月付：用本筆登錄總價帶入試算，縮短查價→負擔評估路徑 */}
-                  {typeName !== "租賃" && selectedItem.totalPrice && parseFloat(selectedItem.totalPrice) > 0 && (
-                    <motion.div variants={modalItemVariants}>
-                      <MortgageCalculatorCta
-                        defaultPrice={Math.max(
-                          100,
-                          Math.round(parseFloat(selectedItem.totalPrice) / 10000)
-                        )}
-                      />
-                    </motion.div>
-                  )}
 
                   {/* 情境式導購：看完物件後的家具/家電/居家推薦（僅在設定連結時顯示） */}
                   <motion.div variants={modalItemVariants}>
