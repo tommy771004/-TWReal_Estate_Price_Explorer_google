@@ -3,119 +3,41 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Suspense, lazy, useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  Search,
-  Building2,
-  Filter, 
-  ArrowUpDown, 
-  Info, 
-  X,
-  ChevronRight,
-  Home,
+import {
   DollarSign,
-  Maximize2,
   Calendar,
   Database,
-  SlidersHorizontal,
-  Sparkles,
-  Compass,
-  Zap,
-  Gem,
-  Bookmark,
-  Trash2,
-  Save,
-  Clock,
-  Layers,
-  ArrowRightCircle,
-  Bed,
-  Sofa,
-  Bath,
-  ChevronLeft,
-  ArrowDown,
-  ArrowUp,
-  Train,
-  GraduationCap,
-  ShieldCheck,
-  ArrowRight,
-  Car,
-  Leaf,
   TrendingUp,
-  TrendingDown,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  MapPinOff,
-  Navigation,
-  Settings,
-  Download,
-  Share2,
-  Pin,
-  Crosshair,
-  Building,
 } from "lucide-react";
-import { CITIES, TRANSACTION_TYPES, CITY_DISTRICTS } from "./constants";
+import { CITIES, CITY_DISTRICTS } from "./constants";
 import { DEFAULT_APP_TEXTS, type AppTexts } from "./constants/texts";
 import { LocationSelectionModal } from "./components/LocationSelectionModal";
-import { TransactionCard } from "./components/TransactionCard";
-import { AffiliateMarquee } from "./components/AffiliateMarquee";
-import { SiteNav } from "./components/SiteNav";
-import { useGeocoding } from "./hooks/useGeocoding";
-import { 
-  YEARS, 
-  MONTHS, 
-  getPeriodValue, 
-  getPeriodFromValue, 
-  formatPrice, 
-  formatDate, 
-  getDefaultPeriod,
-  formatPeriodLabel,
-  isDefaultPeriod,
-  exportTransactionsCsv,
-  formatCachedAtLabel,
-} from "./utils/real-estate-helpers";
+import { Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+import { SiteNav } from "./components/SiteNav";
+import { useGeocoding } from "./hooks/useGeocoding";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-// Table icon used for results table view
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+  formatPeriodLabel,
+  exportTransactionsCsv,
+} from "./utils/real-estate-helpers";
+
 import { syncSeoMetadata } from "./lib/seo";
 import {
   parseSelectionFromUrl,
   parseQueryFiltersFromUrl,
   buildShareableUrl,
-  DEFAULT_PROPERTY_TYPES,
   type ManagementFilter,
   type ParkingFilter,
 } from "./lib/urlState";
-import { calculateDistance } from "./lib/utils";
+
 import type { Transaction } from "./types/real-estate";
 import { CompareBar, MAX_COMPARE, buildCompareQueryParam, parseCompareIdsFromSearch } from "./components/CompareBar";
-import { QueryAssistBar } from "./components/QueryAssistBar";
-import { ResultDeltaBanner } from "./components/ResultDeltaBanner";
-import { GeocodeProgress } from "./components/GeocodeProgress";
+
 import type { QueryPreset, QueryPresetId } from "./constants/queryPresets";
 import {
   buildFilterSnapshotKey,
@@ -136,20 +58,17 @@ import { FeedbackModal } from "./components/explorer/FeedbackModal";
 import { TransactionDetailDialog } from "./components/explorer/TransactionDetailDialog";
 import { TrendDistrictDialog } from "./components/explorer/TrendDistrictDialog";
 import { MarketHeader } from "./components/explorer/MarketHeader";
-import { SearchFilterPanel } from "./components/explorer/SearchFilterPanel";
+import { SearchFilterPanel } from "./components/explorer/search/SearchFilterPanel";
 import { ResultsWorkspace } from "./components/explorer/ResultsWorkspace";
 import { ExplorerUiProvider } from "./components/explorer/ExplorerUiContext";
 import { useFetchRealEstate } from "./hooks/useFetchRealEstate";
 import type { SavedSearch, ViewMode } from "./types/app";
-import { FEATURED_CITY_NAMES } from "./constants/app-ui";
+
 import { PinnedKpiCompare } from "./components/PinnedKpiCompare";
 import {
   formatSnapshotLabel,
   type PinnedMarketSnapshot,
 } from "./utils/market-snapshot";
-
-const ResultsCharts = lazy(() => import("./components/ResultsCharts"));
-const ResultsMap = lazy(() => import("./components/MapViews"));
 
 export default function App() {
   const initialSelection = parseSelectionFromUrl();
@@ -169,10 +88,10 @@ export default function App() {
   const [parkingFilter, setParkingFilter] = useState<ParkingFilter>(initialFilters.parking);
   /** 預設排除親友／關係人等特殊交易，避免扭曲行情 */
   const [excludeSpecial, setExcludeSpecial] = useState(true);
-  /** 總價上限（萬元），預算反查用 */
+  /** 總價區間（萬元），預算反查用 */
+  const [totalPriceMinWan, setTotalPriceMinWan] = useState("");
   const [totalPriceMaxWan, setTotalPriceMaxWan] = useState("");
   const [activePresetId, setActivePresetId] = useState<QueryPresetId | null>(null);
-  const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "error">("idle");
   const [compareShareStatus, setCompareShareStatus] = useState<"idle" | "copied" | "error">("idle");
   const [resultDelta, setResultDelta] = useState<SnapshotDelta | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -350,8 +269,8 @@ export default function App() {
     });
   }, []);
 
-  const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
-  const [isSearchExpanded, setIsSearchExpanded] = useState(true);
+  /** 篩選膠囊 popover 或手機抽屜開啟中：暫停全域 Enter 送出查詢 */
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [mapLayer, setMapLayer] = useState<"default" | "satellite" | "landmark">("default");
   const [showFacilities, setShowFacilities] = useState(false);
@@ -359,6 +278,7 @@ export default function App() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [globalFacilities, setGlobalFacilities] = useState<any[]>([]);
   
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "error">("idle");
   // Saved Searches State
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(() => {
     try {
@@ -370,7 +290,7 @@ export default function App() {
   });
   const [isSavingSearch, setIsSavingSearch] = useState(false);
   const [newSearchName, setNewSearchName] = useState("");
-  
+
   const [favorites, setFavorites] = useState<Transaction[]>(() => {
     try {
       const saved = localStorage.getItem('explorer_favorites');
@@ -597,7 +517,6 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleFeedbackKeys);
   }, []);
 
-
   // Recent keyword searches (last 5), persisted to localStorage
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
@@ -704,7 +623,7 @@ export default function App() {
     setArea(s.area);
     setAge(s.age);
   };
-  
+
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -725,19 +644,13 @@ export default function App() {
   const [isBuildingImagesLoading, setIsBuildingImagesLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: "asc" | "desc" } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  /** 每頁筆數固定，不再讓使用者調整 */
+  const ITEMS_PER_PAGE = 20;
   
   const [error, setError] = useState<string | null>(null);
   const imageSliderRef = React.useRef<HTMLDivElement>(null);
-  const sortScrollRef = React.useRef<HTMLDivElement>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
 
-  const scrollSort = (direction: 'left' | 'right') => {
-    if (sortScrollRef.current) {
-      const scrollAmount = 200;
-      sortScrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
-    }
-  };
 
   const [dataSource, setDataSource] = useState<string | null>(null);
   const [dataCachedAt, setDataCachedAt] = useState<string | null>(null);
@@ -765,7 +678,6 @@ export default function App() {
     setDataSource,
     setDataCachedAt,
     setRobotStatus,
-    setIsSearchExpanded,
     addRecentSearch,
     addAuditLog,
     fetchTrendingSearches,
@@ -800,7 +712,6 @@ export default function App() {
     }
   }, [fetchData]);
 
-
   // 僅掛載時初始化一次：只做定位（交由瀏覽器原生權限提示），不自動查詢，由使用者自行按下「開始查詢」
   useEffect(() => {
     let cancelled = false;
@@ -831,45 +742,29 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setIsAdvancedSearchOpen(false);
         setIsLocationModalOpen(false);
         setSelectedItem(null);
-        setIsSavingSearch(false);
         setShowSuggestions(false);
       }
-      
+
       if (e.key === 'Enter') {
         const activeTag = document.activeElement?.tagName.toLowerCase();
         if (activeTag === 'button') return; // Do not conflict with default button 'Enter' click behavior
-        
-        if (isSavingSearch) {
-          saveCurrentSearch();
-          return;
-        }
 
         if (isLocationModalOpen) return;
         if (selectedItem) return;
-        
+        // 篩選選單開啟時，Enter 屬於選單內的輸入框，不應觸發整包重新查詢
+        if (isFilterMenuOpen) return;
+
         // Always close suggestions on enter, trigger a fresh search
         setShowSuggestions(false);
         fetchData();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [fetchData, isSavingSearch, isLocationModalOpen, selectedItem, saveCurrentSearch]);
-
-  // Handle resize for search panel
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768 && !isSearchExpanded) {
-        setIsSearchExpanded(true);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isSearchExpanded]);
+  }, [fetchData, isLocationModalOpen, selectedItem, isFilterMenuOpen]);
 
   const uniqueDistricts = useMemo(() => {
     return ["全部", ...(CITY_DISTRICTS[cityName] || []).map(d => d.name)];
@@ -916,6 +811,7 @@ export default function App() {
     parkingFilter,
     focusBuildCase,
     excludeSpecial,
+    totalPriceMinWan,
     totalPriceMaxWan,
     nearbyKm,
     nearbyAnchor,
@@ -931,7 +827,6 @@ export default function App() {
     aggregatedPreSaleData,
     marketSnapshot: marketSnapshotFromHook,
   } = useMarketAnalytics(data, filteredData, typeName);
-
 
   useEffect(() => {
     setCurrentPage(1);
@@ -962,18 +857,16 @@ export default function App() {
     setHasManagement(preset.hasManagement);
     setParkingFilter(preset.parking);
     setExcludeSpecial(preset.excludeSpecial);
+    setTotalPriceMinWan("");
     setTotalPriceMaxWan("");
     setFocusBuildCase(null);
     if (preset.typeName === "預售屋") setViewMode("aggregated");
     else setViewMode("list");
-    setIsAdvancedSearchOpen(true);
-    setIsSearchExpanded(true);
   }, []);
 
   const applyBudgetWan = React.useCallback((maxWan: number) => {
     setTotalPriceMaxWan(String(maxWan));
     setActivePresetId(null);
-    setIsSearchExpanded(true);
   }, []);
 
   const copyCompareShareLink = React.useCallback(async () => {
@@ -1020,11 +913,11 @@ export default function App() {
     addAuditLog,
   ]);
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
   const paginatedData = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredData.slice(start, start + itemsPerPage);
-  }, [filteredData, currentPage, itemsPerPage]);
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredData.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredData, currentPage]);
 
   const communityItems = useMemo(() => {
     if (!selectedItem) return [];
@@ -1171,7 +1064,6 @@ export default function App() {
     // Currently disabled to guarantee stable preview performance.
   }, [cityName, district, filteredData.length]);
 
-
   // Custom Geocoding Hook to handle async Nominatim mappings & Thread-safe OSM cache
   const { isGeocoding, geocodedCount, totalToGeocode } = useGeocoding({
     cityName,
@@ -1285,13 +1177,6 @@ export default function App() {
     [addAuditLog]
   );
 
-  const handleSort = (key: keyof Transaction) => {
-    let direction: "asc" | "desc" = "asc";
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
 
   const marketSnapshot = marketSnapshotFromHook;
 
@@ -1425,20 +1310,23 @@ export default function App() {
     period, setPeriod, unitPrice, setUnitPrice, area, setArea, age, setAge,
     roomsMin, setRoomsMin, hasManagement, setHasManagement,
     parkingFilter, setParkingFilter, excludeSpecial, setExcludeSpecial,
+    totalPriceMinWan, setTotalPriceMinWan,
     totalPriceMaxWan, setTotalPriceMaxWan, activePresetId, setActivePresetId,
     nearbyKm, setNearbyKm, nearbyAnchor, setNearbyAnchor,
     focusBuildCase, setFocusBuildCase, userLocation,
-    isSearchExpanded, setIsSearchExpanded, isAdvancedSearchOpen, setIsAdvancedSearchOpen,
+    isFilterMenuOpen, setIsFilterMenuOpen,
     isLocationModalOpen, setIsLocationModalOpen,
     showSuggestions, setShowSuggestions, loading, robotStatus,
     appTexts, viewMode, setViewMode,
     data, filteredData, paginatedData, dataSource, dataCachedAt,
-    error, fetchData, currentPage, setCurrentPage, itemsPerPage, setItemsPerPage,
-    totalPages, sortConfig, setSortConfig, handleSort, scrollSort, sortScrollRef,
+    error, fetchData, currentPage, setCurrentPage,
+    totalPages, sortConfig, setSortConfig,
     resultsContainerRef,
     addressSuggestions, recentSearches, clearRecentSearches, trendingSearches,
-    handleTrendingClick, savedSearches, applySavedSearch, deleteSavedSearch,
+    handleTrendingClick,
+    savedSearches, applySavedSearch, deleteSavedSearch,
     isSavingSearch, setIsSavingSearch, newSearchName, setNewSearchName, saveCurrentSearch,
+    shareStatus, copyShareLink, handleExportCsv,
     applyQueryPreset, applyBudgetWan,
     marketSnapshot, marketKpis, pinCurrentMarket, pinnedKpis, setPinnedKpis,
     priceDistribution, priceTrend, aggregatedPreSaleData, showChartsMobile, setShowChartsMobile,
@@ -1447,7 +1335,6 @@ export default function App() {
     favorites, toggleFavorite, compareList, toggleCompare,
     setSelectedItem, setTrendDistrict, setNearbyFromItem,
     mapLayer, setMapLayer, showFacilities, setShowFacilities,
-    shareStatus, copyShareLink, handleExportCsv,
     districts: (CITY_DISTRICTS[cityName] || []).map((d) => d.name),
   };
 
@@ -1510,15 +1397,9 @@ export default function App() {
             filteredCount={filteredData.length}
             dataSource={dataSource}
             dataCachedAt={dataCachedAt}
-            excludeSpecial={excludeSpecial}
             marketSnapshotCount={marketSnapshot.count}
             marketKpis={marketKpis}
             pinCurrentMarket={pinCurrentMarket}
-            onSelectCity={(city) => {
-              setCityName(city);
-              setDistrict("全部");
-              setIsSearchExpanded(true);
-            }}
           />
 
           {/* 手機也看得到釘選比價（桌面在右側 rail） */}

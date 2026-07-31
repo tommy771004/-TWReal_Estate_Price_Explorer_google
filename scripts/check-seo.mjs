@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-const SITE_ORIGIN = "https://tw-real-estate-price-explorer-googl.vercel.app";
+const SITE_ORIGIN = "https://tw-realestate-price.vercel.app";
 
 const [indexHtml, robots, sitemap, llms] = await Promise.all([
   readFile(new URL("../index.html", import.meta.url), "utf8"),

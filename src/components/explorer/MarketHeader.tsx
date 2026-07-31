@@ -1,5 +1,4 @@
-import { ChevronDown, Database, ShieldCheck, Clock, Zap, Pin } from "lucide-react";
-import { FEATURED_CITY_NAMES } from "../../constants/app-ui";
+import { ChevronDown, Database, ShieldCheck, Clock, Pin } from "lucide-react";
 import { formatCachedAtLabel } from "../../utils/real-estate-helpers";
 import type { LucideIcon } from "lucide-react";
 
@@ -17,11 +16,9 @@ type Props = {
   filteredCount: number;
   dataSource: string | null;
   dataCachedAt: string | null;
-  excludeSpecial: boolean;
   marketSnapshotCount: number;
   marketKpis: MarketKpi[];
   pinCurrentMarket: () => void;
-  onSelectCity: (city: string) => void;
 };
 
 export function MarketHeader({
@@ -31,11 +28,9 @@ export function MarketHeader({
   filteredCount,
   dataSource,
   dataCachedAt,
-  excludeSpecial,
   marketSnapshotCount,
   marketKpis,
   pinCurrentMarket,
-  onSelectCity,
 }: Props) {
   return (
             <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-3 px-0 pt-1 pb-2">
@@ -45,42 +40,31 @@ export function MarketHeader({
                   <h2 id="search-summary-heading" className="text-2xl sm:text-[1.75rem] font-display font-black tracking-tight text-ink dark:text-white leading-tight">
                     {cityName}{district !== "全部" ? ` · ${district}` : ""}{typeName ? ` ${typeName}` : ""}成交行情
                   </h2>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-coral-400/40 bg-coral-500/10 px-3 py-1.5 text-[12px] font-bold text-coral-700 dark:text-coral-300">
+                  {/* 原本 5 顆徽章併成一行灰字：更新頻率與快取來源收進 tooltip，
+                      「已排除特殊交易」是預設值，改為只有使用者關閉時才在條件列提示 */}
+                  <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] font-bold text-slate-500 dark:text-slate-400">
+                    <span className="inline-flex items-center gap-1.5 text-coral-700 dark:text-coral-300">
                       <Database size={13} /> 共 {filteredCount.toLocaleString()} 筆成交
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/60 dark:border-white/10 bg-white/45 dark:bg-slate-900/35 px-3 py-1.5 text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                    <span className="text-slate-300 dark:text-slate-600">·</span>
+                    <span className="inline-flex items-center gap-1.5">
                       <ShieldCheck size={13} className="text-emerald-500" /> 內政部開放資料
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/60 dark:border-white/10 bg-white/45 dark:bg-slate-900/35 px-3 py-1.5 text-[12px] font-bold text-slate-600 dark:text-slate-300">
-                      <Clock size={13} className="text-coral-500" /> 每 10 日更新
+                    <span className="text-slate-300 dark:text-slate-600">·</span>
+                    <span
+                      className="inline-flex items-center gap-1.5"
+                      title={
+                        dataSource
+                          ? "每 10 日更新；同一縣市＋交易型態 6 小時內重用後端快取"
+                          : "每 10 日更新"
+                      }
+                    >
+                      <Clock size={13} className="text-coral-500" />
+                      {formatCachedAtLabel(dataCachedAt)
+                        ? `資料更新 ${formatCachedAtLabel(dataCachedAt)}`
+                        : "每 10 日更新"}
                     </span>
-                    {dataSource && (
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-bold ${
-                          dataSource === "cache"
-                            ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                            : "border-sky-400/40 bg-sky-500/10 text-sky-700 dark:text-sky-300"
-                        }`}
-                        title="同一縣市＋交易型態 6 小時內重用後端快取"
-                      >
-                        <Zap size={13} />
-                        
-                        {formatCachedAtLabel(dataCachedAt)
-                          ? ` · ${formatCachedAtLabel(dataCachedAt)}`
-                          : ""}
-                      </span>
-                    )}
-                    {excludeSpecial && (
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-full border border-rose-300/40 bg-rose-500/10 px-3 py-1.5 text-[12px] font-bold text-rose-700 dark:text-rose-300"
-                        title="已排除親友／關係人等特殊交易，點條件列可改回顯示"
-                      >
-                        <ShieldCheck size={13} />
-                        已排除特殊交易
-                      </span>
-                    )}
-                  </div>
+                  </p>
                 </div>
               </section>
   
@@ -147,24 +131,6 @@ export function MarketHeader({
                   </div>
                 </details>
   
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 id="featured-cities" className="mr-1 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-                    熱門查詢城市
-                  </h3>
-                  {FEATURED_CITY_NAMES.map((featuredCity) => (
-                    <button
-                      key={featuredCity}
-                      onClick={() => onSelectCity(featuredCity)}
-                      className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all ${
-                        cityName === featuredCity
-                          ? "border-coral-400/60 bg-coral-500/12 text-coral-700 dark:text-coral-400"
-                          : "border-white/60 dark:border-white/10 bg-white/45 dark:bg-slate-900/35 text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-800/60"
-                      }`}
-                    >
-                      {featuredCity}
-                    </button>
-                  ))}
-                </div>
               </section>
             </div>
   

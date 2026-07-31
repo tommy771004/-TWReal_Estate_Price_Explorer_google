@@ -56,7 +56,7 @@ test("production build emits crawlable trust and guide pages", async () => {
     ).catch(() => "");
     assert.match(html, /<main[^>]*data-seo-content-page/);
     assert.match(html, /<h1>[^<]+<\/h1>/);
-    assert.ok(html.includes(`https://tw-real-estate-price-explorer-googl.vercel.app/${pathname}/`));
+    assert.ok(html.includes(`https://tw-realestate-price.vercel.app/${pathname}/`));
     assert.match(html, /"@type": "WebPage"/);
     assert.match(html, /"@type": "BreadcrumbList"/);
   }
@@ -79,7 +79,7 @@ test("production build emits crawlable trust and guide pages", async () => {
     "utf8",
   );
   assert.match(transactionGuide, /"@type": "Article"/);
-  assert.match(transactionGuide, /"publisher": \{\s+"@id": "https:\/\/tw-real-estate-price-explorer-googl\.vercel\.app\/#organization"\s+\}/);
+  assert.match(transactionGuide, /"publisher": \{\s+"@id": "https:\/\/tw-realestate-price\.vercel\.app\/#organization"\s+\}/);
 
   const methodology = await readFile(new URL("../dist/methodology/index.html", import.meta.url), "utf8");
   assert.match(methodology, /欄位與計算保守原則/);
@@ -138,7 +138,7 @@ test("production build emits crawlable trust and guide pages", async () => {
   // Per-page dateModified overrides the build date; methodology declares 2026-06-26.
   assert.match(
     sitemap,
-    /<loc>https:\/\/tw-real-estate-price-explorer-googl\.vercel\.app\/methodology\/<\/loc>\s*<lastmod>2026-06-26<\/lastmod>/,
+    /<loc>https:\/\/tw-realestate-price\.vercel\.app\/methodology\/<\/loc>\s*<lastmod>2026-06-26<\/lastmod>/,
   );
   // Pages without an explicit date fall back to the build date.
   assert.match(sitemap, /<lastmod>2031-12-24<\/lastmod>/);

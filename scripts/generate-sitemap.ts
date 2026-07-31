@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { buildSitemapRecords, renderSitemapXml } from "../src/lib/seoSitemap";
 
 const SITE_ORIGIN = (
-  process.env.VITE_SITE_URL || "https://tw-real-estate-price-explorer-googl.vercel.app"
+  process.env.VITE_SITE_URL || "https://tw-realestate-price.vercel.app"
 ).replace(/\/+$/, "");
 
 const records = buildSitemapRecords(SITE_ORIGIN, "")

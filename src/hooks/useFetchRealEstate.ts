@@ -24,7 +24,6 @@ export type FetchRealEstateParams = {
   setDataSource: Dispatch<SetStateAction<string | null>>;
   setDataCachedAt: Dispatch<SetStateAction<string | null>>;
   setRobotStatus: Dispatch<SetStateAction<string>>;
-  setIsSearchExpanded: Dispatch<SetStateAction<boolean>>;
   addRecentSearch: (kw: string) => void;
   addAuditLog: (action: string, details?: string) => void;
   fetchTrendingSearches: () => void;
@@ -82,10 +81,6 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
       p.setError(null);
       p.setDataSource(null);
       p.setDataCachedAt(null);
-      if (typeof window !== "undefined" && window.innerWidth < 768) {
-        p.setIsSearchExpanded(false);
-      }
-
       robotTimeoutsRef.current.forEach(clearTimeout);
       robotTimeoutsRef.current = [];
       p.setRobotStatus("正在連線內政部開放資料...");

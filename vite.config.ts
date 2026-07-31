@@ -109,7 +109,7 @@ const seoBuildMetadata = () => ({
     const outputDirectory = path.resolve(__dirname, options.dir ?? 'dist');
     const homepagePath = path.join(outputDirectory, 'index.html');
     const homepage = await readFile(homepagePath, 'utf8');
-    const siteOrigin = (process.env.VITE_SITE_URL || 'https://tw-real-estate-price-explorer-googl.vercel.app').replace(/\/+$/, '');
+    const siteOrigin = (process.env.VITE_SITE_URL || 'https://tw-realestate-price.vercel.app').replace(/\/+$/, '');
 
     for (const selection of INDEXABLE_SELECTIONS) {
       const routePath = buildSelectionPath(selection);

@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const ROOT = new URL("..", import.meta.url);
-const SITE_ORIGIN = "https://tw-real-estate-price-explorer-googl.vercel.app";
+const SITE_ORIGIN = "https://tw-realestate-price.vercel.app";
 
 test("production build prerenders semantic city and transaction routes", async () => {
   execFileSync(process.execPath, ["node_modules/vite/bin/vite.js", "build"], {

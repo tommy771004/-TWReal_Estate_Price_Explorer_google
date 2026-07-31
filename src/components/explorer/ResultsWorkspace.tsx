@@ -1,52 +1,65 @@
 import React, { Suspense } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Search, MapPin, Filter, ArrowUpDown, X, ChevronRight, ChevronLeft, Bookmark, Trash2,
-  Clock, List, Table2, BarChart3, Map as MapIcon, Download, Share2, CheckCircle2,
-  Compass, Crosshair, Pin, SlidersHorizontal, ArrowUp, ArrowDown,
-  Database, MapPinOff, ShieldCheck, Zap,
+  Filter,
+  X,
+  List,
+  Table2,
+  BarChart3,
+  Map as MapIcon,
+  Compass,
+  Database,
+  MapPinOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { QueryAssistBar } from "../QueryAssistBar";
+
 import { TransactionCard } from "../TransactionCard";
 import { ResultDeltaBanner } from "../ResultDeltaBanner";
 import { GeocodeProgress } from "../GeocodeProgress";
 import { PinnedKpiCompare } from "../PinnedKpiCompare";
 import { AffiliateMarquee } from "../AffiliateMarquee";
-import { DEFAULT_PROPERTY_TYPES } from "../../lib/urlState";
-import { TRANSACTION_TYPES } from "../../constants";
+
 import {
-  YEARS, MONTHS, getPeriodValue, getPeriodFromValue,
-  getDefaultPeriod, formatPeriodLabel, isDefaultPeriod, formatPrice, formatDate,
+  getDefaultPeriod,
+  formatPeriodLabel,
+  isDefaultPeriod,
+  formatPrice,
+  formatDate,
 } from "../../utils/real-estate-helpers";
 import { useExplorerUi } from "./ExplorerUiContext";
+import { SORT_OPTIONS, type SortOptionValue } from "../../constants/filterLabels";
+import { ResultActions } from "./ResultActions";
 
 const ResultsCharts = React.lazy(() => import("../ResultsCharts"));
 const ResultsMap = React.lazy(() => import("../MapViews"));
+
+function sortConfigFromValue(value: SortOptionValue) {
+  if (value === "default") return null;
+  const [key, direction] = value.split("-");
+  return { key: key as "date" | "totalPrice" | "unitPrice", direction: direction as "asc" | "desc" };
+}
 
 export function ResultsWorkspace() {
   /** 地圖液態玻璃懸浮：預設收合 */
   const [mapPeekOpen, setMapPeekOpen] = React.useState(false);
   const {
     cityName,
-    setCityName,
     typeName,
-    setTypeName,
     district,
     setDistrict,
     search,
     setSearch,
-    propertyTypes,
-    setPropertyTypes,
     period,
     setPeriod,
     unitPrice,
@@ -62,67 +75,36 @@ export function ResultsWorkspace() {
     parkingFilter,
     setParkingFilter,
     excludeSpecial,
-    setExcludeSpecial,
     totalPriceMaxWan,
     setTotalPriceMaxWan,
-    activePresetId,
-    setActivePresetId,
     nearbyKm,
     setNearbyKm,
-    nearbyAnchor,
     setNearbyAnchor,
     focusBuildCase,
     setFocusBuildCase,
-    userLocation,
-    isSearchExpanded,
-    setIsSearchExpanded,
-    isAdvancedSearchOpen,
-    setIsAdvancedSearchOpen,
-    isLocationModalOpen,
-    setIsLocationModalOpen,
-    showSuggestions,
-    setShowSuggestions,
     loading,
     robotStatus,
     appTexts,
     viewMode,
     setViewMode,
+    savedSearches,
+    applySavedSearch,
+    deleteSavedSearch,
+    setIsSavingSearch,
+    shareStatus,
+    copyShareLink,
+    handleExportCsv,
     data,
     filteredData,
     paginatedData,
-    dataSource,
-    dataCachedAt,
     error,
     fetchData,
     currentPage,
     setCurrentPage,
-    itemsPerPage,
-    setItemsPerPage,
     totalPages,
     sortConfig,
     setSortConfig,
-    handleSort,
-    scrollSort,
-    sortScrollRef,
     resultsContainerRef,
-    addressSuggestions,
-    recentSearches,
-    clearRecentSearches,
-    trendingSearches,
-    handleTrendingClick,
-    savedSearches,
-    applySavedSearch,
-    deleteSavedSearch,
-    isSavingSearch,
-    setIsSavingSearch,
-    newSearchName,
-    setNewSearchName,
-    saveCurrentSearch,
-    applyQueryPreset,
-    applyBudgetWan,
-    marketSnapshot,
-    marketKpis,
-    pinCurrentMarket,
     pinnedKpis,
     setPinnedKpis,
     priceDistribution,
@@ -144,16 +126,36 @@ export function ResultsWorkspace() {
     toggleCompare,
     setSelectedItem,
     setTrendDistrict,
-    setNearbyFromItem,
     mapLayer,
     setMapLayer,
     showFacilities,
     setShowFacilities,
-    shareStatus,
-    copyShareLink,
-    handleExportCsv,
-    districts
   } = useExplorerUi();
+
+  /** sortConfig <-> 下拉值（單一來源，避免兩處各自判斷方向） */
+  const sortValue: SortOptionValue = !sortConfig
+    ? "default"
+    : (`${sortConfig.key}-${sortConfig.direction}` as SortOptionValue);
+
+  /** 空狀態：是否有任何「會讓結果變少」的篩選可清 */
+  const hasNarrowingFilters = Boolean(
+    unitPrice.min || unitPrice.max || area.min || area.max || age.min || age.max ||
+    roomsMin || hasManagement !== "any" || parkingFilter !== "any" ||
+    totalPriceMaxWan || nearbyKm != null || focusBuildCase || !excludeSpecial
+  );
+
+  const clearNarrowingFilters = () => {
+    setUnitPrice({ min: "", max: "", unit: "1" });
+    setArea({ min: "", max: "", unit: "2" });
+    setAge({ min: "", max: "" });
+    setRoomsMin("");
+    setHasManagement("any");
+    setParkingFilter("any");
+    setTotalPriceMaxWan("");
+    setNearbyKm(null);
+    setNearbyAnchor(null);
+    setFocusBuildCase(null);
+  };
 
   return (
     <>
@@ -184,7 +186,18 @@ export function ResultsWorkspace() {
                         </span>
                       </div>
                     </div>
-                    <div className="relative z-10 flex shrink-0 items-center rounded-lg border border-white/40 bg-white/40 p-0.5 dark:border-white/10 dark:bg-white/5">
+                    <div className="relative z-10 flex shrink-0 items-center gap-1.5">
+                    <ResultActions
+                      savedSearches={savedSearches}
+                      onSaveCurrent={() => setIsSavingSearch(true)}
+                      onApplySaved={applySavedSearch}
+                      onDeleteSaved={deleteSavedSearch}
+                      onExportCsv={handleExportCsv}
+                      exportDisabled={filteredData.length === 0}
+                      onCopyShareLink={copyShareLink}
+                      shareStatus={shareStatus}
+                    />
+                    <div className="flex items-center rounded-lg border border-white/40 bg-white/40 p-0.5 dark:border-white/10 dark:bg-white/5">
                       <button
                         type="button"
                         onClick={() => setViewMode("list")}
@@ -228,69 +241,9 @@ export function ResultsWorkspace() {
                         <span className="hidden xl:inline">地圖</span>
                       </button>
                     </div>
+                    </div>
                   </div>
 
-                {/* 快速動作：單列精簡，置於結果列表上方 */}
-                <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 bg-slate-50/60 px-3 py-2 dark:border-slate-800/80 dark:bg-slate-950/30 sm:px-5">
-                  <span className="mr-1 hidden text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 sm:inline">
-                    快速
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsAdvancedSearchOpen(true);
-                      setIsSearchExpanded(true);
-                    }}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-coral-200/70 bg-coral-500/10 px-2.5 text-[11px] font-bold text-coral-700 transition hover:bg-coral-500/15 dark:border-coral-800/50 dark:text-coral-300"
-                  >
-                    <SlidersHorizontal className="h-3.5 w-3.5" />
-                    進階篩選
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsSavingSearch(true)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                  >
-                    <Bookmark className="h-3.5 w-3.5" />
-                    儲存條件
-                  </button>
-                  <button
-                    type="button"
-                    disabled={filteredData.length === 0}
-                    onClick={handleExportCsv}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200/70 bg-emerald-500/10 px-2.5 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-500/15 disabled:opacity-40 dark:border-emerald-800/50 dark:text-emerald-300"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    匯出 CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={copyShareLink}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold transition ${
-                      shareStatus === "copied"
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                        : "border-sky-200/70 bg-sky-500/10 text-sky-700 hover:bg-sky-500/15 dark:border-sky-800/50 dark:text-sky-300"
-                    }`}
-                  >
-                    {shareStatus === "copied" ? (
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    ) : (
-                      <Share2 className="h-3.5 w-3.5" />
-                    )}
-                    {shareStatus === "copied" ? "已複製" : "分享連結"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={pinCurrentMarket}
-                    disabled={marketSnapshot.count === 0}
-                    className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 transition hover:border-coral-300 hover:text-coral-600 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                    title="釘選此區 KPI 比價"
-                  >
-                    <Pin className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">釘選比價</span>
-                  </button>
-                </div>
-                
                 <AnimatePresence mode="wait">
                   {loading ? (
                     <motion.div
@@ -411,11 +364,14 @@ export function ResultsWorkspace() {
                     className="flex-1 min-h-[300px] flex flex-col max-w-[1600px] mx-auto w-full"
                   >
                     <ResultDeltaBanner delta={resultDelta} onDismiss={() => setResultDelta(null)} />
-                    <GeocodeProgress
-                      isGeocoding={isGeocoding}
-                      geocodedCount={geocodedCount}
-                      totalToGeocode={totalToGeocode}
-                    />
+                    {/* 座標解析進度只跟地圖有關，列表／表格使用者不需要看到 */}
+                    {viewMode === "map" && (
+                      <GeocodeProgress
+                        isGeocoding={isGeocoding}
+                        geocodedCount={geocodedCount}
+                        totalToGeocode={totalToGeocode}
+                      />
+                    )}
                     {!loading && (priceDistribution.length > 0 || priceTrend.length > 0) && (
                       <Suspense
                         fallback={
@@ -434,62 +390,29 @@ export function ResultsWorkspace() {
                       </Suspense>
                     )}
                     <div className="w-full flex flex-col min-w-0">
-                      <div className="px-1.5 sm:px-6 mb-4 w-full min-w-0">
-                        <div className="flex items-center gap-2 relative w-full max-w-full">
-                          <button 
-                            onClick={() => scrollSort('left')}
-                            className="absolute left-0 z-10 w-8 h-full flex items-center justify-center bg-gradient-to-r from-white dark:from-slate-900 to-transparent focus:outline-none"
-                          >
-                            <ChevronLeft className="w-4 h-4 text-slate-500 hover:text-coral-500 transition-colors bg-white/50 dark:bg-slate-900/50 rounded-full shadow-sm" />
-                          </button>
-                          <div 
-                            ref={sortScrollRef}
-                            className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden whitespace-nowrap px-8 py-1 scroll-smooth w-full"
-                          >
-                            <button
-                              onClick={() => setSortConfig(null)}
-                              className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap shrink-0 flex items-center gap-1.5 ${!sortConfig ? 'bg-coral-500/10 dark:bg-coral-500/20 text-coral-600 dark:text-coral-400 border-coral-500/30 shadow-sm shadow-coral-500/10' : 'bg-white/60 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border-ink/5 dark:border-white/10 hover:border-slate-300 dark:hover:border-slate-700'}`}
-                            >
-                              預設
-                            </button>
-                            {[
-                              { key: "date", label: "日期" },
-                              { key: "totalPrice", label: "總價" },
-                              { key: "unitPrice", label: "單價" }
-                            ].map(opt => {
-                              const isSelected = sortConfig?.key === opt.key;
-                              const direction = isSelected ? sortConfig.direction : null;
-                              return (
-                                <button
-                                  key={opt.key}
-                                  onClick={() => {
-                                    if (isSelected) {
-                                      setSortConfig({ key: opt.key as any, direction: direction === 'desc' ? 'asc' : 'desc' });
-                                    } else {
-                                      setSortConfig({ key: opt.key as any, direction: 'desc' });
-                                    }
-                                  }}
-                                  className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all border whitespace-nowrap shrink-0 flex items-center gap-1 ${isSelected ? 'bg-coral-500/10 dark:bg-coral-500/20 text-coral-600 dark:text-coral-400 border-coral-500/30 shadow-sm shadow-coral-500/10' : 'bg-white/60 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border-ink/5 dark:border-white/10 hover:border-slate-300 dark:hover:border-slate-700'}`}
-                                >
-                                  {opt.label}
-                                  {isSelected ? (
-                                    direction === 'desc' ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />
-                                  ) : (
-                                    <ArrowUpDown className="w-3.5 h-3.5 opacity-40 text-slate-400 dark:text-slate-500" />
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          <button 
-                            onClick={() => scrollSort('right')}
-                            className="absolute right-0 z-10 w-8 h-full flex items-center justify-center bg-gradient-to-l from-white dark:from-slate-900 to-transparent focus:outline-none"
-                          >
-                            <ChevronRight className="w-4 h-4 text-slate-500 hover:text-coral-500 transition-colors bg-white/50 dark:bg-slate-900/50 rounded-full shadow-sm" />
-                          </button>
-                        </div>
+                      {/* 排序：原本是可水平捲動的 chip 列 + 左右箭頭（共 6 個控制項），
+                          收斂成一顆下拉，選項語意直接寫明方向 */}
+                      <div className="mb-4 flex items-center justify-end gap-2 px-1.5 sm:px-6">
+                        <label
+                          htmlFor="results-sort"
+                          className="text-[11px] font-bold text-slate-500 dark:text-slate-400"
+                        >
+                          排序
+                        </label>
+                        <select
+                          id="results-sort"
+                          value={sortValue}
+                          onChange={(e) => setSortConfig(sortConfigFromValue(e.target.value as SortOptionValue))}
+                          className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-bold text-slate-700 outline-none transition-colors focus:border-coral-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                        >
+                          {SORT_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-      
+
                       {viewMode === "table" ? (
                         <div className="mx-0 overflow-x-auto rounded-2xl border border-slate-200/50 bg-white/80 shadow-none dark:border-slate-800/60 dark:bg-slate-900/40 sm:mx-6">
                           <Table className="min-w-[880px]">
@@ -610,22 +533,8 @@ export function ResultsWorkspace() {
       
                     {filteredData.length > 0 && (
                       <div className="flex flex-wrap items-center justify-between gap-4 mt-4 px-1.5 sm:px-6 mb-8">
-                        <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-                          <span>每頁顯示</span>
-                          <select
-                            className="bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-coral-500/50"
-                            value={itemsPerPage}
-                            onChange={(e) => {
-                              setItemsPerPage(Number(e.target.value));
-                              setCurrentPage(1);
-                            }}
-                          >
-                            <option value={5}>5</option>
-                            <option value={10}>10</option>
-                            <option value={20}>20</option>
-                            <option value={50}>50</option>
-                          </select>
-                          <span>筆，共 {filteredData.length} 筆</span>
+                        <div className="text-sm font-medium text-slate-500">
+                          共 {filteredData.length.toLocaleString()} 筆
                         </div>
                         
                         <div className="flex items-center gap-2">
@@ -681,6 +590,8 @@ export function ResultsWorkspace() {
                             : "可一鍵放寬條件後重新套用篩選（前端篩選立即生效）。"}
                         </p>
                         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                          {/* 原本最多會同時出現 9 顆「放寬某條件」按鈕；
+                              保留三個最常見的單項，其餘統一由「清除全部篩選」處理 */}
                           {search.trim() && (
                             <Button
                               type="button"
@@ -714,77 +625,15 @@ export function ResultsWorkspace() {
                               改回近12月
                             </Button>
                           )}
-                          {(unitPrice.min ||
-                            unitPrice.max ||
-                            area.min ||
-                            area.max ||
-                            age.min ||
-                            age.max ||
-                            roomsMin ||
-                            hasManagement !== "any" ||
-                            parkingFilter !== "any") && (
+                          {hasNarrowingFilters && (
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               className="rounded-xl text-xs font-bold"
-                              onClick={() => {
-                                setUnitPrice({ min: "", max: "", unit: "1" });
-                                setArea({ min: "", max: "", unit: "2" });
-                                setAge({ min: "", max: "" });
-                                setRoomsMin("");
-                                setHasManagement("any");
-                                setParkingFilter("any");
-                              }}
+                              onClick={clearNarrowingFilters}
                             >
-                              清除進階篩選
-                            </Button>
-                          )}
-                          {excludeSpecial && data.length > 0 && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="rounded-xl text-xs font-bold"
-                              onClick={() => setExcludeSpecial(false)}
-                            >
-                              改含特殊交易
-                            </Button>
-                          )}
-                          {totalPriceMaxWan && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="rounded-xl text-xs font-bold"
-                              onClick={() => setTotalPriceMaxWan("")}
-                            >
-                              取消總價上限
-                            </Button>
-                          )}
-                          {nearbyKm != null && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="rounded-xl text-xs font-bold"
-                              onClick={() => {
-                                setNearbyKm(null);
-                                setNearbyAnchor(null);
-                              }}
-                            >
-                              關閉附近距離
-                            </Button>
-                          )}
-                          {focusBuildCase && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="rounded-xl text-xs font-bold"
-                              onClick={() => setFocusBuildCase(null)}
-                            >
-                              取消建案聚焦
+                              清除全部篩選
                             </Button>
                           )}
                           <Button

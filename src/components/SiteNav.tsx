@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { NAV_GROUPS } from "../content/siteNav";
+import { NAV_GROUPS, NAV_MENU_SECTIONS, groupsForSection } from "../content/siteNav";
 import {
+  ChevronDown,
   Database,
   Heart,
   MessageSquare,
+  MoreHorizontal,
   Moon,
   RotateCw,
   Settings,
   Sun,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Transaction } from "../types/real-estate";
 
 interface SiteNavProps {
@@ -44,6 +52,7 @@ export function SiteNav({
 }: SiteNavProps) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openMobileSection, setOpenMobileSection] = useState<string | null>(null);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
 
@@ -98,34 +107,50 @@ export function SiteNav({
         </a>
 
         <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-          {/* 桌面：下拉選單 */}
+          {/* 桌面：3 個 mega-menu。分組標題沿用 NAV_GROUPS，連結一個不少 */}
           <ul className="mr-1 hidden items-center gap-0.5 xl:flex">
-            {NAV_GROUPS.map((group) => {
-              const isOpen = openGroup === group.label;
+            {NAV_MENU_SECTIONS.map((section) => {
+              const isOpen = openGroup === section.label;
+              const groups = groupsForSection(section);
               return (
-                <li key={group.label} className="relative">
+                <li key={section.label} className="relative">
                   <button
                     type="button"
                     aria-expanded={isOpen}
-                    onClick={() => setOpenGroup(isOpen ? null : group.label)}
-                    className={`rounded-lg px-3 py-2 text-sm font-bold transition ${isOpen ? "bg-coral-500/10 text-coral-600 dark:text-coral-400" : "text-slate-600 hover:text-coral-600 dark:text-slate-300 dark:hover:text-coral-400"}`}
+                    onClick={() => setOpenGroup(isOpen ? null : section.label)}
+                    className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold transition ${isOpen ? "bg-coral-500/10 text-coral-600 dark:text-coral-400" : "text-slate-600 hover:text-coral-600 dark:text-slate-300 dark:hover:text-coral-400"}`}
                   >
-                    {group.label}
+                    {section.label}
+                    <ChevronDown
+                      size={13}
+                      className={`opacity-50 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    />
                   </button>
                   {isOpen && (
-                    <div className="absolute left-0 top-full z-40 mt-1 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white/95 shadow-xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95">
-                      <ul className="flex flex-col p-1.5">
-                        {group.links.map((link) => (
-                          <li key={link.href}>
-                            <a
-                              href={link.href}
-                              className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-coral-500/10 hover:text-coral-600 dark:text-slate-300 dark:hover:text-coral-400"
-                            >
-                              {link.label}
-                            </a>
-                          </li>
+                    <div className="absolute left-0 top-full z-40 mt-1 w-[min(46rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white/98 p-4 shadow-xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/98">
+                      <div
+                        className={`grid gap-x-6 gap-y-4 ${groups.length > 2 ? "grid-cols-3" : "grid-cols-2"}`}
+                      >
+                        {groups.map((group) => (
+                          <div key={group.label}>
+                            <p className="mb-1.5 text-[11px] font-black uppercase tracking-wide text-coral-700 dark:text-coral-400">
+                              {group.label}
+                            </p>
+                            <ul className="flex flex-col">
+                              {group.links.map((link) => (
+                                <li key={link.href}>
+                                  <a
+                                    href={link.href}
+                                    className="block rounded-lg px-2 py-1.5 text-[13px] font-medium text-slate-600 transition hover:bg-coral-500/10 hover:text-coral-600 dark:text-slate-300 dark:hover:text-coral-400"
+                                  >
+                                    {link.label}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   )}
                 </li>
@@ -217,19 +242,6 @@ export function SiteNav({
             </div>
           )}
 
-          {onRefresh && (
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={loading}
-              className="hidden h-9 w-9 items-center justify-center rounded-lg text-coral-600 transition hover:bg-coral-500/10 disabled:opacity-40 dark:text-coral-400 sm:flex"
-              title="重新整理資料"
-              aria-label="重新整理資料"
-            >
-              <RotateCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            </button>
-          )}
-
           {onToggleDarkMode && (
             <button
               type="button"
@@ -242,20 +254,31 @@ export function SiteNav({
             </button>
           )}
 
-          {onToggleFeedback && (
-            <button
-              type="button"
-              onClick={onToggleFeedback}
-              className={`hidden h-9 w-9 items-center justify-center rounded-lg transition sm:flex ${
-                showFeedback
-                  ? "bg-coral-500 text-white"
-                  : "text-slate-500 hover:bg-slate-500/10 hover:text-coral-500 dark:text-slate-400 dark:hover:text-coral-400"
-              }`}
-              title="意見回饋"
-              aria-label="意見回饋"
-            >
-              <MessageSquare className="h-4 w-4" />
-            </button>
+          {/* 次要動作收進「更多」，首屏圖示由 5 顆降為 3 顆 */}
+          {(onRefresh || onToggleFeedback) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="hidden h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-500/10 hover:text-coral-500 sm:flex dark:text-slate-400 dark:hover:text-coral-400"
+                title="更多"
+                aria-label="更多"
+              >
+                <MoreHorizontal className="h-4.5 w-4.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {onRefresh && (
+                  <DropdownMenuItem onClick={onRefresh} disabled={loading}>
+                    <RotateCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                    重新整理資料
+                  </DropdownMenuItem>
+                )}
+                {onToggleFeedback && (
+                  <DropdownMenuItem onClick={onToggleFeedback}>
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    意見回饋
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {onSettingsClick && (
@@ -314,21 +337,50 @@ export function SiteNav({
               )}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-3">
-            {NAV_GROUPS.map((group) => (
-              <div key={group.label}>
-                <p className="px-1 text-[11px] font-black uppercase tracking-wide text-coral-700 dark:text-coral-400">{group.label}</p>
-                <ul className="mt-1 flex flex-col">
-                  {group.links.map((link) => (
-                    <li key={link.href}>
-                      <a href={link.href} className="block rounded-md px-1 py-1.5 text-[13px] font-medium text-slate-600 hover:text-coral-600 dark:text-slate-300">
-                        {link.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          {/* 原本是一次攤開 8 欄的 grid，改為 3 個可摺疊區塊 */}
+          <div className="flex flex-col pt-2">
+            {NAV_MENU_SECTIONS.map((section) => {
+              const isOpen = openMobileSection === section.label;
+              return (
+                <div key={section.label} className="border-b border-slate-200/70 last:border-0 dark:border-slate-800">
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    onClick={() => setOpenMobileSection(isOpen ? null : section.label)}
+                    className="flex w-full items-center justify-between gap-2 py-3 text-sm font-bold text-slate-700 dark:text-slate-200"
+                  >
+                    {section.label}
+                    <ChevronDown
+                      size={15}
+                      className={`opacity-50 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {isOpen && (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 pb-3">
+                      {groupsForSection(section).map((group) => (
+                        <div key={group.label}>
+                          <p className="px-1 text-[11px] font-black uppercase tracking-wide text-coral-700 dark:text-coral-400">
+                            {group.label}
+                          </p>
+                          <ul className="mt-1 flex flex-col">
+                            {group.links.map((link) => (
+                              <li key={link.href}>
+                                <a
+                                  href={link.href}
+                                  className="block rounded-md px-1 py-1.5 text-[13px] font-medium text-slate-600 hover:text-coral-600 dark:text-slate-300"
+                                >
+                                  {link.label}
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

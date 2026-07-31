@@ -5,13 +5,13 @@ export const MONTHS = Array.from({ length: 12 }, (_, i) => (1 + i).toString());
 
 export type PeriodRange = { startY: string; startM: string; endY: string; endM: string };
 
-/** 民國年月：以「今天」為終點，回溯約 12 個月作為預設查詢區間。 */
-export const getDefaultPeriod = (now: Date = new Date()): PeriodRange => {
+/** 民國年月：以「今天」為終點，回溯 N 個月組出查詢區間。 */
+export const getPeriodForMonths = (months: number, now: Date = new Date()): PeriodRange => {
   const rocY = now.getFullYear() - 1911;
   const month = now.getMonth() + 1;
   let startY = rocY;
-  let startM = month - 11;
-  if (startM <= 0) {
+  let startM = month - (months - 1);
+  while (startM <= 0) {
     startY -= 1;
     startM += 12;
   }
@@ -23,6 +23,25 @@ export const getDefaultPeriod = (now: Date = new Date()): PeriodRange => {
     endY: String(clampY(rocY)),
     endM: String(month),
   };
+};
+
+/** 預設查詢區間：近 12 個月。 */
+export const getDefaultPeriod = (now: Date = new Date()): PeriodRange =>
+  getPeriodForMonths(12, now);
+
+/** period 是否等於「近 N 個月」的快捷區間。 */
+export const isPeriodForMonths = (
+  period: PeriodRange,
+  months: number,
+  now: Date = new Date()
+): boolean => {
+  const expect = getPeriodForMonths(months, now);
+  return (
+    period.startY === expect.startY &&
+    period.startM === expect.startM &&
+    period.endY === expect.endY &&
+    period.endM === expect.endM
+  );
 };
 
 export const formatPeriodLabel = (period: PeriodRange): string =>

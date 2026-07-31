@@ -1,5 +1,9 @@
-// 全站導覽的單一資料來源：同時供頂部下拉選單與分組頁尾使用。
-// 新增內容頁時，把連結加進對應分組即可，兩處導覽會一起更新。
+// 全站導覽的單一資料來源：同時供頂部選單、分組頁尾，以及 vite.config.ts
+// 預渲染每個內容頁的「網站地圖」使用。
+// 新增內容頁時，把連結加進對應分組即可，三處會一起更新。
+//
+// ⚠️ 不要為了視覺整併而改動 NAV_GROUPS 的內容——它決定整站的內部連結圖。
+//    頂部選單的收納方式請改 NAV_MENU_SECTIONS（純展示層映射）。
 export type NavLink = { href: string; label: string };
 export type NavGroup = { label: string; links: NavLink[] };
 
@@ -80,3 +84,21 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * 頂部選單的展示層分組：把 8 個 NAV_GROUPS 收納成 3 個 mega-menu。
+ * 只影響 SiteNav 的呈現，連結本身一個不少，頁尾與預渲染網站地圖不受影響。
+ */
+export type NavSection = { label: string; groupLabels: string[] };
+
+export const NAV_MENU_SECTIONS: NavSection[] = [
+  { label: "查房價", groupLabels: ["房價查詢", "各區索引"] },
+  { label: "買租指南", groupLabels: ["購屋指南", "租屋指南", "貸款 / 金融", "居家 / 裝潢"] },
+  { label: "關於本站", groupLabels: ["使用指南", "網站資訊"] },
+];
+
+/** 依展示分組取出實際的 NAV_GROUPS（找不到的名稱會被忽略）。 */
+export const groupsForSection = (section: NavSection): NavGroup[] =>
+  section.groupLabels
+    .map((label) => NAV_GROUPS.find((g) => g.label === label))
+    .filter((g): g is NavGroup => Boolean(g));
