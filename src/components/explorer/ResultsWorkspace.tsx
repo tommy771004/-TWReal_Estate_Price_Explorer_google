@@ -39,6 +39,7 @@ import {
 } from "../../utils/real-estate-helpers";
 import { useExplorerUi } from "./ExplorerUiContext";
 import { SORT_OPTIONS, type SortOptionValue } from "../../constants/filterLabels";
+import { ResultActions } from "./ResultActions";
 
 const ResultsCharts = React.lazy(() => import("../ResultsCharts"));
 const ResultsMap = React.lazy(() => import("../MapViews"));
@@ -86,6 +87,13 @@ export function ResultsWorkspace() {
     appTexts,
     viewMode,
     setViewMode,
+    savedSearches,
+    applySavedSearch,
+    deleteSavedSearch,
+    setIsSavingSearch,
+    shareStatus,
+    copyShareLink,
+    handleExportCsv,
     data,
     filteredData,
     paginatedData,
@@ -178,7 +186,18 @@ export function ResultsWorkspace() {
                         </span>
                       </div>
                     </div>
-                    <div className="relative z-10 flex shrink-0 items-center rounded-lg border border-white/40 bg-white/40 p-0.5 dark:border-white/10 dark:bg-white/5">
+                    <div className="relative z-10 flex shrink-0 items-center gap-1.5">
+                    <ResultActions
+                      savedSearches={savedSearches}
+                      onSaveCurrent={() => setIsSavingSearch(true)}
+                      onApplySaved={applySavedSearch}
+                      onDeleteSaved={deleteSavedSearch}
+                      onExportCsv={handleExportCsv}
+                      exportDisabled={filteredData.length === 0}
+                      onCopyShareLink={copyShareLink}
+                      shareStatus={shareStatus}
+                    />
+                    <div className="flex items-center rounded-lg border border-white/40 bg-white/40 p-0.5 dark:border-white/10 dark:bg-white/5">
                       <button
                         type="button"
                         onClick={() => setViewMode("list")}
@@ -221,6 +240,7 @@ export function ResultsWorkspace() {
                         <MapIcon size={14} />
                         <span className="hidden xl:inline">地圖</span>
                       </button>
+                    </div>
                     </div>
                   </div>
 
