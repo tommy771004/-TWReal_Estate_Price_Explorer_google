@@ -1276,14 +1276,9 @@ export default function App() {
             filteredCount={filteredData.length}
             dataSource={dataSource}
             dataCachedAt={dataCachedAt}
-            excludeSpecial={excludeSpecial}
             marketSnapshotCount={marketSnapshot.count}
             marketKpis={marketKpis}
             pinCurrentMarket={pinCurrentMarket}
-            onSelectCity={(city) => {
-              setCityName(city);
-              setDistrict("全部");
-            }}
           />
 
           {/* 手機也看得到釘選比價（桌面在右側 rail） */}

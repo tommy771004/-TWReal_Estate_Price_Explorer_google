@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { MapPin, Search, X } from "lucide-react";
 import { CITIES, CITY_DISTRICTS } from "../constants";
+import { FEATURED_CITY_NAMES } from "../constants/app-ui";
 
 interface LocationSelectionModalProps {
   isOpen: boolean;
@@ -71,14 +72,37 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
         <div className="px-4 pb-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="搜尋縣市或鄉鎮..."
               className="w-full h-10 bg-slate-100 dark:bg-slate-800/80 rounded-xl pl-9 pr-4 text-sm font-bold text-slate-800 dark:text-white placeholder:text-slate-400 outline-none border border-transparent focus:border-coral-500/50 transition-colors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+        </div>
+
+        {/* 熱門城市快選：原本散在首頁的六都 chip 收斂到這裡，選城市只剩這一個入口 */}
+        <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">
+          <span className="mr-0.5 text-[10px] font-black tracking-wide text-slate-400">熱門</span>
+          {FEATURED_CITY_NAMES.map((featured) => (
+            <button
+              key={featured}
+              type="button"
+              onClick={() => {
+                setCityName(featured);
+                setDistrict("全部");
+                onClose();
+              }}
+              className={`h-8 rounded-full border px-3 text-[12px] font-bold transition-all ${
+                cityName === featured
+                  ? "border-coral-400/60 bg-coral-500/12 text-coral-700 dark:text-coral-400"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-coral-300 hover:text-coral-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300"
+              }`}
+            >
+              {featured}
+            </button>
+          ))}
         </div>
 
         {/* 2-Column Selectors */}
