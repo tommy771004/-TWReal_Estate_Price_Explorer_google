@@ -141,13 +141,21 @@ export const EXCLUDE_SPECIAL_NOTE = "排除親友、關係人等可能偏離行�
 
 export type SortOptionValue =
   | "default"
+  | "date-desc"
+  | "date-asc"
   | "totalPrice-desc"
   | "totalPrice-asc"
   | "unitPrice-desc"
   | "unitPrice-asc";
 
+/**
+ * "default" 代表不排序、維持資料來源順序，因此標為「預設順序」而非「最新成交」
+ * —— 內政部原始檔並未保證依成交日排序。要看最新成交請選「成交日：新→舊」。
+ */
 export const SORT_OPTIONS: ChoiceOption<SortOptionValue>[] = [
-  { value: "default", label: "最新成交" },
+  { value: "default", label: "預設順序" },
+  { value: "date-desc", label: "成交日：新→舊" },
+  { value: "date-asc", label: "成交日：舊→新" },
   { value: "totalPrice-desc", label: "總價：高→低" },
   { value: "totalPrice-asc", label: "總價：低→高" },
   { value: "unitPrice-desc", label: "單價：高→低" },

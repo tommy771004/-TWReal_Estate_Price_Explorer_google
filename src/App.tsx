@@ -583,19 +583,13 @@ export default function App() {
   const [isBuildingImagesLoading, setIsBuildingImagesLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: "asc" | "desc" } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  /** 每頁筆數固定，不再讓使用者調整 */
+  const ITEMS_PER_PAGE = 20;
   
   const [error, setError] = useState<string | null>(null);
   const imageSliderRef = React.useRef<HTMLDivElement>(null);
-  const sortScrollRef = React.useRef<HTMLDivElement>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
 
-  const scrollSort = (direction: 'left' | 'right') => {
-    if (sortScrollRef.current) {
-      const scrollAmount = 200;
-      sortScrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
-    }
-  };
 
   const [dataSource, setDataSource] = useState<string | null>(null);
   const [dataCachedAt, setDataCachedAt] = useState<string | null>(null);
@@ -858,11 +852,11 @@ export default function App() {
     addAuditLog,
   ]);
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
   const paginatedData = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredData.slice(start, start + itemsPerPage);
-  }, [filteredData, currentPage, itemsPerPage]);
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredData.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredData, currentPage]);
 
   const communityItems = useMemo(() => {
     if (!selectedItem) return [];
@@ -1112,13 +1106,6 @@ export default function App() {
     [addAuditLog]
   );
 
-  const handleSort = (key: keyof Transaction) => {
-    let direction: "asc" | "desc" = "asc";
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
 
   const marketSnapshot = marketSnapshotFromHook;
 
@@ -1201,8 +1188,8 @@ export default function App() {
     showSuggestions, setShowSuggestions, loading, robotStatus,
     appTexts, viewMode, setViewMode,
     data, filteredData, paginatedData, dataSource, dataCachedAt,
-    error, fetchData, currentPage, setCurrentPage, itemsPerPage, setItemsPerPage,
-    totalPages, sortConfig, setSortConfig, handleSort, scrollSort, sortScrollRef,
+    error, fetchData, currentPage, setCurrentPage,
+    totalPages, sortConfig, setSortConfig,
     resultsContainerRef,
     addressSuggestions, recentSearches, clearRecentSearches, trendingSearches,
     handleTrendingClick,
