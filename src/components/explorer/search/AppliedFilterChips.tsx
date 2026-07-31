@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { DEFAULT_PROPERTY_TYPES } from "../../../lib/urlState";
@@ -28,6 +29,7 @@ export type AppliedFilterValues = {
   nearbyAnchor: NearbyAnchor | null;
   focusBuildCase: string | null;
   excludeSpecial: boolean;
+  totalPriceMinWan: string;
   totalPriceMaxWan: string;
   activePresetId: QueryPresetId | null;
 };
@@ -49,6 +51,7 @@ export type AppliedFilterActions = {
   setNearbyAnchor: (v: NearbyAnchor | null) => void;
   setFocusBuildCase: (v: string | null) => void;
   setExcludeSpecial: (v: boolean) => void;
+  setTotalPriceMinWan: (v: string) => void;
   setTotalPriceMaxWan: (v: string) => void;
   setActivePresetId: (v: QueryPresetId | null) => void;
 };
@@ -57,8 +60,6 @@ type Chip = { id: string; label: string; onClear?: () => void; muted?: boolean }
 
 function buildChips(f: AppliedFilterValues, a: AppliedFilterActions): Chip[] {
   const chips: Chip[] = [];
-
-  chips.push({ id: "city", label: f.cityName, muted: true });
 
   if (f.district !== "全部") {
     chips.push({ id: "district", label: f.district, onClear: () => a.setDistrict("全部") });
@@ -75,15 +76,14 @@ function buildChips(f: AppliedFilterValues, a: AppliedFilterActions): Chip[] {
     });
   }
 
-  // 期間：預設近 12 個月仍顯示，方便確認；非預設可一鍵還原
-  chips.push({
-    id: "period",
-    label: isDefaultPeriod(f.period)
-      ? `近12月 ${formatPeriodLabel(f.period)}`
-      : `期間 ${formatPeriodLabel(f.period)}`,
-    onClear: isDefaultPeriod(f.period) ? undefined : () => a.setPeriod(getDefaultPeriod()),
-    muted: isDefaultPeriod(f.period),
-  });
+  // 期間：只有偏離預設（近 12 個月）時才佔版面
+  if (!isDefaultPeriod(f.period)) {
+    chips.push({
+      id: "period",
+      label: `期間 ${formatPeriodLabel(f.period)}`,
+      onClear: () => a.setPeriod(getDefaultPeriod()),
+    });
+  }
 
   if (f.search.trim()) {
     chips.push({ id: "search", label: `關鍵字: ${f.search}`, onClear: () => a.setSearch("") });
@@ -189,20 +189,29 @@ function buildChips(f: AppliedFilterValues, a: AppliedFilterActions): Chip[] {
     });
   }
 
-  if (f.excludeSpecial) {
+  // 排除特殊交易預設開啟，只有使用者關掉時才需要提示
+  if (!f.excludeSpecial) {
     chips.push({
-      id: "exclude-special",
-      label: "已排除特殊交易",
-      onClear: () => a.setExcludeSpecial(false),
-      muted: true,
+      id: "include-special",
+      label: "含特殊交易",
+      onClear: () => a.setExcludeSpecial(true),
     });
   }
 
-  if (f.totalPriceMaxWan) {
+  if (f.totalPriceMinWan || f.totalPriceMaxWan) {
+    const label =
+      f.totalPriceMinWan && f.totalPriceMaxWan
+        ? `總價 ${f.totalPriceMinWan}–${f.totalPriceMaxWan} 萬`
+        : f.totalPriceMaxWan
+          ? `總價 ≤ ${f.totalPriceMaxWan} 萬`
+          : `總價 ≥ ${f.totalPriceMinWan} 萬`;
     chips.push({
-      id: "budget-max",
-      label: `總價 ≤ ${f.totalPriceMaxWan} 萬`,
-      onClear: () => a.setTotalPriceMaxWan(""),
+      id: "budget",
+      label,
+      onClear: () => {
+        a.setTotalPriceMinWan("");
+        a.setTotalPriceMaxWan("");
+      },
     });
   }
 
@@ -219,27 +228,41 @@ function buildChips(f: AppliedFilterValues, a: AppliedFilterActions): Chip[] {
   return chips;
 }
 
-/** 已套用條件 chip 列，每顆可單獨清除。 */
+/** 收合前顯示的 chip 上限，其餘折成「其他 N 項」 */
+const MAX_VISIBLE_CHIPS = 4;
+
+/**
+ * 已套用條件 chip 列，每顆可單獨清除。
+ * 只顯示偏離預設值的條件；完全沒有條件時改渲染 fallback（快速開始）。
+ */
 export function AppliedFilterChips({
   values,
   actions,
+  fallback = null,
 }: {
   values: AppliedFilterValues;
   actions: AppliedFilterActions;
+  fallback?: ReactNode;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const chips = buildChips(values, actions);
+
+  if (chips.length === 0) return <>{fallback}</>;
+
+  const overflow = chips.length - MAX_VISIBLE_CHIPS;
+  const visible = expanded || overflow <= 0 ? chips : chips.slice(0, MAX_VISIBLE_CHIPS);
 
   return (
     <motion.div
       initial={{ opacity: 0, height: 0, marginTop: 0 }}
-      animate={{ opacity: 1, height: "auto", marginTop: 8 }}
+      animate={{ opacity: 1, height: "auto", marginTop: 0 }}
       exit={{ opacity: 0, height: 0, marginTop: 0 }}
       transition={{ duration: 0.25 }}
       className="flex flex-wrap items-center gap-1.5 overflow-hidden"
     >
       <span className="mr-0.5 text-[10px] font-black tracking-wide text-slate-400">已套用</span>
       <AnimatePresence>
-        {chips.map((chip) => (
+        {visible.map((chip) => (
           <motion.span
             key={chip.id}
             initial={{ opacity: 0, scale: 0.8 }}
@@ -266,6 +289,15 @@ export function AppliedFilterChips({
           </motion.span>
         ))}
       </AnimatePresence>
+      {overflow > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="rounded-full border border-slate-200/80 bg-slate-100/80 px-2.5 py-1 text-[11px] font-bold text-slate-500 transition-colors hover:text-coral-600 dark:border-slate-700/50 dark:bg-slate-800/60 dark:text-slate-300"
+        >
+          {expanded ? "收合" : `其他 ${overflow} 項`}
+        </button>
+      )}
     </motion.div>
   );
 }

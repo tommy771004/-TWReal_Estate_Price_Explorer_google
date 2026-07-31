@@ -83,7 +83,8 @@ export default function App() {
   const [parkingFilter, setParkingFilter] = useState<ParkingFilter>(initialFilters.parking);
   /** 預設排除親友／關係人等特殊交易，避免扭曲行情 */
   const [excludeSpecial, setExcludeSpecial] = useState(true);
-  /** 總價上限（萬元），預算反查用 */
+  /** 總價區間（萬元），預算反查用 */
+  const [totalPriceMinWan, setTotalPriceMinWan] = useState("");
   const [totalPriceMaxWan, setTotalPriceMaxWan] = useState("");
   const [activePresetId, setActivePresetId] = useState<QueryPresetId | null>(null);
   const [compareShareStatus, setCompareShareStatus] = useState<"idle" | "copied" | "error">("idle");
@@ -263,8 +264,8 @@ export default function App() {
     });
   }, []);
 
-  const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
-  const [isSearchExpanded, setIsSearchExpanded] = useState(true);
+  /** 篩選膠囊 popover 或手機抽屜開啟中：暫停全域 Enter 送出查詢 */
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [mapLayer, setMapLayer] = useState<"default" | "satellite" | "landmark">("default");
   const [showFacilities, setShowFacilities] = useState(false);
@@ -622,7 +623,6 @@ export default function App() {
     setDataSource,
     setDataCachedAt,
     setRobotStatus,
-    setIsSearchExpanded,
     addRecentSearch,
     addAuditLog,
     fetchTrendingSearches,
@@ -687,7 +687,6 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setIsAdvancedSearchOpen(false);
         setIsLocationModalOpen(false);
         setSelectedItem(null);
         setShowSuggestions(false);
@@ -699,6 +698,8 @@ export default function App() {
 
         if (isLocationModalOpen) return;
         if (selectedItem) return;
+        // 篩選選單開啟時，Enter 屬於選單內的輸入框，不應觸發整包重新查詢
+        if (isFilterMenuOpen) return;
 
         // Always close suggestions on enter, trigger a fresh search
         setShowSuggestions(false);
@@ -708,18 +709,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [fetchData, isLocationModalOpen, selectedItem]);
-
-  // Handle resize for search panel
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768 && !isSearchExpanded) {
-        setIsSearchExpanded(true);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isSearchExpanded]);
+  }, [fetchData, isLocationModalOpen, selectedItem, isFilterMenuOpen]);
 
   const uniqueDistricts = useMemo(() => {
     return ["全部", ...(CITY_DISTRICTS[cityName] || []).map(d => d.name)];
@@ -766,6 +756,7 @@ export default function App() {
     parkingFilter,
     focusBuildCase,
     excludeSpecial,
+    totalPriceMinWan,
     totalPriceMaxWan,
     nearbyKm,
     nearbyAnchor,
@@ -811,18 +802,16 @@ export default function App() {
     setHasManagement(preset.hasManagement);
     setParkingFilter(preset.parking);
     setExcludeSpecial(preset.excludeSpecial);
+    setTotalPriceMinWan("");
     setTotalPriceMaxWan("");
     setFocusBuildCase(null);
     if (preset.typeName === "預售屋") setViewMode("aggregated");
     else setViewMode("list");
-    setIsAdvancedSearchOpen(true);
-    setIsSearchExpanded(true);
   }, []);
 
   const applyBudgetWan = React.useCallback((maxWan: number) => {
     setTotalPriceMaxWan(String(maxWan));
     setActivePresetId(null);
-    setIsSearchExpanded(true);
   }, []);
 
   const copyCompareShareLink = React.useCallback(async () => {
@@ -1203,10 +1192,11 @@ export default function App() {
     period, setPeriod, unitPrice, setUnitPrice, area, setArea, age, setAge,
     roomsMin, setRoomsMin, hasManagement, setHasManagement,
     parkingFilter, setParkingFilter, excludeSpecial, setExcludeSpecial,
+    totalPriceMinWan, setTotalPriceMinWan,
     totalPriceMaxWan, setTotalPriceMaxWan, activePresetId, setActivePresetId,
     nearbyKm, setNearbyKm, nearbyAnchor, setNearbyAnchor,
     focusBuildCase, setFocusBuildCase, userLocation,
-    isSearchExpanded, setIsSearchExpanded, isAdvancedSearchOpen, setIsAdvancedSearchOpen,
+    isFilterMenuOpen, setIsFilterMenuOpen,
     isLocationModalOpen, setIsLocationModalOpen,
     showSuggestions, setShowSuggestions, loading, robotStatus,
     appTexts, viewMode, setViewMode,
@@ -1293,7 +1283,6 @@ export default function App() {
             onSelectCity={(city) => {
               setCityName(city);
               setDistrict("全部");
-              setIsSearchExpanded(true);
             }}
           />
 

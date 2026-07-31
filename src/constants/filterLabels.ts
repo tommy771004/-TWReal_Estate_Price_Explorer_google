@@ -104,6 +104,13 @@ export const formatRocMonthLabel = (y: string | number, m: string | number): str
 export const formatRocMonthShort = (y: string | number, m: string | number): string =>
   `${y}年${m}月`;
 
+/** 民國年 → 「113年（2024）」 */
+export const formatRocYearLabel = (y: string | number): string => {
+  const rocYear = Number(y);
+  if (!Number.isFinite(rocYear)) return `${y}年`;
+  return `${rocYear}年（${rocYear + 1911}）`;
+};
+
 /* ---------- 格局 / 車位 / 管理 ---------- */
 
 export type ChoiceOption<T extends string> = { value: T; label: string };
