@@ -139,18 +139,18 @@ export function SearchFilterPanel() {
             : "0 20px 40px -18px rgba(0, 0, 0, 0.22)",
         }}
         transition={{ duration: 0.4 }}
-        className="liquid-glass-panel relative flex flex-col gap-3 overflow-visible rounded-[1.75rem] p-3 shadow-none sm:px-5 sm:py-4"
+        className="relative flex flex-col gap-3.5 overflow-visible rounded-[28px] bg-surface-container border border-outline-variant/40 p-3.5 sm:px-5 sm:py-4 shadow-[var(--md-elevation-1)]"
       >
         {loading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-[1.75rem] bg-gradient-to-r from-transparent via-coral-400 to-transparent"
+            className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-[28px] bg-primary-container"
           >
             <motion.div
-              animate={{ x: ["-100%", "100%"] }}
-              transition={{ repeat: Infinity, duration: 1.6, ease: "linear" }}
-              className="h-full w-1/2 bg-gradient-to-r from-coral-300 to-coral-500"
+              animate={{ x: ["-100%", "200%"] }}
+              transition={{ repeat: Infinity, duration: 1.4, ease: "easeInOut" }}
+              className="h-full w-1/3 bg-primary rounded-full"
             />
           </motion.div>
         )}

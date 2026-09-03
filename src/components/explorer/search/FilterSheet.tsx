@@ -151,7 +151,7 @@ export function FilterSheet({
               onApply(draft, mustRefetch);
               handleOpenChange(false);
             }}
-            className="liquid-glass-button-primary h-11 flex-1 rounded-[1.25rem] text-sm font-bold"
+            className="h-11 flex-1 rounded-full bg-primary text-on-primary text-sm font-semibold hover:bg-primary/90 shadow-xs transition-colors"
           >
             {footerLabel}
           </button>

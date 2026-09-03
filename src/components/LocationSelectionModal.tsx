@@ -41,50 +41,51 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-slate-950/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-scrim/40 backdrop-blur-xs">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        initial={{ opacity: 0, scale: 0.94, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full h-full sm:h-[80vh] sm:max-h-[600px] sm:max-w-[500px] bg-white dark:bg-slate-900 shadow-2xl sm:rounded-[2rem] overflow-hidden flex flex-col border border-slate-200 dark:border-white/10"
+        transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+        className="w-full h-[85vh] sm:h-[80vh] sm:max-h-[600px] sm:max-w-[500px] bg-surface-container-high text-on-surface shadow-[var(--md-elevation-3)] rounded-[28px] overflow-hidden flex flex-col border border-outline-variant/50"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 pb-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-coral-500/10 flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-coral-500" />
+            <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-xs">
+              <MapPin className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">選擇區域</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">請選擇你要探索的地點</p>
+              <h2 className="text-lg font-bold text-on-surface">選擇區域</h2>
+              <p className="text-xs text-on-surface-variant font-medium">請選擇你要探索的地點</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+            aria-label="關閉"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-on-surface/8 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Search */}
         <div className="px-4 pb-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <input
               type="text"
               placeholder="搜尋縣市或鄉鎮..."
-              className="w-full h-10 bg-slate-100 dark:bg-slate-800/80 rounded-xl pl-9 pr-4 text-sm font-bold text-slate-800 dark:text-white placeholder:text-slate-400 outline-none border border-transparent focus:border-coral-500/50 transition-colors"
+              className="w-full h-11 bg-surface-container-highest rounded-full pl-10 pr-4 text-sm font-medium text-on-surface placeholder:text-on-surface-variant/60 outline-none border border-outline-variant/60 focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
-        {/* 熱門城市快選：原本散在首頁的六都 chip 收斂到這裡，選城市只剩這一個入口 */}
+        {/* 熱門城市快選 */}
         <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">
-          <span className="mr-0.5 text-[10px] font-black tracking-wide text-slate-400">熱門</span>
+          <span className="mr-1 text-[11px] font-semibold tracking-wider text-on-surface-variant uppercase">熱門</span>
           {FEATURED_CITY_NAMES.map((featured) => (
             <button
               key={featured}
@@ -94,10 +95,10 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
                 setDistrict("全部");
                 onClose();
               }}
-              className={`h-8 rounded-full border px-3 text-[12px] font-bold transition-all ${
+              className={`h-8 rounded-full px-3 text-xs font-semibold transition-all ${
                 cityName === featured
-                  ? "border-coral-400/60 bg-coral-500/12 text-coral-700 dark:text-coral-400"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-coral-300 hover:text-coral-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300"
+                  ? "bg-primary text-on-primary shadow-xs"
+                  : "bg-surface-container border border-outline-variant text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
               }`}
             >
               {featured}
@@ -106,11 +107,11 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
         </div>
 
         {/* 2-Column Selectors */}
-        <div className="flex flex-1 overflow-hidden border-t border-slate-100 dark:border-white/5">
+        <div className="flex flex-1 overflow-hidden border-t border-outline-variant/30">
           {/* Left Column: Cities */}
-          <div className="w-[140px] bg-slate-50 dark:bg-slate-800/30 overflow-y-auto no-scrollbar py-2">
+          <div className="w-[140px] bg-surface-container overflow-y-auto no-scrollbar py-2">
             {filteredCities.length === 0 ? (
-              <div className="text-center py-4 text-slate-500 text-xs font-bold">無結果</div>
+              <div className="text-center py-4 text-on-surface-variant text-xs font-medium">無結果</div>
             ) : (
               filteredCities.map(c => (
                 <button
@@ -118,13 +119,13 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
                   onClick={() => setInternalCity(c.name)}
                   className={`w-full text-left px-4 py-3 flex items-center justify-between transition-colors ${
                     internalCity === c.name 
-                      ? 'bg-coral-50 dark:bg-coral-600 font-bold text-coral-600 dark:text-white relative' 
-                      : 'text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
+                      ? 'bg-primary-container text-on-primary-container font-bold' 
+                      : 'text-on-surface-variant font-medium hover:bg-on-surface/8 hover:text-on-surface'
                   }`}
                 >
-                  <span className="text-[15px] tracking-widest">{c.name}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                    internalCity === c.name ? 'bg-coral-100 dark:bg-white/20 text-coral-600 dark:text-white' : 'bg-slate-200 dark:bg-slate-700/50 text-slate-500'
+                  <span className="text-sm tracking-wide">{c.name}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                    internalCity === c.name ? 'bg-primary text-on-primary' : 'bg-surface-container-highest text-on-surface-variant'
                   }`}>
                     {CITY_DISTRICTS[c.name]?.length || 0}
                   </span>
@@ -134,7 +135,7 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
           </div>
 
           {/* Right Column: Districts */}
-          <div className="flex-1 overflow-y-auto no-scrollbar py-2 bg-white dark:bg-slate-900/50 px-2 scroll-smooth">
+          <div className="flex-1 overflow-y-auto no-scrollbar py-2 bg-surface px-2 scroll-smooth">
             {filteredCities.some(c => c.name === internalCity) && (
               <div className="flex flex-col gap-1">
                 <button
@@ -143,29 +144,40 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
                     setDistrict("全部");
                     onClose();
                   }}
-                  className="w-full text-left px-4 py-3 rounded-xl transition-colors font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                  className={`w-full text-left px-4 py-2.5 rounded-full transition-colors text-sm font-semibold ${
+                    district === "全部" && cityName === internalCity
+                      ? "bg-secondary-container text-on-secondary-container"
+                      : "text-on-surface hover:bg-surface-container-highest"
+                  }`}
                 >
-                  <span className="text-[15px] tracking-widest">全部</span>
+                  <span className="tracking-wide">全部</span>
                 </button>
                 
                 {currentDistricts
                   .filter(d => d.name.includes(searchQuery))
-                  .map(d => (
-                  <button
-                    key={d.name}
-                    onClick={() => {
-                      setCityName(internalCity);
-                      setDistrict(d.name);
-                      onClose();
-                    }}
-                    className="w-full text-left px-4 py-3 rounded-xl transition-colors font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white relative"
-                  >
-                    <span className="text-[15px] tracking-widest">{d.name}</span>
-                    {cityName === internalCity && district === d.name && (
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-coral-500" />
-                    )}
-                  </button>
-                ))}
+                  .map(d => {
+                    const isSelected = cityName === internalCity && district === d.name;
+                    return (
+                      <button
+                        key={d.name}
+                        onClick={() => {
+                          setCityName(internalCity);
+                          setDistrict(d.name);
+                          onClose();
+                        }}
+                        className={`w-full text-left px-4 py-2.5 rounded-full transition-colors text-sm font-medium relative flex items-center justify-between ${
+                          isSelected
+                            ? "bg-secondary-container text-on-secondary-container font-semibold"
+                            : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
+                        }`}
+                      >
+                        <span className="tracking-wide">{d.name}</span>
+                        {isSelected && (
+                          <span className="w-2 h-2 rounded-full bg-primary" />
+                        )}
+                      </button>
+                    );
+                  })}
               </div>
             )}
           </div>

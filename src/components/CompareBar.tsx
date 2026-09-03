@@ -119,23 +119,23 @@ export function CompareBar({
           exit={{ y: 80, opacity: 0 }}
           className="fixed bottom-4 left-1/2 z-[60] w-[min(96vw,720px)] -translate-x-1/2"
         >
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/95 p-3 shadow-none backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-coral-500/10 text-coral-600 dark:text-coral-400">
+          <div className="flex items-center gap-3 rounded-[28px] border border-outline-variant/40 bg-surface-container-high p-3 shadow-[var(--md-elevation-3)]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
               <Scale size={18} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-black text-ink dark:text-white">
+              <div className="text-xs font-semibold text-on-surface">
                 比較清單 {items.length}/{MAX_COMPARE}
               </div>
-              <div className="mt-0.5 flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
+              <div className="mt-1 flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
                 {items.map((item) => (
                   <span
                     key={item.id}
-                    className="inline-flex max-w-[140px] items-center gap-1 rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                    className="inline-flex max-w-[140px] items-center gap-1 rounded-full bg-surface-container-highest px-2.5 py-0.5 text-[11px] font-medium text-on-surface-variant"
                   >
                     <button
                       type="button"
-                      className="truncate hover:text-coral-600"
+                      className="truncate hover:text-primary transition-colors"
                       onClick={() => onSelectItem(item)}
                       title={item.address}
                     >
@@ -143,11 +143,11 @@ export function CompareBar({
                     </button>
                     <button
                       type="button"
-                      className="shrink-0 rounded-full p-0.5 hover:bg-coral-500 hover:text-white"
+                      className="shrink-0 rounded-full p-0.5 hover:bg-error-container hover:text-error transition-colors"
                       onClick={() => onRemove(item.id)}
                       aria-label={`移除 ${item.address}`}
                     >
-                      <X size={10} strokeWidth={3} />
+                      <X size={11} strokeWidth={2.5} />
                     </button>
                   </span>
                 ))}
@@ -159,7 +159,7 @@ export function CompareBar({
                 size="sm"
                 disabled={items.length < 2}
                 onClick={() => setOpen(true)}
-                className="h-9 rounded-xl bg-coral-600 px-3 text-xs font-bold text-white hover:bg-coral-500 disabled:opacity-40"
+                className="h-9 rounded-full bg-primary px-4 text-xs font-semibold text-on-primary hover:bg-primary/90 disabled:opacity-40 shadow-xs"
               >
                 <GitCompare size={14} className="mr-1" />
                 開始比較
@@ -171,12 +171,10 @@ export function CompareBar({
                   size="sm"
                   disabled={items.length < 1}
                   onClick={() => void onShareCompare()}
-                  className={`h-9 rounded-xl px-3 text-xs font-bold ${
+                  className={`h-9 rounded-full border border-outline px-3.5 text-xs font-semibold ${
                     shareStatus === "copied"
-                      ? "border-emerald-300 text-emerald-600"
-                      : shareStatus === "error"
-                        ? "border-red-300 text-red-500"
-                        : ""
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "bg-surface text-on-surface hover:bg-surface-container-highest"
                   }`}
                   title="複製含比較清單的連結"
                 >
@@ -193,7 +191,7 @@ export function CompareBar({
                 variant="ghost"
                 size="sm"
                 onClick={onClear}
-                className="h-9 rounded-xl px-3 text-xs font-bold text-slate-500"
+                className="h-9 rounded-full px-3 text-xs font-medium text-on-surface-variant hover:bg-on-surface/8 hover:text-on-surface"
               >
                 清空
               </Button>
@@ -203,10 +201,10 @@ export function CompareBar({
       </AnimatePresence>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] max-w-[95vw] overflow-hidden rounded-[1.5rem] border-slate-200/80 bg-white p-0 dark:border-slate-800 dark:bg-slate-950 sm:max-w-4xl">
-          <DialogHeader className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-            <DialogTitle className="flex items-center gap-2 text-base font-black">
-              <GitCompare className="text-coral-500" size={18} />
+        <DialogContent className="max-h-[90vh] max-w-[95vw] overflow-hidden rounded-[28px] border-outline-variant/40 bg-surface-container-high text-on-surface p-0 shadow-[var(--md-elevation-3)] sm:max-w-4xl">
+          <DialogHeader className="border-b border-outline-variant/30 px-5 py-4">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-on-surface">
+              <GitCompare className="text-primary" size={18} />
               物件比較（{items.length} 筆）
             </DialogTitle>
           </DialogHeader>
@@ -215,18 +213,18 @@ export function CompareBar({
               <table className="w-full border-collapse text-left text-sm">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 z-10 w-28 bg-slate-50 p-2 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:bg-slate-900">
+                    <th className="sticky left-0 z-10 w-28 bg-surface-container p-2 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
                       項目
                     </th>
                     {items.map((item) => (
                       <th key={item.id} className="min-w-[140px] p-2 align-bottom">
-                        <div className="rounded-xl border border-slate-200/80 bg-white p-2 dark:border-slate-800 dark:bg-slate-900/60">
-                          <div className="line-clamp-2 text-xs font-black leading-snug text-ink dark:text-white">
+                        <div className="rounded-2xl border border-outline-variant/30 bg-surface-container p-2.5">
+                          <div className="line-clamp-2 text-xs font-bold leading-snug text-on-surface">
                             {item.address}
                           </div>
                           <button
                             type="button"
-                            className="mt-1 text-[10px] font-bold text-coral-600 hover:underline"
+                            className="mt-1 text-xs font-semibold text-primary hover:underline"
                             onClick={() => {
                               setOpen(false);
                               onSelectItem(item);
@@ -241,14 +239,14 @@ export function CompareBar({
                 </thead>
                 <tbody>
                   {ROWS.map((row) => (
-                    <tr key={row.key} className="border-t border-slate-100 dark:border-slate-800/80">
-                      <th className="sticky left-0 z-10 bg-white p-2 text-[11px] font-bold text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                    <tr key={row.key} className="border-t border-outline-variant/20">
+                      <th className="sticky left-0 z-10 bg-surface-container-high p-2.5 text-xs font-semibold text-on-surface-variant">
                         {row.label}
                       </th>
                       {items.map((item) => (
                         <td
                           key={`${item.id}-${row.key}`}
-                          className="p-2 text-xs font-bold text-slate-800 dark:text-slate-200"
+                          className="p-2.5 text-xs font-medium text-on-surface"
                         >
                           {row.get(item)}
                         </td>

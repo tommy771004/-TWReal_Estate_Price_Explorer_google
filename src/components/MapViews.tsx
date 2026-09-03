@@ -223,7 +223,7 @@ export function TransactionMapPreview({ selectedItem }: TransactionMapPreviewPro
   const lng = typeof selectedItem.lng === "string" ? parseFloat(selectedItem.lng) : selectedItem.lng;
 
   return (
-    <div className="h-[160px] sm:h-[250px] w-full liquid-glass rounded-[1.5rem] overflow-hidden border border-slate-200/50 dark:border-slate-800/80 shadow-sm relative isolate group">
+    <div className="h-[160px] sm:h-[250px] w-full bg-surface-container-high rounded-[24px] overflow-hidden border border-outline-variant/40 shadow-[var(--md-elevation-1)] relative isolate group">
       {lat && lng && lat !== 0 ? (
         <>
           <MapContainer
@@ -238,8 +238,8 @@ export function TransactionMapPreview({ selectedItem }: TransactionMapPreviewPro
             <MapController center={[lat, lng]} />
           </MapContainer>
 
-          <div className="absolute top-2 left-2 right-2 z-[1000]">
-            <p className="rounded-lg bg-black/55 px-2 py-1 text-[9px] font-bold text-white/95 backdrop-blur-sm">
+          <div className="absolute top-3 left-3 right-3 z-[1000]">
+            <p className="rounded-full bg-surface/90 text-on-surface px-3 py-1.5 text-xs font-medium border border-outline-variant/40 backdrop-blur-md shadow-[var(--md-elevation-1)] inline-block">
               地圖位置可能為近似座標，請以門牌資訊為準
             </p>
           </div>
@@ -248,36 +248,36 @@ export function TransactionMapPreview({ selectedItem }: TransactionMapPreviewPro
               href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 shadow-xl flex items-center gap-1.5 hover:-translate-y-0.5 transition-transform"
+              className="px-3.5 py-1.5 bg-surface-container-high rounded-full text-xs font-semibold text-on-surface border border-outline-variant/40 shadow-[var(--md-elevation-1)] flex items-center gap-1.5 hover:bg-surface-container-highest transition-colors"
             >
-              <MapPin className="w-3 h-3 text-blue-500" />
+              <MapPin className="w-3.5 h-3.5 text-primary" />
               Google Maps
             </a>
             <a
               href={`https://maps.apple.com/?q=${lat},${lng}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 shadow-xl flex items-center gap-1.5 hover:-translate-y-0.5 transition-transform"
+              className="px-3.5 py-1.5 bg-surface-container-high rounded-full text-xs font-semibold text-on-surface border border-outline-variant/40 shadow-[var(--md-elevation-1)] flex items-center gap-1.5 hover:bg-surface-container-highest transition-colors"
             >
-              <MapPin className="w-3 h-3 text-slate-800 dark:text-white" />
+              <MapPin className="w-3.5 h-3.5 text-on-surface" />
               Apple Maps
             </a>
           </div>
         </>
       ) : selectedItem.lat === 0 ? (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100/50 dark:bg-slate-900/50 p-4 text-center">
-          <MapPin className="w-8 h-8 text-slate-400 mb-2" />
-          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-1">無法精確定位地址</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+        <div className="w-full h-full flex flex-col items-center justify-center bg-surface-container-low p-4 text-center">
+          <MapPin className="w-8 h-8 text-on-surface-variant/40 mb-2" />
+          <p className="text-xs font-bold text-on-surface uppercase tracking-wider mb-1">無法精確定位地址</p>
+          <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
             因開放資料地址遮蔽，無法自動解析座標
             <br />
             請參考明細中的門牌資訊
           </p>
         </div>
       ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/50">
-          <Compass className="w-8 h-8 text-slate-300 dark:text-slate-700 animate-spin-slow mb-2" />
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">正在解析座標...</p>
+        <div className="w-full h-full flex flex-col items-center justify-center bg-surface-container-low">
+          <Compass className="w-8 h-8 text-on-surface-variant/40 animate-spin-slow mb-2" />
+          <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wider">正在解析座標...</p>
         </div>
       )}
     </div>
@@ -301,10 +301,10 @@ export default function ResultsMap({
   if (filteredData.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8">
-        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
-          <Search className="text-slate-400" size={32} />
+        <div className="w-16 h-16 bg-surface-container-highest rounded-full flex items-center justify-center mb-4">
+          <Search className="text-on-surface-variant" size={28} />
         </div>
-        <p className="text-slate-500 font-bold">目前沒有可顯示的搜尋結果</p>
+        <p className="text-on-surface font-semibold text-sm">目前沒有可顯示的搜尋結果</p>
       </div>
     );
   }
@@ -318,7 +318,7 @@ export default function ResultsMap({
       : ([25.033, 121.5654] as [number, number]);
 
   return (
-    <div className="flex-1 flex flex-col bg-transparent relative min-h-[500px] sm:min-h-[600px]">
+    <div className="flex-1 flex flex-col bg-transparent relative min-h-[500px] sm:min-h-[600px] rounded-[28px] overflow-hidden border border-outline-variant/40 shadow-[var(--md-elevation-1)]">
       <div className="flex-1 relative">
         {/* 定位精度說明：地址 geocode 與行政區近似點並存，避免誤判為精準門牌 */}
 
@@ -383,29 +383,29 @@ export default function ResultsMap({
                 >
                   <Popup className="custom-popup">
                     <div className="p-1">
-                      <div className="flex items-center gap-1.5 mb-1 border-b border-slate-100 pb-1">
-                        <span className="bg-coral-100 text-coral-600 text-[9px] font-bold px-1 rounded">{label}</span>
-                        <p className="font-bold text-ink text-xs truncate">{item.address}</p>
+                      <div className="flex items-center gap-1.5 mb-1 border-b border-outline-variant/30 pb-1">
+                        <span className="bg-primary-container text-on-primary-container text-[10px] font-bold px-1.5 py-0.5 rounded-full">{label}</span>
+                        <p className="font-bold text-on-surface text-xs truncate">{item.address}</p>
                       </div>
                       <div className="flex flex-col gap-1 mt-1">
-                        <p className="text-coral-600 font-bold text-sm leading-none">{formatPrice(item.totalPrice)}</p>
-                        <p className="text-[10px] text-slate-500 font-medium leading-none">
+                        <p className="text-primary font-bold text-sm leading-none">{formatPrice(item.totalPrice)}</p>
+                        <p className="text-xs text-on-surface-variant font-medium leading-none">
                           {item.buildingType} | {item.buildingArea} ㎡
                         </p>
                         {item.rooms && item.rooms !== "0" && (
                           <div className="flex items-center gap-1 mt-0.5">
-                            <span className="flex items-center gap-0.5 bg-coral-500/10 text-coral-600 px-1 py-0.5 rounded text-[8px] font-bold">
+                            <span className="flex items-center gap-0.5 bg-primary-container text-on-primary-container px-1.5 py-0.5 rounded-full text-[10px] font-medium">
                               <Bed className="w-2.5 h-2.5" />
                               {item.rooms}
                             </span>
                             {item.halls && item.halls !== "0" && (
-                              <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-600 px-1 py-0.5 rounded text-[8px] font-bold">
+                              <span className="flex items-center gap-0.5 bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded-full text-[10px] font-medium">
                                 <Sofa className="w-2.5 h-2.5" />
                                 {item.halls}
                               </span>
                             )}
                             {item.bathrooms && item.bathrooms !== "0" && (
-                              <span className="flex items-center gap-0.5 bg-blue-500/10 text-blue-600 px-1 py-0.5 rounded text-[8px] font-bold">
+                              <span className="flex items-center gap-0.5 bg-tertiary-container text-on-tertiary-container px-1.5 py-0.5 rounded-full text-[10px] font-medium">
                                 <Bath className="w-2.5 h-2.5" />
                                 {item.bathrooms}
                               </span>
@@ -424,22 +424,22 @@ export default function ResultsMap({
 
       <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-[1000] items-end">
         <div className="flex items-center gap-2">
-          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-white/20 dark:border-white/10 flex items-center justify-between pointer-events-auto">
+          <div className="bg-surface-container-high p-1 rounded-full shadow-[var(--md-elevation-2)] border border-outline-variant/40 flex items-center gap-0.5 pointer-events-auto">
             <button
               onClick={() => onMapLayerChange("default")}
-              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${mapLayer === "default" ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all ${mapLayer === "default" ? "bg-secondary-container text-on-secondary-container shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
             >
               標準
             </button>
             <button
               onClick={() => onMapLayerChange("satellite")}
-              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${mapLayer === "satellite" ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all ${mapLayer === "satellite" ? "bg-secondary-container text-on-secondary-container shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
             >
               衛星圖
             </button>
             <button
               onClick={() => onMapLayerChange("landmark")}
-              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${mapLayer === "landmark" ? "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all ${mapLayer === "landmark" ? "bg-secondary-container text-on-secondary-container shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
             >
               地標圖
             </button>
@@ -447,32 +447,32 @@ export default function ResultsMap({
 
           <button
             onClick={onToggleFacilities}
-            className={`h-[36px] px-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 dark:border-white/10 flex items-center gap-1.5 text-[11px] font-bold transition-all pointer-events-auto ${showFacilities ? "text-coral-600 dark:text-coral-400 bg-coral-50/90 dark:bg-coral-900/40 border-coral-200" : "text-slate-600 dark:text-slate-300 hover:bg-slate-50"}`}
+            className={`h-9 px-3.5 bg-surface-container-high rounded-full shadow-[var(--md-elevation-2)] border border-outline-variant/40 flex items-center gap-1.5 text-xs font-semibold transition-all pointer-events-auto ${showFacilities ? "text-on-primary-container bg-primary-container border-primary/40" : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"}`}
           >
-            <div className={`w-2 h-2 rounded-full ${showFacilities ? "bg-coral-500" : "bg-slate-300"}`} />
+            <div className={`w-2 h-2 rounded-full ${showFacilities ? "bg-primary" : "bg-outline"}`} />
             周邊設施
           </button>
         </div>
 
         {isGeocoding && (
-          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3 px-4 rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 w-48 transition-all animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-surface-container-high p-3.5 rounded-[24px] shadow-[var(--md-elevation-3)] border border-outline-variant/40 w-52 transition-all animate-in fade-in slide-in-from-bottom-4">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-coral-500 animate-pulse" />
-              <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">精準校正中...</span>
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="text-[11px] font-semibold text-on-surface uppercase tracking-wider">精準校正中...</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div className="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-coral-500 shadow-[0_0_8px_rgba(237,111,92,0.4)]"
+                  className="h-full bg-primary"
                   initial={{ width: 0 }}
                   animate={{ width: `${(geocodedCount / (totalToGeocode || 1)) * 100}%` }}
                 />
               </div>
-              <span className="text-[10px] font-mono font-bold text-coral-600 dark:text-coral-400">
+              <span className="text-xs font-mono font-bold text-primary">
                 {geocodedCount}/{totalToGeocode}
               </span>
             </div>
-            <p className="text-[8px] text-slate-400 mt-2 font-medium leading-tight">
+            <p className="text-[10px] text-on-surface-variant mt-2 font-normal leading-tight">
               使用免費 Nominatim 引擎
               <br />
               正在獲取精準經緯度

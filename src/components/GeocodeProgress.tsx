@@ -23,23 +23,23 @@ export function GeocodeProgress({ isGeocoding, geocodedCount, totalToGeocode }: 
           exit={{ opacity: 0, y: -6 }}
           className="mx-1.5 mb-3 sm:mx-6"
         >
-          <div className="rounded-2xl border border-amber-200/70 bg-amber-50/90 px-3.5 py-2.5 shadow-sm dark:border-amber-500/25 dark:bg-amber-950/35">
+          <div className="rounded-2xl border border-outline-variant/40 bg-surface-container-high px-4 py-3 shadow-[var(--md-elevation-1)]">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2 text-[11px] font-bold text-amber-900 dark:text-amber-100">
-                <Loader2 size={14} className="shrink-0 animate-spin text-amber-600" />
-                <MapPin size={13} className="shrink-0 text-amber-600" />
+              <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-on-surface">
+                <Loader2 size={14} className="shrink-0 animate-spin text-primary" />
+                <MapPin size={14} className="shrink-0 text-primary" />
                 <span className="truncate">
                   地圖定位中 {geocodedCount}/{totalToGeocode}
-                  <span className="ml-1 font-medium opacity-70">（門牌約略，限速請求）</span>
+                  <span className="ml-1 text-[11px] font-normal text-on-surface-variant">（門牌約略，限速請求）</span>
                 </span>
               </div>
-              <span className="shrink-0 text-[10px] font-black tabular-nums text-amber-700 dark:text-amber-300">
+              <span className="shrink-0 text-xs font-bold tabular-nums text-primary">
                 {pct}%
               </span>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-amber-200/60 dark:bg-amber-900/50">
+            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-container-highest">
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-coral-500"
+                className="h-full rounded-full bg-primary"
                 initial={{ width: 0 }}
                 animate={{ width: `${pct}%` }}
                 transition={{ duration: 0.35 }}

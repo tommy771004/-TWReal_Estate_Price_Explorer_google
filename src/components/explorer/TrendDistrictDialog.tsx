@@ -20,11 +20,11 @@ export function TrendDistrictDialog({ trendDistrict, onClose, data }: Props) {
   return (
     <>
       <Dialog open={!!trendDistrict} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-[90vw] sm:max-w-md w-full p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-[2rem] shadow-2xl">
+        <DialogContent className="max-w-[90vw] sm:max-w-md w-full p-6 bg-surface-container-high border border-outline-variant/40 rounded-[28px] shadow-[var(--md-elevation-3)]">
           <DialogHeader className="mb-4">
-            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-ink dark:text-white">
-              <span className="p-1.5 rounded-lg bg-coral-500/10 dark:bg-coral-500/20 text-coral-600 dark:text-coral-400">
-                <TrendingUp size={18} />
+            <DialogTitle className="text-lg font-bold flex items-center gap-2.5 text-on-surface">
+              <span className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+                <TrendingUp size={16} />
               </span>
               <span>區域熱度分析</span>
             </DialogTitle>
@@ -61,77 +61,77 @@ export function TrendDistrictDialog({ trendDistrict, onClose, data }: Props) {
             }
 
             let vitalityDesc = "市場觀望";
-            let vitalityColor = "text-slate-500 dark:text-slate-400 bg-slate-500/10";
+            let vitalityColor = "text-on-surface-variant bg-surface-variant";
             if (totalVolume >= 15) {
               vitalityDesc = "熱絡度極高";
-              vitalityColor = "text-rose-600 bg-rose-500/12 dark:text-rose-400 dark:bg-rose-500/15";
+              vitalityColor = "text-on-tertiary-container bg-tertiary-container";
             } else if (totalVolume >= 8) {
               vitalityDesc = "市場活絡";
-              vitalityColor = "text-coral-600 bg-coral-500/12 dark:text-coral-400 dark:bg-coral-500/15";
+              vitalityColor = "text-on-primary-container bg-primary-container";
             } else if (totalVolume >= 3) {
               vitalityDesc = "交易平穩";
-              vitalityColor = "text-teal-600 bg-teal-500/12 dark:text-teal-400 dark:bg-teal-500/15";
+              vitalityColor = "text-on-secondary-container bg-secondary-container";
             }
 
             return (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/50">
+              <div className="space-y-5">
+                <div className="flex items-center justify-between bg-surface-container p-4 rounded-[24px] border border-outline-variant/40">
                   <div>
-                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500">【{trendDistrict}】近3月成交</span>
-                    <div className="text-2xl font-black font-display text-ink dark:text-white mt-1">
-                      {totalVolume} <span className="text-sm font-bold text-slate-400 dark:text-slate-500">筆</span>
+                    <span className="text-xs font-semibold text-on-surface-variant">【{trendDistrict}】近3月成交</span>
+                    <div className="text-2xl font-bold font-display text-on-surface mt-0.5">
+                      {totalVolume} <span className="text-sm font-medium text-on-surface-variant">筆</span>
                     </div>
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500 block text-right">市場活絡度</span>
-                    <span className={`inline-block px-2.5 py-1 rounded-xl text-xs font-black tracking-wider mt-1.5 ${vitalityColor}`}>
+                    <span className="text-[11px] font-semibold text-on-surface-variant block text-right">市場活絡度</span>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wide mt-1.5 ${vitalityColor}`}>
                       {vitalityDesc}
                     </span>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block px-1">成交量走勢</span>
-                  <div className="h-[180px] w-full bg-slate-50/50 dark:bg-slate-950/20 rounded-2xl border border-slate-100 dark:border-slate-850 p-4 flex flex-col justify-between">
-                    <div className="h-[120px] w-full flex items-end justify-around pb-2 border-b border-slate-100 dark:border-slate-800/50">
+                <div className="space-y-3">
+                  <span className="text-xs font-semibold text-on-surface-variant block px-1">成交量走勢</span>
+                  <div className="h-[180px] w-full bg-surface-container rounded-[24px] border border-outline-variant/40 p-4 flex flex-col justify-between">
+                    <div className="h-[120px] w-full flex items-end justify-around pb-2 border-b border-outline-variant/30">
                       {trendData.map((d, index) => {
                         const maxCount = Math.max(...trendData.map(t => t.count), 1);
                         const heightPct = `${Math.max((d.count / maxCount) * 100, 8)}%`;
                         const isLatest = index === trendData.length - 1;
                         
                         return (
-                          <div key={d.month} className="flex flex-col items-center gap-2 group w-12">
-                            <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          <div key={d.month} className="flex flex-col items-center gap-1.5 group w-12">
+                            <span className="text-[11px] font-bold text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                               {d.count} 筆
                             </span>
-                            <div className="w-8 relative flex justify-center bg-slate-100 dark:bg-slate-800/50 rounded-t-lg h-[90px] items-end">
+                            <div className="w-8 relative flex justify-center bg-surface-container-highest rounded-t-lg h-[90px] items-end">
                               <motion.div 
                                 initial={{ height: 0 }}
                                 animate={{ height: heightPct }}
                                 transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
                                 className={`w-full rounded-t-md transition-colors ${
                                   isLatest 
-                                    ? "bg-gradient-to-t from-coral-600 to-coral-400 shadow-[0_4px_12px_rgba(237,111,92,0.2)]" 
-                                    : "bg-slate-400/30 dark:bg-slate-700 hover:bg-slate-500/40"
+                                    ? "bg-primary shadow-xs" 
+                                    : "bg-secondary/40 hover:bg-secondary/60"
                                 }`}
                               />
                             </div>
-                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                            <span className="text-xs font-semibold text-on-surface-variant whitespace-nowrap">
                               {d.month.split('/')[1]}月
                             </span>
                           </div>
                         );
                       })}
                     </div>
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 pt-1.5 px-1">
+                    <div className="flex items-center justify-between text-xs font-semibold text-on-surface-variant pt-1.5 px-1">
                       <span>統計區間：{trendData[0]?.month} - {trendData[2]?.month}</span>
                       {changeText && (
-                        <span className={`font-black flex items-center gap-0.5 ${
+                        <span className={`font-bold flex items-center gap-0.5 ${
                           changeStatus === 'up' 
-                            ? 'text-rose-600 dark:text-rose-400' 
+                            ? 'text-primary' 
                             : changeStatus === 'down' 
-                              ? 'text-emerald-600 dark:text-emerald-400' 
-                              : 'text-slate-500'
+                              ? 'text-secondary' 
+                              : 'text-on-surface-variant'
                         }`}>
                           {changeStatus === 'up' && <ArrowUp size={12} />}
                           {changeStatus === 'down' && <ArrowDown size={12} />}
@@ -142,7 +142,7 @@ export function TrendDistrictDialog({ trendDistrict, onClose, data }: Props) {
                   </div>
                 </div>
                 
-                <div className="text-[11px] leading-relaxed text-slate-400 dark:text-slate-500 bg-slate-500/5 dark:bg-black/15 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
+                <div className="text-xs leading-relaxed text-on-surface-variant bg-surface-container p-3.5 rounded-2xl border border-outline-variant/30">
                   💡 統計說明：成交量係指該行政區於特定月份之實價登錄移轉件數。若近一期較前一期有顯著增長，表示該區買氣與流動性極佳，適合買方積極考慮。
                 </div>
               </div>

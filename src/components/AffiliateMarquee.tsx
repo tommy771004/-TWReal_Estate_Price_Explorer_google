@@ -12,7 +12,7 @@ import {
 
 function MarqueeRow({ offers, ariaHidden }: { offers: AffiliateOffer[]; ariaHidden?: boolean }) {
   return (
-    <div className="flex shrink-0 items-center gap-3 pr-3" aria-hidden={ariaHidden}>
+    <div className="flex shrink-0 items-center gap-2.5 pr-2.5" aria-hidden={ariaHidden}>
       {offers.map((o) => (
         <a
           key={o.id}
@@ -22,9 +22,9 @@ function MarqueeRow({ offers, ariaHidden }: { offers: AffiliateOffer[]; ariaHidd
           rel={AFFILIATE_LINK_REL}
           tabIndex={ariaHidden ? -1 : undefined}
           onClick={() => trackAffiliateEvent("affiliate_click", o, "marquee")}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-4 py-1.5 text-sm font-bold text-slate-700 transition hover:border-coral-400 hover:text-coral-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:text-coral-400"
+          className="inline-flex shrink-0 items-center gap-2 rounded-full border border-outline bg-surface px-4 py-1.5 text-xs font-semibold text-on-surface transition-colors hover:bg-surface-container-highest hover:border-primary"
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-coral-500/70" />
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
           {o.partner || o.title}
         </a>
       ))}
@@ -42,10 +42,10 @@ export function AffiliateChips({ title = "為這間房準備", limit = 8 }: { ti
   if (partners.length === 0) return null;
 
   return (
-    <div ref={containerRef} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+    <div ref={containerRef} className="rounded-[24px] border border-outline-variant/40 bg-surface-container p-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{title}</span>
-        <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">廣告</span>
+        <span className="text-xs font-bold text-on-surface">{title}</span>
+        <span className="rounded-full bg-surface-container-highest px-2.5 py-0.5 text-[11px] font-medium text-on-surface-variant">廣告</span>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {partners.map((o) => (
@@ -56,9 +56,9 @@ export function AffiliateChips({ title = "為這間房準備", limit = 8 }: { ti
             target="_blank"
             rel={AFFILIATE_LINK_REL}
             onClick={() => trackAffiliateEvent("affiliate_click", o, "chips")}
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:border-coral-400 hover:text-coral-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:text-coral-400"
+            className="inline-flex items-center gap-1.5 rounded-full border border-outline bg-surface px-3 py-1.5 text-xs font-semibold text-on-surface transition-colors hover:bg-surface-container-highest hover:border-primary"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-coral-500/70" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
             {o.partner || o.title}
           </a>
         ))}
@@ -86,13 +86,13 @@ export function AffiliateMarquee() {
         @media (prefers-reduced-motion: reduce) { .affiliate-marquee-track { animation: none; } }
       `}</style>
       <div className="flex items-center justify-between px-1">
-        <span className="text-xs font-bold tracking-wide text-slate-500 dark:text-slate-400">買房後，順手準備</span>
-        <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">廣告 · 合作推廣</span>
+        <span className="text-xs font-semibold text-on-surface-variant">買房後，順手準備</span>
+        <span className="rounded-full bg-surface-container-highest px-2.5 py-0.5 text-[11px] font-medium text-on-surface-variant">廣告 · 合作推廣</span>
       </div>
-      <div ref={containerRef} className="group relative mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 py-3 dark:border-slate-800 dark:bg-slate-900/40">
+      <div ref={containerRef} className="group relative mt-2 overflow-hidden rounded-[28px] border border-outline-variant/40 bg-surface-container py-3.5 shadow-xs">
         {/* 兩側淡出遮罩 */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-slate-50/90 to-transparent dark:from-slate-950/60" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-slate-50/90 to-transparent dark:from-slate-950/60" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-surface-container to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-surface-container to-transparent" />
         <div className="affiliate-marquee-track flex w-max">
           <MarqueeRow offers={offers} />
           <MarqueeRow offers={offers} ariaHidden />

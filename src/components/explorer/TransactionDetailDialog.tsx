@@ -123,7 +123,7 @@ export function TransactionDetailDialog({
   return (
     <>
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent showCloseButton={false} className="max-w-[95vw] sm:max-w-4xl w-full p-0 overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-slate-200/80 dark:border-slate-800/80 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)]">
+        <DialogContent showCloseButton={false} className="max-w-[95vw] sm:max-w-4xl w-full p-0 overflow-hidden bg-surface-container-high border border-outline-variant/40 rounded-[28px] shadow-[var(--md-elevation-3)]">
           {selectedItem && (
             <motion.div 
               initial={{ y: "40px", opacity: 0 }}
@@ -137,17 +137,11 @@ export function TransactionDetailDialog({
               className="flex flex-col h-full max-h-[95vh] sm:max-h-[90vh]"
             >
               {/* Premium Dialog Header */}
-              <motion.div variants={modalItemVariants} className="py-4 px-6 sm:py-5 sm:px-8 bg-white/25 dark:bg-slate-950/20 backdrop-blur-2xl border-b border-slate-200/30 dark:border-slate-800/40 relative overflow-hidden shrink-0 z-10 transition-all">
-                {/* Decorative background glows */}
-                <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-coral-500/10 dark:bg-coral-500/5 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-64 h-64 bg-blue-500/10 dark:bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
-                
-                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-coral-500/30 dark:via-coral-500/20 to-transparent" />
-                
+              <motion.div variants={modalItemVariants} className="py-4 px-6 sm:py-5 sm:px-8 bg-surface-container border-b border-outline-variant/30 relative overflow-hidden shrink-0 z-10 transition-colors">
                 {/* Custom Close Button */}
                 <button 
                   onClick={() => onClose()}
-                  className="absolute top-3.5 right-4 sm:top-5 sm:right-6 w-9 h-9 flex items-center justify-center rounded-full bg-white/60 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-700/80 border border-slate-200/40 dark:border-slate-700/40 backdrop-blur-md shadow-sm transition-all z-50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-coral-500/50"
+                  className="absolute top-3.5 right-4 sm:top-5 sm:right-6 w-9 h-9 flex items-center justify-center rounded-full bg-surface-container-highest hover:bg-surface-container-highest/80 border border-outline-variant/40 shadow-xs transition-colors z-50 text-on-surface-variant hover:text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40"
                   title="關閉"
                 >
                   <X size={16} strokeWidth={2.5} />
@@ -157,22 +151,22 @@ export function TransactionDetailDialog({
                   <div className="space-y-3 w-full sm:max-w-2xl">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                        <div className="flex items-center gap-2">
-                         <Badge className="bg-coral-500/10 text-coral-600 dark:bg-coral-500/20 dark:text-coral-300 border-coral-500/20 px-2.5 py-0.5 rounded-full font-bold tracking-widest text-[10px] uppercase shadow-sm backdrop-blur-sm">
+                         <Badge className="bg-primary-container text-on-primary-container border-none px-3 py-1 rounded-full font-bold tracking-wider text-xs uppercase shadow-xs">
                            {selectedItem.district}
                          </Badge>
                        </div>
                        <div className="flex flex-row items-center sm:items-end gap-3 select-text">
-                         <div className="flex items-baseline gap-1">
-                           <span className="text-slate-500 dark:text-slate-400 text-[9px] uppercase font-black tracking-[0.2em]">登錄價</span>
-                           <span className="text-2xl sm:text-3xl font-display font-black text-slate-800 dark:text-slate-100 tracking-tighter drop-shadow-sm leading-none">
+                         <div className="flex items-baseline gap-1.5">
+                           <span className="text-on-surface-variant text-[11px] uppercase font-bold tracking-wider">登錄價</span>
+                           <span className="text-2xl sm:text-3xl font-display font-black text-on-surface tracking-tight leading-none">
                              {formatPrice(selectedItem.totalPrice)}
                            </span>
                          </div>
                          {selectedItem.parkingPrice && parseFloat(selectedItem.parkingPrice) > 0 && (
-                            <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 bg-white/60 dark:bg-slate-950/60 px-2 py-0.5 rounded-md backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm">
-                              <span className="flex items-center gap-0.5 text-slate-700 dark:text-slate-300"><Home size={10} className="text-slate-400" /> {formatPrice((parseFloat(selectedItem.totalPrice) - parseFloat(selectedItem.parkingPrice)).toString())}</span>
-                              <span className="text-slate-300 dark:text-slate-600">|</span>
-                              <span className="flex items-center gap-0.5 text-slate-700 dark:text-slate-300"><Car size={10} className="text-slate-400" /> {formatPrice(selectedItem.parkingPrice)}</span>
+                            <div className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5 bg-surface-container-highest px-2.5 py-1 rounded-full border border-outline-variant/30 shadow-xs">
+                              <span className="flex items-center gap-1 text-on-surface"><Home size={12} className="text-on-surface-variant" /> {formatPrice((parseFloat(selectedItem.totalPrice) - parseFloat(selectedItem.parkingPrice)).toString())}</span>
+                              <span className="text-outline-variant">|</span>
+                              <span className="flex items-center gap-1 text-on-surface"><Car size={12} className="text-on-surface-variant" /> {formatPrice(selectedItem.parkingPrice)}</span>
                             </div>
                          )}
                        </div>
@@ -267,15 +261,15 @@ export function TransactionDetailDialog({
                     ].map((stat, i) => (
                       <div 
                         key={i}
-                        className={`liquid-glass-input p-5 sm:p-6 rounded-[2rem] border-white/40 dark:border-white/10 relative overflow-hidden group transition-all hover:scale-101 hover:-translate-y-0.5`}
+                        className="rounded-[24px] border border-outline-variant/40 bg-surface-container p-5 relative overflow-hidden transition-colors hover:bg-surface-container-highest"
                       >
-                         <div className={`absolute -right-2 -top-2 p-6 opacity-5 group-hover:opacity-10 transition-opacity ${stat.color} rotate-12`}>{stat.icon}</div>
-                         <div className="text-[10px] font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase mb-3 flex items-center gap-2">
-                           <div className={`w-6 h-6 rounded-lg ${stat.bg} flex items-center justify-center ${stat.color}`}>{stat.icon}</div>
+                         <div className={`absolute -right-2 -top-2 p-6 opacity-5 rotate-12 ${stat.color}`}>{stat.icon}</div>
+                         <div className="text-[11px] font-semibold tracking-wide text-on-surface-variant uppercase mb-3 flex items-center gap-2">
+                           <div className={`w-7 h-7 rounded-full ${stat.bg} flex items-center justify-center ${stat.color}`}>{stat.icon}</div>
                            {stat.label}
                          </div>
-                         <div className="text-2xl font-bold text-ink dark:text-white tracking-tight">{stat.value}</div>
-                         {stat.sub && <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-2 opacity-60 tracking-wide">{stat.sub}</div>}
+                         <div className="text-2xl font-bold text-on-surface tracking-tight">{stat.value}</div>
+                         {stat.sub && <div className="text-xs text-on-surface-variant font-medium mt-1.5 tracking-normal">{stat.sub}</div>}
                       </div>
                     ))}
                   </motion.div>
@@ -564,9 +558,9 @@ export function TransactionDetailDialog({
 
                   {/* Remarks */}
                   {selectedItem.remarks && (
-                    <motion.div variants={modalItemVariants} className="space-y-3">
-                      <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm">備註</h3>
-                      <div className="liquid-glass-input p-5 rounded-[1.5rem] text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed max-w-none prose prose-sm shadow-inner italic">
+                    <motion.div variants={modalItemVariants} className="space-y-2">
+                      <h3 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider px-1">備註</h3>
+                      <div className="rounded-[24px] border border-outline-variant/40 bg-surface-container p-5 text-sm text-on-surface-variant font-medium leading-relaxed italic">
                          "{selectedItem.remarks}"
                       </div>
                     </motion.div>
@@ -577,10 +571,10 @@ export function TransactionDetailDialog({
                     <Button
                       type="button"
                       variant="outline"
-                      className={`rounded-xl text-xs font-bold ${
+                      className={`rounded-full text-xs font-semibold h-9 px-4 border-outline-variant/50 transition-colors ${
                         compareList.some((c) => c.id === selectedItem.id)
-                          ? "border-coral-400/50 bg-coral-500/10 text-coral-600"
-                          : ""
+                          ? "bg-primary-container text-on-primary-container border-primary/40"
+                          : "bg-surface text-on-surface hover:bg-surface-container-highest"
                       }`}
                       onClick={(e) => toggleCompare(selectedItem, e)}
                     >
@@ -591,20 +585,20 @@ export function TransactionDetailDialog({
                     <Button
                       type="button"
                       variant="outline"
-                      className="rounded-xl text-xs font-bold"
+                      className="rounded-full text-xs font-semibold h-9 px-4 border-outline-variant/50 bg-surface text-on-surface hover:bg-surface-container-highest transition-colors"
                       onClick={() => setNearbyFromItem(selectedItem)}
                     >
-                      <Crosshair size={14} className="mr-1.5" />
+                      <Crosshair size={14} className="mr-1.5 text-primary" />
                       以此為中心找附近
                     </Button>
                     {selectedItem.buildCase && (
                       <Button
                         type="button"
                         variant="outline"
-                        className={`rounded-xl text-xs font-bold ${
+                        className={`rounded-full text-xs font-semibold h-9 px-4 border-outline-variant/50 transition-colors ${
                           focusBuildCase === selectedItem.buildCase
-                            ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                            : ""
+                            ? "bg-secondary-container text-on-secondary-container border-secondary/40"
+                            : "bg-surface text-on-surface hover:bg-surface-container-highest"
                         }`}
                         onClick={() => {
                           if (focusBuildCase === selectedItem.buildCase) {
@@ -616,7 +610,7 @@ export function TransactionDetailDialog({
                           }
                         }}
                       >
-                        <Building size={14} className="mr-1.5" />
+                        <Building size={14} className="mr-1.5 text-secondary" />
                         {focusBuildCase === selectedItem.buildCase ? "取消只看此建案" : "只看此建案"}
                       </Button>
                     )}
@@ -628,20 +622,19 @@ export function TransactionDetailDialog({
                   </motion.div>
                 </motion.div>
                 
-                {/* Bottom Liquid Glass Fade Mask */}
+                {/* Bottom Fade Mask */}
                 <div 
-                  className={`pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-slate-900 dark:via-slate-900/80 to-transparent z-25 backdrop-blur-[1px] transition-opacity duration-300 ${
+                  className={`pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-surface-container-high to-transparent z-25 transition-opacity duration-300 ${
                     detailShowBottomMask ? "opacity-100" : "opacity-0"
                   }`}
                 />
               </div>
             </div>
 
-              <div className="py-3 px-6 sm:py-4 sm:px-8 border-t border-slate-200/30 dark:border-slate-800/40 bg-white/25 dark:bg-slate-950/20 backdrop-blur-2xl flex justify-end shrink-0 z-10 transition-all">
+              <div className="py-3 px-6 sm:py-4 sm:px-8 border-t border-outline-variant/30 bg-surface-container flex justify-end shrink-0 z-10 transition-colors">
                 <Button 
                   onClick={() => onClose()}
-                  variant="outline"
-                  className="rounded-xl px-8 h-10 liquid-glass-button-primary shadow-lg border-white/10"
+                  className="rounded-full px-8 h-10 bg-primary text-on-primary font-semibold shadow-xs hover:bg-primary/90 transition-colors"
                 >
                   確認並關閉
                 </Button>

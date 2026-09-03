@@ -168,25 +168,24 @@ export function ResultsWorkspace() {
                       : "grid-cols-1"
                   }`}
                 >
-                <div className="relative mt-0 flex w-full flex-1 flex-col overflow-hidden rounded-t-none border-b-0 shadow-none liquid-glass sm:mt-4 sm:rounded-[2rem]">
-                  <div className="relative flex items-center justify-between gap-2 border-b border-slate-200/80 bg-white px-3 py-2.5 dark:border-slate-800/80 dark:bg-slate-900 sm:px-5">
-                    <div className="absolute inset-y-0 left-0 w-1 bg-coral-500" />
-                    <div className="relative z-10 flex min-w-0 items-center gap-2.5">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-coral-500/10 bg-coral-500/10">
-                        <Filter className="h-4 w-4 text-coral-600 dark:text-coral-400" />
+                <div className="relative mt-0 flex w-full flex-1 flex-col overflow-hidden rounded-t-none border border-outline-variant/40 bg-surface-container-low shadow-[var(--md-elevation-1)] sm:mt-4 sm:rounded-[28px]">
+                  <div className="relative flex items-center justify-between gap-2 border-b border-outline-variant/30 bg-surface-container px-3.5 py-3 sm:px-6">
+                    <div className="relative z-10 flex min-w-0 items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container shadow-xs">
+                        <Filter className="h-4 w-4" />
                       </div>
-                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <span className="text-xs font-bold uppercase tracking-[0.18em] text-ink dark:text-white">
+                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+                        <span className="text-sm font-bold tracking-tight text-on-surface">
                           搜尋結果
                         </span>
-                        <span className="truncate text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                        <span className="truncate text-xs font-medium text-on-surface-variant">
                           目前找到 {filteredData.length.toLocaleString()} 筆
-                          <span className="mx-1 text-slate-300 dark:text-slate-600">·</span>
+                          <span className="mx-1 text-outline-variant">·</span>
                           {formatPeriodLabel(period)}
                         </span>
                       </div>
                     </div>
-                    <div className="relative z-10 flex shrink-0 items-center gap-1.5">
+                    <div className="relative z-10 flex shrink-0 items-center gap-2">
                     <ResultActions
                       savedSearches={savedSearches}
                       onSaveCurrent={() => setIsSavingSearch(true)}
@@ -197,11 +196,12 @@ export function ResultsWorkspace() {
                       onCopyShareLink={copyShareLink}
                       shareStatus={shareStatus}
                     />
-                    <div className="flex items-center rounded-lg border border-white/40 bg-white/40 p-0.5 dark:border-white/10 dark:bg-white/5">
+                    {/* Material 3 Segmented Button */}
+                    <div className="flex items-center rounded-full border border-outline-variant/50 bg-surface-container-highest p-1 shadow-xs">
                       <button
                         type="button"
                         onClick={() => setViewMode("list")}
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-all ${viewMode === "list" ? "bg-coral-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "list" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
                         title="列表"
                         aria-label="列表視圖"
                       >
@@ -211,7 +211,7 @@ export function ResultsWorkspace() {
                       <button
                         type="button"
                         onClick={() => setViewMode("table")}
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-all ${viewMode === "table" ? "bg-coral-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "table" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
                         title="表格"
                         aria-label="表格視圖"
                       >
@@ -222,7 +222,7 @@ export function ResultsWorkspace() {
                         <button
                           type="button"
                           onClick={() => setViewMode("aggregated")}
-                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-all ${viewMode === "aggregated" ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "aggregated" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
                           title="建案聚合"
                           aria-label="建案聚合視圖"
                         >
@@ -233,7 +233,7 @@ export function ResultsWorkspace() {
                       <button
                         type="button"
                         onClick={() => setViewMode("map")}
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-all ${viewMode === "map" ? "bg-coral-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "map" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
                         title="地圖"
                         aria-label="地圖視圖"
                       >
@@ -255,27 +255,27 @@ export function ResultsWorkspace() {
                       className="p-8 sm:p-16 space-y-12 flex flex-col items-center justify-center min-h-[500px] w-full"
                     >
                     <div className="relative flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-full border-2 border-slate-100 dark:border-slate-800 flex items-center justify-center relative">
+                      <div className="w-16 h-16 rounded-full border-2 border-surface-container-highest flex items-center justify-center relative">
                         <motion.div 
                           animate={{ rotate: 360 }}
                           transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-                          className="absolute inset-[-2px] rounded-full border-t-2 border-coral-500" 
+                          className="absolute inset-[-2px] rounded-full border-t-2 border-primary" 
                         />
-                        <Database size={22} className="text-coral-500 relative z-10" />
+                        <Database size={22} className="text-primary relative z-10" />
                       </div>
                     </div>
                     
                     <div className="text-center space-y-3 z-10">
-                      <h3 className="text-xl sm:text-2xl font-bold text-ink dark:text-white tracking-tight">{robotStatus || "正在擷取開放資料..."}</h3>
-                      <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold max-w-sm mx-auto uppercase tracking-widest leading-relaxed">內政部 實價登錄 API 連線中<br/>即時解析開放資料集結構</p>
+                      <h3 className="text-xl sm:text-2xl font-bold text-on-surface tracking-tight">{robotStatus || "正在擷取開放資料..."}</h3>
+                      <p className="text-xs sm:text-sm text-on-surface-variant font-medium max-w-sm mx-auto tracking-wide leading-relaxed">內政部 實價登錄 API 連線中<br/>即時解析開放資料集結構</p>
                     </div>
       
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-3xl pt-8">
                       {[...Array(3)].map((_, i) => (
-                        <div key={i} className="space-y-3 p-6 liquid-glass-panel rounded-3xl border-transparent shadow-none opacity-40">
-                          <Skeleton className="h-4 w-2/3 bg-slate-200/50 dark:bg-slate-800/50 rounded-full" />
-                          <Skeleton className="h-10 w-full bg-slate-200/50 dark:bg-slate-800/50 rounded-2xl" />
-                          <Skeleton className="h-4 w-1/2 bg-slate-200/50 dark:bg-slate-800/50 rounded-full" />
+                        <div key={i} className="space-y-3 p-6 rounded-[24px] bg-surface-container border border-outline-variant/30 shadow-none opacity-60">
+                          <Skeleton className="h-4 w-2/3 bg-surface-container-highest rounded-full" />
+                          <Skeleton className="h-10 w-full bg-surface-container-highest rounded-2xl" />
+                          <Skeleton className="h-4 w-1/2 bg-surface-container-highest rounded-full" />
                         </div>
                       ))}
                     </div>
@@ -290,14 +290,14 @@ export function ResultsWorkspace() {
                     className="flex-1 min-h-[300px] flex flex-col p-4 sm:p-6 overflow-x-auto w-full"
                   >
                     <Table className="min-w-[800px]">
-                      <TableHeader className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-10 border-b border-slate-200/80 dark:border-slate-800/80">
+                      <TableHeader className="sticky top-0 bg-surface-container z-10 border-b border-outline-variant/30">
                         <TableRow className="border-none hover:bg-transparent">
-                          <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest pl-6">建案名稱/社區</TableHead>
-                          <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest px-4">區域</TableHead>
-                          <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">成交件數</TableHead>
-                          <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">平均單價</TableHead>
-                          <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">單價區間</TableHead>
-                          <TableHead className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-widest text-right px-4">總價區間</TableHead>
+                          <TableHead className="text-on-surface-variant font-bold text-xs uppercase tracking-wider pl-6">建案名稱/社區</TableHead>
+                          <TableHead className="text-on-surface-variant font-bold text-xs uppercase tracking-wider px-4">區域</TableHead>
+                          <TableHead className="text-on-surface-variant font-bold text-xs uppercase tracking-wider text-right px-4">成交件數</TableHead>
+                          <TableHead className="text-on-surface-variant font-bold text-xs uppercase tracking-wider text-right px-4">平均單價</TableHead>
+                          <TableHead className="text-on-surface-variant font-bold text-xs uppercase tracking-wider text-right px-4">單價區間</TableHead>
+                          <TableHead className="text-on-surface-variant font-bold text-xs uppercase tracking-wider text-right px-4">總價區間</TableHead>
                         </TableRow>
                       </TableHeader>
                       <AnimatePresence mode="wait">
@@ -322,30 +322,30 @@ export function ResultsWorkspace() {
                                 hidden: { opacity: 0, y: 10 },
                                 visible: { opacity: 1, y: 0, transition: { ease: "easeOut", duration: 0.4 } }
                               }}
-                              className="group hover:bg-white/60 dark:hover:bg-slate-800/60 border-b border-slate-200/50 dark:border-slate-800/50 cursor-pointer"
+                              className="group hover:bg-surface-container-highest/60 border-b border-outline-variant/20 cursor-pointer transition-colors"
                               onClick={() => {
                                 setSearch(item.buildCase);
                                 setViewMode("list");
                               }}
                             >
-                              <TableCell className="pl-6 font-bold text-ink/90 dark:text-slate-200 truncate max-w-[200px]">
+                              <TableCell className="pl-6 font-bold text-on-surface truncate max-w-[200px]">
                                 {item.buildCase}
                               </TableCell>
                               <TableCell>
-                                <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-[10px]">
+                                <Badge variant="secondary" className="rounded-full bg-secondary-container text-on-secondary-container font-semibold text-xs px-2.5 py-0.5">
                                   {item.district}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-right text-slate-700 dark:text-slate-300 font-mono font-medium">
+                              <TableCell className="text-right text-on-surface-variant font-mono font-medium">
                                 {item.count} 筆
                               </TableCell>
-                              <TableCell className="text-right text-coral-600 dark:text-coral-400 font-mono font-bold">
+                              <TableCell className="text-right text-primary font-mono font-bold">
                                 {(Math.round(item.avgUnitPrice * 10) / 10).toFixed(1)} 萬/坪
                               </TableCell>
-                              <TableCell className="text-right text-slate-500 font-mono text-xs">
+                              <TableCell className="text-right text-on-surface-variant font-mono text-xs">
                                 {(Math.round(item.minUnitPrice * 10) / 10).toFixed(1)} ~ {(Math.round(item.maxUnitPrice * 10) / 10).toFixed(1)} 萬
                               </TableCell>
-                              <TableCell className="text-right text-slate-500 font-mono text-xs">
+                              <TableCell className="text-right text-on-surface-variant font-mono text-xs">
                                 {(item.minPrice / 10000).toFixed(0)} ~ {(item.maxPrice / 10000).toFixed(0)} 萬
                               </TableCell>
                             </motion.tr>
@@ -395,7 +395,7 @@ export function ResultsWorkspace() {
                       <div className="mb-4 flex items-center justify-end gap-2 px-1.5 sm:px-6">
                         <label
                           htmlFor="results-sort"
-                          className="text-[11px] font-bold text-slate-500 dark:text-slate-400"
+                          className="text-xs font-semibold text-on-surface-variant"
                         >
                           排序
                         </label>
@@ -403,7 +403,7 @@ export function ResultsWorkspace() {
                           id="results-sort"
                           value={sortValue}
                           onChange={(e) => setSortConfig(sortConfigFromValue(e.target.value as SortOptionValue))}
-                          className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-bold text-slate-700 outline-none transition-colors focus:border-coral-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                          className="h-9 rounded-full border border-outline bg-surface px-3.5 text-xs font-semibold text-on-surface outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
                         >
                           {SORT_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -414,17 +414,17 @@ export function ResultsWorkspace() {
                       </div>
 
                       {viewMode === "table" ? (
-                        <div className="mx-0 overflow-x-auto rounded-2xl border border-slate-200/50 bg-white/80 shadow-none dark:border-slate-800/60 dark:bg-slate-900/40 sm:mx-6">
+                        <div className="mx-0 overflow-x-auto rounded-[24px] border border-outline-variant/40 bg-surface-container-low shadow-[var(--md-elevation-1)] sm:mx-6">
                           <Table className="min-w-[880px]">
-                            <TableHeader>
-                              <TableRow className="hover:bg-transparent">
-                                <TableHead className="pl-4 text-[10px] font-black uppercase tracking-widest text-slate-400">日期</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">地址</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">型態</TableHead>
-                                <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">坪數</TableHead>
-                                <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">單價</TableHead>
-                                <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-400">總價</TableHead>
-                                <TableHead className="pr-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">操作</TableHead>
+                            <TableHeader className="bg-surface-container border-b border-outline-variant/30">
+                              <TableRow className="hover:bg-transparent border-none">
+                                <TableHead className="pl-5 text-xs font-bold uppercase tracking-wider text-on-surface-variant">日期</TableHead>
+                                <TableHead className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">地址</TableHead>
+                                <TableHead className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">型態</TableHead>
+                                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-on-surface-variant">坪數</TableHead>
+                                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-on-surface-variant">單價</TableHead>
+                                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-on-surface-variant">總價</TableHead>
+                                <TableHead className="pr-5 text-right text-xs font-bold uppercase tracking-wider text-on-surface-variant">操作</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -439,40 +439,40 @@ export function ResultsWorkspace() {
                                 return (
                                   <TableRow
                                     key={item.id}
-                                    className="cursor-pointer border-slate-100 dark:border-slate-800/80"
+                                    className="cursor-pointer border-b border-outline-variant/20 hover:bg-surface-container-highest/50 transition-colors"
                                     onClick={() => setSelectedItem(item)}
                                   >
-                                    <TableCell className="pl-4 text-xs font-bold tabular-nums text-slate-500">
+                                    <TableCell className="pl-5 text-xs font-medium tabular-nums text-on-surface-variant">
                                       {formatDate(item.date)}
                                     </TableCell>
                                     <TableCell className="max-w-[220px]">
-                                      <div className="truncate text-xs font-bold text-ink dark:text-white" title={item.address}>
+                                      <div className="truncate text-xs font-bold text-on-surface" title={item.address}>
                                         {item.address}
                                       </div>
-                                      <div className="mt-0.5 text-[10px] font-bold text-slate-400">{item.district}</div>
+                                      <div className="mt-0.5 text-[11px] font-medium text-on-surface-variant">{item.district}</div>
                                     </TableCell>
-                                    <TableCell className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                                    <TableCell className="text-xs font-medium text-on-surface">
                                       {(item.buildingType || "—").split("(")[0]}
                                     </TableCell>
-                                    <TableCell className="text-right text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300">
+                                    <TableCell className="text-right text-xs font-medium tabular-nums text-on-surface">
                                       {ping}
                                     </TableCell>
-                                    <TableCell className="text-right text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300">
+                                    <TableCell className="text-right text-xs font-medium tabular-nums text-on-surface">
                                       {unitWan}
                                     </TableCell>
-                                    <TableCell className="text-right text-sm font-black tabular-nums text-coral-600 dark:text-coral-400">
+                                    <TableCell className="text-right text-sm font-bold tabular-nums text-primary">
                                       {formatPrice(item.totalPrice)}
                                     </TableCell>
-                                    <TableCell className="pr-4 text-right" onClick={(e) => e.stopPropagation()}>
-                                      <div className="flex items-center justify-end gap-1">
+                                    <TableCell className="pr-5 text-right" onClick={(e) => e.stopPropagation()}>
+                                      <div className="flex items-center justify-end gap-1.5">
                                         <button
                                           type="button"
                                           title={inCompare ? "移出比較" : "加入比較"}
                                           onClick={(e) => toggleCompare(item, e)}
-                                          className={`rounded-lg px-2 py-1 text-[10px] font-bold ${
+                                          className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
                                             inCompare
-                                              ? "bg-coral-500/15 text-coral-600"
-                                              : "bg-slate-100 text-slate-500 hover:text-coral-600 dark:bg-slate-800"
+                                              ? "bg-primary-container text-on-primary-container"
+                                              : "bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
                                           }`}
                                         >
                                           比較
@@ -480,7 +480,7 @@ export function ResultsWorkspace() {
                                         <button
                                           type="button"
                                           onClick={() => setSelectedItem(item)}
-                                          className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600 hover:bg-coral-500 hover:text-white dark:bg-slate-800 dark:text-slate-300"
+                                          className="rounded-full bg-secondary-container px-3 py-1 text-xs font-semibold text-on-secondary-container hover:bg-secondary-container/80 transition-colors"
                                         >
                                           詳情
                                         </button>
@@ -492,7 +492,7 @@ export function ResultsWorkspace() {
                             </TableBody>
                           </Table>
                           {paginatedData.length === 0 && !loading && (
-                            <div className="py-12 text-center text-sm font-bold text-slate-400">此頁無資料</div>
+                            <div className="py-12 text-center text-xs font-medium text-on-surface-variant">此頁無資料</div>
                           )}
                         </div>
                       ) : (
@@ -532,8 +532,8 @@ export function ResultsWorkspace() {
                     </div>
       
                     {filteredData.length > 0 && (
-                      <div className="flex flex-wrap items-center justify-between gap-4 mt-4 px-1.5 sm:px-6 mb-8">
-                        <div className="text-sm font-medium text-slate-500">
+                      <div className="flex flex-wrap items-center justify-between gap-4 mt-6 px-1.5 sm:px-6 mb-8">
+                        <div className="text-xs font-semibold text-on-surface-variant">
                           共 {filteredData.length.toLocaleString()} 筆
                         </div>
                         
@@ -541,24 +541,24 @@ export function ResultsWorkspace() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="bg-white/60 dark:bg-slate-800/60 disabled:opacity-50"
+                            className="h-9 rounded-full border border-outline bg-surface px-4 text-xs font-semibold text-on-surface hover:bg-surface-container-highest disabled:opacity-38"
                             disabled={currentPage === 1}
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                           >
                             上一頁
                           </Button>
                           <div className="flex items-center gap-1 mx-2">
-                            <span className="text-sm font-bold text-ink dark:text-white">
+                            <span className="text-xs font-bold text-on-surface">
                               {currentPage}
                             </span>
-                            <span className="text-sm text-slate-400">
+                            <span className="text-xs font-medium text-on-surface-variant">
                               / {totalPages}
                             </span>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="bg-white/60 dark:bg-slate-800/60 disabled:opacity-50"
+                            className="h-9 rounded-full border border-outline bg-surface px-4 text-xs font-semibold text-on-surface hover:bg-surface-container-highest disabled:opacity-38"
                             disabled={currentPage === totalPages}
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                           >
@@ -574,30 +574,28 @@ export function ResultsWorkspace() {
                       <motion.div 
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col items-center justify-center py-20 px-6 text-slate-400 dark:text-slate-500"
+                        className="flex flex-col items-center justify-center py-20 px-6 text-on-surface-variant"
                       >
-                        <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-center mb-5 shadow-sm">
-                          <Compass className="w-6 h-6 text-slate-400 dark:text-slate-500" />
+                        <div className="w-16 h-16 rounded-full bg-surface-container-highest border border-outline-variant/40 flex items-center justify-center mb-5 shadow-xs">
+                          <Compass className="w-6 h-6 text-primary" />
                         </div>
-                        <p className="font-sans font-bold text-base tracking-tight text-slate-800 dark:text-slate-200 text-center">
+                        <p className="font-bold text-base tracking-tight text-on-surface text-center">
                           {data.length === 0
                             ? "尚未查詢或來源無資料"
                             : (appTexts.noData.includes("。") ? appTexts.noData.split("。")[0] : appTexts.noData)}
                         </p>
-                        <p className="text-xs mt-1.5 font-medium text-slate-500 dark:text-slate-400 text-center max-w-sm">
+                        <p className="text-xs mt-1.5 font-medium text-on-surface-variant text-center max-w-sm">
                           {data.length === 0
                             ? "選擇區域後按「開始查詢」，或先放寬期間與關鍵字再試。"
                             : "可一鍵放寬條件後重新套用篩選（前端篩選立即生效）。"}
                         </p>
                         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                          {/* 原本最多會同時出現 9 顆「放寬某條件」按鈕；
-                              保留三個最常見的單項，其餘統一由「清除全部篩選」處理 */}
                           {search.trim() && (
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="rounded-xl text-xs font-bold"
+                              className="rounded-full border border-outline bg-surface px-4 text-xs font-semibold text-on-surface hover:bg-surface-container-highest"
                               onClick={() => setSearch("")}
                             >
                               清除關鍵字
@@ -608,7 +606,7 @@ export function ResultsWorkspace() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="rounded-xl text-xs font-bold"
+                              className="rounded-full border border-outline bg-surface px-4 text-xs font-semibold text-on-surface hover:bg-surface-container-highest"
                               onClick={() => setDistrict("全部")}
                             >
                               改查全市
@@ -619,7 +617,7 @@ export function ResultsWorkspace() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="rounded-xl text-xs font-bold"
+                              className="rounded-full border border-outline bg-surface px-4 text-xs font-semibold text-on-surface hover:bg-surface-container-highest"
                               onClick={() => setPeriod(getDefaultPeriod())}
                             >
                               改回近12月
@@ -630,7 +628,7 @@ export function ResultsWorkspace() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="rounded-xl text-xs font-bold"
+                              className="rounded-full border border-outline bg-surface px-4 text-xs font-semibold text-on-surface hover:bg-surface-container-highest"
                               onClick={clearNarrowingFilters}
                             >
                               清除全部篩選
@@ -639,7 +637,7 @@ export function ResultsWorkspace() {
                           <Button
                             type="button"
                             size="sm"
-                            className="rounded-xl text-xs font-bold bg-coral-600 hover:bg-coral-500 text-white"
+                            className="rounded-full bg-primary px-5 text-xs font-semibold text-on-primary hover:bg-primary/90 shadow-xs"
                             onClick={() => fetchData()}
                           >
                             重新查詢
@@ -651,16 +649,16 @@ export function ResultsWorkspace() {
                       <motion.div 
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col items-center justify-center py-20 px-6 text-red-500/80 dark:text-red-400/80"
+                        className="flex flex-col items-center justify-center py-20 px-6 text-error"
                       >
-                        <div className="w-16 h-16 rounded-2xl bg-red-500/5 border border-red-500/10 flex items-center justify-center mb-6 shadow-sm animate-pulse">
-                          <X className="w-6 h-6 text-red-500" />
+                        <div className="w-16 h-16 rounded-full bg-error-container border border-error/20 flex items-center justify-center mb-6 shadow-xs">
+                          <X className="w-6 h-6 text-error" />
                         </div>
-                        <p className="text-lg font-sans font-bold mb-2 tracking-tight text-red-700 dark:text-red-400">數據集載入失敗</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm text-center font-medium leading-relaxed mb-8">{error}</p>
+                        <p className="text-base font-bold mb-1 tracking-tight text-on-surface">數據集載入失敗</p>
+                        <p className="text-xs text-on-surface-variant max-w-sm text-center font-medium leading-relaxed mb-6">{error}</p>
                         <Button 
                           variant="outline" 
-                          className="rounded-xl px-8 h-10 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-bold transition-all active:scale-95 text-xs shadow-sm"
+                          className="rounded-full px-6 h-10 border border-outline bg-surface text-on-surface hover:bg-surface-container-highest font-semibold text-xs shadow-xs"
                           onClick={fetchData}
                         >
                           重新載入資料
@@ -680,7 +678,7 @@ export function ResultsWorkspace() {
                     <Suspense
                       fallback={
                         <div className="p-4 sm:p-6">
-                          <Skeleton className="h-[540px] rounded-[2rem] bg-white/40 dark:bg-slate-900/40" />
+                          <Skeleton className="h-[540px] rounded-[28px] bg-surface-container-highest" />
                         </div>
                       }
                     >
@@ -718,7 +716,7 @@ export function ResultsWorkspace() {
                 </div>
               </div>
 
-              {/* 地圖探索：液態玻璃懸浮圖示，預設收合；手機右下角 */}
+              {/* 地圖探索：M3 FAB 浮動按鈕 */}
               <div className="pointer-events-none fixed bottom-24 right-4 z-[55] flex flex-col items-end gap-2 sm:bottom-28 sm:right-6 lg:bottom-10 lg:right-8">
                 <AnimatePresence>
                   {mapPeekOpen && (
@@ -727,14 +725,14 @@ export function ResultsWorkspace() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 12, scale: 0.94 }}
                       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                      className="pointer-events-auto w-[min(92vw,22rem)] overflow-hidden rounded-[1.5rem] border border-slate-200/60 bg-white/90 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90"
+                      className="pointer-events-auto w-[min(92vw,22rem)] overflow-hidden rounded-[28px] border border-outline-variant/40 bg-surface-container-high shadow-[var(--md-elevation-3)] text-on-surface"
                     >
-                      <div className="flex items-center justify-between gap-2 border-b border-white/40 px-3 py-2 dark:border-white/10">
+                      <div className="flex items-center justify-between gap-2 border-b border-outline-variant/30 px-4 py-3">
                         <div className="min-w-0">
-                          <p className="text-[11px] font-black tracking-wide text-ink dark:text-white">
+                          <p className="text-xs font-bold tracking-tight text-on-surface">
                             地圖預覽
                           </p>
-                          <p className="truncate text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                          <p className="truncate text-[11px] font-medium text-on-surface-variant">
                             {geocodedCount > 0
                               ? `${geocodedCount} 筆已定位`
                               : filteredData.length > 0
@@ -744,7 +742,7 @@ export function ResultsWorkspace() {
                         </div>
                         
                       </div>
-                      <div className="h-[220px] w-full bg-slate-100 dark:bg-slate-950/50">
+                      <div className="h-[220px] w-full bg-surface-container">
                         {filteredData.length > 0 ? (
                           <Suspense
                             fallback={
@@ -772,8 +770,8 @@ export function ResultsWorkspace() {
                           </Suspense>
                         ) : (
                           <div className="flex h-full flex-col items-center justify-center px-4 text-center">
-                            <MapPinOff className="mb-2 h-7 w-7 text-slate-300 dark:text-slate-600" />
-                            <p className="text-xs font-bold text-slate-500">尚無可定位資料</p>
+                            <MapPinOff className="mb-2 h-7 w-7 text-on-surface-variant/40" />
+                            <p className="text-xs font-semibold text-on-surface-variant">尚無可定位資料</p>
                           </div>
                         )}
                       </div>
@@ -787,16 +785,15 @@ export function ResultsWorkspace() {
                   aria-expanded={mapPeekOpen}
                   aria-label={mapPeekOpen ? "收合地圖探索" : "展開地圖探索"}
                   title="地圖探索"
-                  className="pointer-events-auto group relative flex h-14 w-14 items-center justify-center rounded-full border border-slate-200/70 bg-white/85 backdrop-blur-xl transition-transform hover:scale-105 active:scale-95 dark:border-slate-700/70 dark:bg-slate-900/80"
+                  className="pointer-events-auto group relative flex h-14 w-14 items-center justify-center rounded-[20px] bg-primary-container text-on-primary-container shadow-[var(--md-elevation-3)] hover:shadow-[var(--md-elevation-4)] transition-all hover:bg-primary-container/90 active:scale-95"
                 >
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-br from-coral-400/15 via-transparent to-sky-400/10 opacity-80" />
                   {mapPeekOpen ? (
-                    <X size={22} className="relative z-10 text-slate-700 dark:text-slate-100" strokeWidth={2.25} />
+                    <X size={22} className="relative z-10" strokeWidth={2.25} />
                   ) : (
-                    <MapIcon size={22} className="relative z-10 text-coral-600 dark:text-coral-400" strokeWidth={2.25} />
+                    <MapIcon size={22} className="relative z-10" strokeWidth={2.25} />
                   )}
                   {geocodedCount > 0 && !mapPeekOpen && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-coral-500 px-1 text-[9px] font-black text-white shadow-sm">
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-on-primary shadow-xs">
                       {geocodedCount > 99 ? "99+" : geocodedCount}
                     </span>
                   )}

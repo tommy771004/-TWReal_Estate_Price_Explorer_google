@@ -1417,29 +1417,29 @@ export default function App() {
 
           {/* Save Search Modal */}
           <Dialog open={isSavingSearch} onOpenChange={setIsSavingSearch}>
-            <DialogContent className="sm:max-w-[400px] rounded-[2rem] border-none shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
+            <DialogContent className="sm:max-w-[400px] rounded-[28px] border border-outline-variant/40 shadow-[var(--md-elevation-3)] bg-surface-container-high">
               <DialogHeader>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                  <Bookmark className="text-coral-500" /> 儲存目前搜尋設定
+                <DialogTitle className="text-lg font-bold flex items-center gap-2 text-on-surface">
+                  <Bookmark className="text-primary w-5 h-5" /> 儲存目前搜尋設定
                 </DialogTitle>
               </DialogHeader>
               <div className="p-4 space-y-4">
-                <p className="text-xs text-slate-500 font-medium">請輸入一個名稱，方便下次快速載入這些篩選條件。</p>
+                <p className="text-xs text-on-surface-variant font-medium">請輸入一個名稱，方便下次快速載入這些篩選條件。</p>
                 <Input
                   placeholder="例如：臺北市大安區新成屋"
                   value={newSearchName}
                   onChange={(e) => setNewSearchName(e.target.value)}
-                  className="liquid-glass-input border-none h-12 rounded-xl text-md font-bold"
+                  className="border border-outline bg-surface h-12 rounded-2xl text-sm font-medium text-on-surface px-4 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary"
                   onKeyDown={(e) => e.key === "Enter" && saveCurrentSearch()}
                 />
-                <div className="pt-2 flex justify-end gap-3">
-                  <Button variant="ghost" onClick={() => setIsSavingSearch(false)} className="rounded-xl font-bold">
+                <div className="pt-2 flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setIsSavingSearch(false)} className="rounded-full font-semibold text-xs text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8">
                     取消
                   </Button>
                   <Button
                     onClick={saveCurrentSearch}
                     disabled={!newSearchName.trim()}
-                    className="bg-coral-600 hover:bg-coral-500 text-white rounded-xl font-bold px-6"
+                    className="bg-primary hover:bg-primary/90 text-on-primary rounded-full font-semibold text-xs px-6 shadow-xs"
                   >
                     儲存設定
                   </Button>

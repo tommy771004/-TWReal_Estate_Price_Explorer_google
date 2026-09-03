@@ -18,11 +18,11 @@ function Metric({
   unit?: string;
 }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-2.5 dark:bg-slate-950/40">
-      <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</div>
-      <div className="mt-0.5 truncate text-base font-black text-ink dark:text-white">
+    <div className="rounded-2xl bg-surface-container-highest p-2.5">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">{label}</div>
+      <div className="mt-0.5 truncate text-base font-bold text-on-surface">
         {value}
-        {unit ? <span className="ml-0.5 text-[10px] font-bold text-slate-400">{unit}</span> : null}
+        {unit ? <span className="ml-0.5 text-xs font-medium text-on-surface-variant">{unit}</span> : null}
       </div>
     </div>
   );
@@ -39,27 +39,27 @@ function PinCard({
 }) {
   return (
     <div
-      className={`relative flex-1 min-w-0 rounded-2xl border p-3 ${
+      className={`relative flex-1 min-w-0 rounded-[20px] border p-3 transition-colors ${
         highlight === "higher"
           ? "border-rose-300/60 bg-rose-50/50 dark:border-rose-500/30 dark:bg-rose-950/20"
           : highlight === "lower"
             ? "border-emerald-300/60 bg-emerald-50/40 dark:border-emerald-500/30 dark:bg-emerald-950/20"
-            : "border-slate-200/80 bg-white/70 dark:border-slate-800 dark:bg-slate-900/50"
+            : "border-outline-variant/40 bg-surface-container"
       }`}
     >
       <button
         type="button"
         onClick={() => onUnpin(pin.id)}
-        className="absolute right-2 top-2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-coral-500 dark:hover:bg-slate-800"
+        className="absolute right-2 top-2 rounded-full p-1.5 text-on-surface-variant hover:bg-on-surface/8 hover:text-error transition-colors"
         aria-label={`取消釘選 ${pin.label}`}
       >
-        <X size={12} />
+        <X size={14} />
       </button>
-      <div className="mb-2 flex items-start gap-1.5 pr-5">
-        <Pin size={12} className="mt-0.5 shrink-0 text-coral-500" />
+      <div className="mb-2 flex items-start gap-1.5 pr-6">
+        <Pin size={14} className="mt-0.5 shrink-0 text-primary" />
         <div className="min-w-0">
-          <div className="truncate text-xs font-black text-ink dark:text-white">{pin.label}</div>
-          <div className="text-[10px] font-bold text-slate-400">{pin.sampleHint}</div>
+          <div className="truncate text-xs font-bold text-on-surface">{pin.label}</div>
+          <div className="text-[11px] font-medium text-on-surface-variant">{pin.sampleHint}</div>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-1.5">
@@ -96,25 +96,25 @@ export function PinnedKpiCompare({ pins, onUnpin, onClear }: PinnedKpiComparePro
 
   return (
     <section
-      className="rounded-[2rem] border border-slate-200/50 bg-white/90 p-4 shadow-none dark:border-slate-800/60 dark:bg-slate-900/70"
+      className="rounded-[28px] border border-outline-variant/40 bg-surface-container-high p-4 shadow-[var(--md-elevation-1)] text-on-surface"
       aria-labelledby="pinned-kpi-compare"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
           <h3
             id="pinned-kpi-compare"
-            className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400"
+            className="text-xs font-bold uppercase tracking-wider text-on-surface-variant"
           >
             釘選比價
           </h3>
-          <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs font-medium text-on-surface-variant">
             {pins.length === 1 ? "再釘選另一區即可對照" : "中位單價對照"}
           </p>
         </div>
         <button
           type="button"
           onClick={onClear}
-          className="text-[10px] font-bold text-slate-400 hover:text-coral-500"
+          className="text-xs font-semibold text-primary hover:underline"
         >
           清空
         </button>
@@ -124,11 +124,11 @@ export function PinnedKpiCompare({ pins, onUnpin, onClear }: PinnedKpiComparePro
         {a && <PinCard pin={a} onUnpin={onUnpin} highlight={pins.length === 2 ? aHighlight : null} />}
         {pins.length === 2 && (
           <div className="flex shrink-0 flex-col items-center justify-center gap-1 px-1 py-1 text-center">
-            <ArrowRightLeft size={16} className="text-slate-400" />
+            <ArrowRightLeft size={16} className="text-on-surface-variant" />
             {delta != null && (
               <span
-                className={`text-[10px] font-black ${
-                  delta > 0 ? "text-rose-600 dark:text-rose-400" : delta < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500"
+                className={`text-xs font-bold ${
+                  delta > 0 ? "text-rose-600 dark:text-rose-400" : delta < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-on-surface-variant"
                 }`}
               >
                 {delta > 0 ? "A 高 " : delta < 0 ? "A 低 " : "相近 "}

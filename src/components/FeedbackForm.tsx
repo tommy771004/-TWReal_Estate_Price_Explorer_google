@@ -13,12 +13,12 @@ export function FeedbackForm() {
 
   if (status === "success") {
     return (
-      <section aria-label="意見回饋" className="mt-10 rounded-2xl border border-slate-200 bg-white/80 p-8 text-center dark:border-slate-800 dark:bg-slate-900/60">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+      <section aria-label="意見回饋" className="mt-10 rounded-[28px] border border-outline-variant/40 bg-surface-container-high p-8 text-center shadow-[var(--md-elevation-1)]">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
           <CheckCircle2 className="h-6 w-6" />
         </div>
-        <h3 className="text-base font-black text-slate-900 dark:text-white">謝謝您的回饋！</h3>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
+        <h3 className="text-base font-bold text-on-surface">謝謝您的回饋！</h3>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-on-surface-variant">
           資料已成功送出並寫入資料庫，我們非常感謝您抽空提供建議，本系統將因您的回饋獲得最佳改善！
         </p>
         <button
@@ -28,7 +28,7 @@ export function FeedbackForm() {
             setContent("");
             setContact("");
           }}
-          className="mt-5 rounded-xl bg-slate-100 px-5 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+          className="mt-5 rounded-full bg-secondary-container px-6 py-2 text-xs font-semibold text-on-secondary-container transition-colors hover:bg-secondary-container/80"
         >
           再填一筆
         </button>
@@ -37,14 +37,14 @@ export function FeedbackForm() {
   }
 
   return (
-    <section aria-label="意見回饋" className="mt-10 rounded-2xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/60 sm:p-8">
-      <div className="mb-5 flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-coral-500/10 text-coral-500">
-          <MessageSquare className="h-4 w-4" />
+    <section aria-label="意見回饋" className="mt-10 rounded-[28px] border border-outline-variant/40 bg-surface-container-high p-6 sm:p-8 shadow-[var(--md-elevation-1)]">
+      <div className="mb-5 flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+          <MessageSquare className="h-5 w-5" />
         </span>
         <div>
-          <h3 className="text-sm font-black text-slate-900 dark:text-white">系統改進與意見回饋</h3>
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Feedback &amp; System Improvements</p>
+          <h3 className="text-sm font-bold text-on-surface">系統改進與意見回饋</h3>
+          <p className="text-[11px] font-medium text-on-surface-variant">Feedback &amp; System Improvements</p>
         </div>
       </div>
 
@@ -73,19 +73,19 @@ export function FeedbackForm() {
         }}
       >
         <div>
-          <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <label className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
             意見分類 (Category) *
           </label>
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setCategory(cat)}
-                className={`cursor-pointer rounded-xl border px-2 py-1.5 text-center text-xs font-bold transition-all ${
+                className={`cursor-pointer rounded-full border px-3 py-1.5 text-center text-xs font-semibold transition-colors ${
                   category === cat
-                    ? "border-coral-500/30 bg-coral-500/10 text-coral-500"
-                    : "border-slate-100 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-800/80 dark:bg-slate-800 dark:text-slate-300"
+                    ? "border-secondary bg-secondary-container text-on-secondary-container shadow-xs"
+                    : "border-outline bg-surface text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
                 }`}
               >
                 {cat}
@@ -95,7 +95,7 @@ export function FeedbackForm() {
         </div>
 
         <div>
-          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <label className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
             詳細內容描述 (Content) *
           </label>
           <textarea
@@ -104,12 +104,12 @@ export function FeedbackForm() {
             onChange={(e) => setContent(e.target.value)}
             placeholder="請詳述您遇見的狀況或對系統的想法..."
             rows={4}
-            className="w-full resize-none rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs font-medium text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-coral-500/40 focus:ring-1 focus:ring-coral-500/20 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
+            className="w-full resize-none rounded-2xl border border-outline bg-surface p-3.5 text-xs font-medium text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/50 focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <label className="mb-1.5 block text-xs font-semibold text-on-surface-variant">
             聯絡方式 (Contact - Optional)
           </label>
           <input
@@ -117,13 +117,13 @@ export function FeedbackForm() {
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             placeholder="Email 或 手機號碼 (方便我們向您回報進度)"
-            className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-coral-500/40 focus:ring-1 focus:ring-coral-500/20 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
+            className="w-full rounded-full border border-outline bg-surface px-4 py-2.5 text-xs font-medium text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/50 focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </div>
 
         {status === "error" && (
-          <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-500">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+          <div className="flex items-center gap-2 rounded-2xl border border-error/30 bg-error-container px-3.5 py-2.5 text-xs font-semibold text-on-error-container">
+            <AlertCircle className="h-4 w-4 shrink-0 text-error" />
             <span>{errorMsg || "送出失敗，請重試"}</span>
           </div>
         )}
@@ -131,7 +131,7 @@ export function FeedbackForm() {
         <button
           type="submit"
           disabled={status === "submitting" || !content.trim()}
-          className="mt-1 flex items-center justify-center gap-1.5 rounded-xl bg-coral-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-coral-600 disabled:bg-coral-500/50"
+          className="mt-1 flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-2.5 text-xs font-semibold text-on-primary shadow-xs transition-colors hover:bg-primary/90 disabled:opacity-38"
         >
           {status === "submitting" ? (
             <>

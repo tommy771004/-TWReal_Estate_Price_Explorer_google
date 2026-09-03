@@ -48,23 +48,23 @@ export function SearchBar({
         <button
           type="button"
           onClick={onOpenLocation}
-          className="liquid-glass-input flex h-[52px] shrink-0 items-center justify-between gap-3 rounded-[1rem] px-4 text-left outline-none transition-all hover:border-coral-500/50 hover:shadow-md sm:w-[210px]"
+          className="flex h-[52px] shrink-0 items-center justify-between gap-3 rounded-full bg-surface-container-highest border border-outline-variant/60 px-4 text-left outline-none transition-all hover:bg-surface-container-highest/80 hover:border-outline focus:ring-2 focus:ring-primary/20 sm:w-[220px] shadow-xs"
         >
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-coral-500/10">
-              <MapPin size={16} className="text-coral-500" />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+              <MapPin size={16} />
             </span>
             <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-widest leading-none text-slate-500 dark:text-slate-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider leading-none text-on-surface-variant">
                 縣市 / 行政區
               </span>
-              <span className="truncate text-[15px] font-bold leading-none text-ink dark:text-white">
+              <span className="truncate text-sm font-semibold leading-none text-on-surface">
                 {cityName}
                 {district !== "全部" ? ` · ${district}` : ""}
               </span>
             </span>
           </span>
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-40" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-on-surface-variant/70" />
         </button>
 
         <KeywordInput
@@ -86,7 +86,7 @@ export function SearchBar({
         <Button
           onClick={onSubmit}
           disabled={loading}
-          className="liquid-glass-button-primary h-[52px] flex-1 whitespace-nowrap rounded-[1rem] px-7 text-sm font-bold shadow-md lg:flex-none"
+          className="h-[52px] flex-1 whitespace-nowrap rounded-full bg-primary text-on-primary hover:bg-primary/90 hover:shadow-[var(--md-elevation-1)] px-8 text-sm font-semibold shadow-xs transition-all lg:flex-none"
         >
           <Search className="mr-2 h-4 w-4" />
           {loading ? "查詢中…" : "查詢"}
