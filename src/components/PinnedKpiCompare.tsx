@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { Pin, X, ArrowRightLeft } from "lucide-react";
 import type { PinnedMarketSnapshot } from "../utils/market-snapshot";
 import { medianUnitPriceDeltaPct } from "../utils/market-snapshot";
@@ -95,7 +96,11 @@ export function PinnedKpiCompare({ pins, onUnpin, onClear }: PinnedKpiComparePro
     delta == null ? null : delta < -0.5 ? ("higher" as const) : delta > 0.5 ? ("lower" as const) : null;
 
   return (
-    <section
+    <motion.section
+      initial={{ opacity: 0, y: 15 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-10px" }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       className="rounded-[28px] border border-outline-variant/40 bg-surface-container-high p-4 shadow-[var(--md-elevation-1)] text-on-surface"
       aria-labelledby="pinned-kpi-compare"
     >
@@ -139,6 +144,6 @@ export function PinnedKpiCompare({ pins, onUnpin, onClear }: PinnedKpiComparePro
         )}
         {b && <PinCard pin={b} onUnpin={onUnpin} highlight={bHighlight} />}
       </div>
-    </section>
+    </motion.section>
   );
 }

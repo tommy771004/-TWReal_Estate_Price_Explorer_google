@@ -133,7 +133,8 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
     <motion.div
       layout
       initial={{ opacity: 0, scale: 0.96, y: 30 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
+      whileInView={{ opacity: 1, scale: 1, y: 0 }}
+      viewport={{ once: true, margin: "-20px" }}
       exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2, delay: 0 } }}
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.99 }}

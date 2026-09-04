@@ -48,20 +48,6 @@ export function MarketHeader({
             <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
               <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400" /> 內政部開放資料
             </span>
-            <span className="text-outline-variant">·</span>
-            <span
-              className="inline-flex items-center gap-1.5"
-              title={
-                dataSource
-                  ? "每 10 日更新；同一縣市＋交易型態 6 小時內重用後端快取"
-                  : "每 10 日更新"
-              }
-            >
-              <Clock size={14} className="text-secondary" />
-              {formatCachedAtLabel(dataCachedAt)
-                ? `資料更新 ${formatCachedAtLabel(dataCachedAt)}`
-                : "每 10 日更新"}
-            </span>
           </p>
         </div>
       </section>
@@ -74,9 +60,6 @@ export function MarketHeader({
               <h3 id="market-summary" className="text-xs font-bold uppercase tracking-wider text-primary">
                 市場摘要
               </h3>
-              <p className="mt-0.5 text-xs font-medium text-on-surface-variant">
-                依目前條件即時計算
-              </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="hidden items-center gap-1.5 rounded-full bg-surface-container-highest px-3 py-1 text-xs font-semibold text-on-surface-variant sm:inline-flex">

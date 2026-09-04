@@ -304,7 +304,7 @@ export default function ResultsMap({
         <div className="w-16 h-16 bg-surface-container-highest rounded-full flex items-center justify-center mb-4">
           <Search className="text-on-surface-variant" size={28} />
         </div>
-        <p className="text-on-surface font-semibold text-sm">目前沒有可顯示的搜尋結果</p>
+        <p className="text-on-surface font-semibold text-sm">無資料</p>
       </div>
     );
   }

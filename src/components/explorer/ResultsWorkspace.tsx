@@ -175,11 +175,8 @@ export function ResultsWorkspace() {
                         <Filter className="h-4 w-4" />
                       </div>
                       <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-                        <span className="text-sm font-bold tracking-tight text-on-surface">
-                          搜尋結果
-                        </span>
                         <span className="truncate text-xs font-medium text-on-surface-variant">
-                          目前找到 {filteredData.length.toLocaleString()} 筆
+                          結果 {filteredData.length.toLocaleString()} 筆
                           <span className="mx-1 text-outline-variant">·</span>
                           {formatPeriodLabel(period)}
                         </span>
@@ -203,7 +200,7 @@ export function ResultsWorkspace() {
                         onClick={() => setViewMode("list")}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "list" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
                         title="列表"
-                        aria-label="列表視圖"
+                        aria-label="列表圖"
                       >
                         <List size={14} />
                         <span className="hidden xl:inline">列表</span>
@@ -213,7 +210,7 @@ export function ResultsWorkspace() {
                         onClick={() => setViewMode("table")}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "table" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
                         title="表格"
-                        aria-label="表格視圖"
+                        aria-label="表格圖"
                       >
                         <Table2 size={14} />
                         <span className="hidden xl:inline">表格</span>
@@ -414,7 +411,13 @@ export function ResultsWorkspace() {
                       </div>
 
                       {viewMode === "table" ? (
-                        <div className="mx-0 overflow-x-auto rounded-[24px] border border-outline-variant/40 bg-surface-container-low shadow-[var(--md-elevation-1)] sm:mx-6">
+                        <motion.div 
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, margin: "-20px" }}
+                          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                          className="mx-0 overflow-x-auto rounded-[24px] border border-outline-variant/40 bg-surface-container-low shadow-[var(--md-elevation-1)] sm:mx-6"
+                        >
                           <Table className="min-w-[880px]">
                             <TableHeader className="bg-surface-container border-b border-outline-variant/30">
                               <TableRow className="hover:bg-transparent border-none">
@@ -494,7 +497,7 @@ export function ResultsWorkspace() {
                           {paginatedData.length === 0 && !loading && (
                             <div className="py-12 text-center text-xs font-medium text-on-surface-variant">此頁無資料</div>
                           )}
-                        </div>
+                        </motion.div>
                       ) : (
                         <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-3 px-0 sm:px-6 pb-2">
                           <AnimatePresence mode="popLayout">
@@ -572,8 +575,10 @@ export function ResultsWorkspace() {
       
                     {filteredData.length === 0 && !loading && !error && (
                       <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0, y: 15 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-20px" }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
                         className="flex flex-col items-center justify-center py-20 px-6 text-on-surface-variant"
                       >
                         <div className="w-16 h-16 rounded-full bg-surface-container-highest border border-outline-variant/40 flex items-center justify-center mb-5 shadow-xs">

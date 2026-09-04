@@ -68,8 +68,10 @@ export default function ResultsCharts({
       <div className={`grid-cols-1 lg:grid-cols-2 gap-4 ${!showChartsMobile ? "hidden lg:grid" : "grid"}`}>
         {priceTrend.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-20px" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="p-5 bg-surface-container border border-outline-variant/40 shadow-[var(--md-elevation-1)] rounded-[28px]"
           >
             <div className="flex items-center gap-2.5 mb-4 px-1">
@@ -111,8 +113,10 @@ export default function ResultsCharts({
 
         {priceDistribution.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-20px" }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             className="p-5 bg-surface-container border border-outline-variant/40 shadow-[var(--md-elevation-1)] rounded-[28px]"
           >
             <div className="flex items-center gap-2.5 mb-4 px-1">

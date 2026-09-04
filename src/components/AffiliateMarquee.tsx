@@ -2,6 +2,7 @@
 // 資料來源：/api/affiliates（統一集中於 affiliates 資料表管理，見 docs/affiliate-integration-spec.md）。
 // 連結為實際聯盟追蹤連結，採 rel="sponsored nofollow" 符合 Google 規範。
 import { useRef } from "react";
+import { motion } from "motion/react";
 import {
   AFFILIATE_LINK_REL,
   trackAffiliateEvent,
@@ -75,7 +76,11 @@ export function AffiliateMarquee() {
   if (offers.length === 0) return null;
 
   return (
-    <section
+    <motion.section
+      initial={{ opacity: 0, y: 15 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-20px" }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       aria-label="贊助推廣"
       className="mt-2 mb-8 px-1.5 sm:px-6"
     >
@@ -101,6 +106,6 @@ export function AffiliateMarquee() {
       <p className="mt-2 px-1 text-[11px] leading-5 text-slate-400">
         透過上方連結完成購買，本站可能獲得回饋，不影響您的價格。
       </p>
-    </section>
+    </motion.section>
   );
 }
