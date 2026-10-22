@@ -1,6 +1,6 @@
 // 聯盟／合作推廣資料：從 /api/affiliates 讀取，資料集中於共用 affiliates 資料表管理。
 // 規格：docs/affiliate-integration-spec.md
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useState } from "react";
 
 export type AffiliateOffer = {
   projectName: string;
@@ -93,9 +93,12 @@ export function offersByCategory(offers: AffiliateOffer[], category?: string): A
   return offers.filter((o) => o.categories.includes(category) || o.categories.includes("all"));
 }
 
-/** 曝光／點擊事件，寫入本站既有的 audit_logs（見 spec 7）。Fire-and-forget，不阻塞使用者操作。 */
+/**
+ * 點擊事件，寫入本站既有的 audit_logs（見 spec 7）。Fire-and-forget，不阻塞使用者操作。
+ * 版位載入／曝光不寫入 audit_logs，僅在使用者實際點擊時記錄。
+ */
 export function trackAffiliateEvent(
-  action: "affiliate_impression" | "affiliate_click",
+  action: "affiliate_click",
   offer: AffiliateOffer,
   placement: string
 ) {
@@ -111,41 +114,4 @@ export function trackAffiliateEvent(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action_type: action, details }),
   }).catch(() => {});
-}
-
-/**
- * 曝光追蹤：觀察 containerRef 內帶有 data-affiliate-id 的元素，進入可視範圍時各檔位僅回報一次。
- * 用於跑馬燈／導購版位，元件卸載或 offers 變動時自動重新綁定。
- */
-export function useAffiliateImpressionTracking(
-  containerRef: RefObject<HTMLElement | null>,
-  offers: AffiliateOffer[],
-  placement: string
-) {
-  const seenRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    const root = containerRef.current;
-    if (!root || offers.length === 0 || typeof IntersectionObserver === "undefined") return;
-
-    const offerById = new Map(offers.map((o) => [o.id, o]));
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const id = (entry.target as HTMLElement).dataset.affiliateId;
-          if (!id || seenRef.current.has(id)) continue;
-          const offer = offerById.get(id);
-          if (!offer) continue;
-          seenRef.current.add(id);
-          trackAffiliateEvent("affiliate_impression", offer, placement);
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    const items = root.querySelectorAll<HTMLElement>("[data-affiliate-id]");
-    items.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [containerRef, offers, placement]);
 }

@@ -1,9 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AFFILIATE_LINK_REL,
   offersByCategory,
   trackAffiliateEvent,
-  useAffiliateImpressionTracking,
   useAffiliateOffers,
 } from "../lib/affiliates";
 
@@ -30,9 +29,7 @@ type AffiliateSlotProps = {
  */
 export function AffiliateSlot({ category, limit = 4, title, className }: AffiliateSlotProps) {
   const offers = useAffiliateOffers();
-  const containerRef = useRef<HTMLElement>(null);
   const partners = useMemo(() => offersByCategory(offers, category).slice(0, limit), [offers, category, limit]);
-  useAffiliateImpressionTracking(containerRef, partners, "slot");
 
   if (partners.length === 0) return null;
 
@@ -40,7 +37,6 @@ export function AffiliateSlot({ category, limit = 4, title, className }: Affilia
 
   return (
     <aside
-      ref={containerRef}
       aria-label="贊助推薦"
       className={`mt-10 rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-900/40 ${className ?? ""}`}
     >
@@ -54,7 +50,6 @@ export function AffiliateSlot({ category, limit = 4, title, className }: Affilia
         {partners.map((o) => (
           <li key={o.id}>
             <a
-              data-affiliate-id={o.id}
               href={o.url}
               target="_blank"
               rel={AFFILIATE_LINK_REL}
@@ -120,7 +115,6 @@ export function MortgageCalculatorCta({ defaultPrice }: { defaultPrice?: number 
       </p>
       {loanPartner && (
         <a
-          data-affiliate-id={loanPartner.id}
           href={loanPartner.url}
           target="_blank"
           rel={AFFILIATE_LINK_REL}
