@@ -431,7 +431,6 @@ export function TransactionDetailDialog({
                                 </a>
                                 {loanPartner && (
                                   <a
-                                    data-affiliate-id={loanPartner.id}
                                     href={loanPartner.url}
                                     target="_blank"
                                     rel={AFFILIATE_LINK_REL}
