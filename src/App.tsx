@@ -329,9 +329,14 @@ export default function App() {
   const [feedbackStatus, setFeedbackStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [feedbackErrorMsg, setFeedbackErrorMsg] = useState("");
 
-  // 根據 GPS 座標在 CITIES 以及 CITY_DISTRICTS 算歐氏距離，選出距離最近的縣市與鄉鎮
-  const getClosestTaiwanLocation = React.useCallback((lat: number, lng: number): { county: string; district: string } => {
-    let closestCity = CITIES[0]?.name || "臺北市";
+  /**
+   * 根據座標在 CITIES 以及 CITY_DISTRICTS 算歐氏距離，選出距離最近的縣市與鄉鎮。
+   * 離最近的縣市中心超過 MAX_TAIWAN_DISTANCE_DEG（約 140 公里）視為不在台灣，回傳 null；
+   * 否則國外（例如新加坡、香港）的座標會被配到最西邊的金門縣。
+   */
+  const getClosestTaiwanLocation = React.useCallback((lat: number, lng: number): { county: string; district: string } | null => {
+    const MAX_TAIWAN_DISTANCE_DEG = 1.3;
+    let closestCity = "";
     let minCityDist = Infinity;
 
     for (const city of CITIES) {
@@ -343,6 +348,7 @@ export default function App() {
         }
       }
     }
+    if (!closestCity || minCityDist > MAX_TAIWAN_DISTANCE_DEG) return null;
 
     const districts = CITY_DISTRICTS[closestCity] || [];
     let closestDistrict = "全部";
@@ -362,83 +368,69 @@ export default function App() {
     return { county: closestCity, district: closestDistrict };
   }, []);
 
-  const triggerBaseStationLocation = React.useCallback(async () => {
-    // 1. First attempt: IP-API (highly CORS-friendly and less rate-limited)
+  /**
+   * IP 估測位置：由自家 /api/geo 讀 Vercel 邊緣節點附的地理標頭，不呼叫第三方服務、不把 IP 外送。
+   * IP 只準到城市等級，因此只套用縣市（行政區維持「全部」）；不在台灣（國別不是 TW）就不改縣市。
+   * apply=false 時只回傳結果，由呼叫端決定是否套用（例如使用者按「使用目前位置」）。
+   */
+  const triggerBaseStationLocation = React.useCallback(async (apply = true): Promise<UserLocation> => {
     try {
-      const res = await fetch("https://ip-api.com/json/");
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 1500);
+      const res = await fetch("/api/geo", { signal: controller.signal, cache: "no-store" });
+      window.clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();
-        if (data.status === "success" && data.lat !== undefined && data.lon !== undefined) {
-          const lat = Number(data.lat);
-          const lng = Number(data.lon);
+        const lat = Number(data.latitude);
+        const lng = Number(data.longitude);
+        if (data.success && data.country === "TW" && Number.isFinite(lat) && Number.isFinite(lng)) {
           const resolved = getClosestTaiwanLocation(lat, lng);
-          const loc: UserLocation = {
-            latitude: lat,
-            longitude: lng,
-            county: resolved.county,
-            district: resolved.district,
-            location_method: "base_station",
-          };
-          setUserLocation(loc);
-          if (resolved.county) applyLocatedSelection(resolved.county, resolved.district);
-          return loc;
-        }
-      }
-    } catch (e) {
-      console.warn("ip-api.com location tracking failed, trying fallback:", e);
-    }
-
-    // 2. Second attempt: ipapi.co fallback (might have CORS or rate-limiting)
-    try {
-      const res = await fetch("https://ipapi.co/json/");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.latitude && data.longitude) {
-          const lat = Number(data.latitude);
-          const lng = Number(data.longitude);
-          const resolved = getClosestTaiwanLocation(lat, lng);
-          const loc: UserLocation = {
-            latitude: lat,
-            longitude: lng,
-            county: resolved.county,
-            district: resolved.district,
-            location_method: "base_station",
-          };
-          setUserLocation(loc);
-          if (resolved.county) applyLocatedSelection(resolved.county, resolved.district);
-          return loc;
+          if (resolved) {
+            const loc: UserLocation = {
+              latitude: lat,
+              longitude: lng,
+              county: resolved.county,
+              district: "全部",
+              location_method: "base_station",
+            };
+            setUserLocation(loc);
+            if (apply) applyLocatedSelection(resolved.county, "全部");
+            return loc;
+          }
         }
       }
     } catch (error) {
-      console.warn("Base station fallback failed, estimating Taipei:", error);
+      console.warn("IP location lookup failed:", error);
     }
 
-    const defaultCity = CITIES[0] || { name: "臺北市", lat: 25.0330, lng: 121.5654 };
-    const defaultCityDistricts = CITY_DISTRICTS[defaultCity.name] || [];
-    const defaultDistrict = defaultCityDistricts[0]?.name || "全部";
-
-    const defaultLoc: UserLocation = {
-      latitude: defaultCity.lat || 25.0330,
-      longitude: defaultCity.lng || 121.5654,
-      county: defaultCity.name,
-      district: defaultDistrict,
+    // 定位失敗或不在台灣：不記錄估計縣市，也不改使用者目前的縣市
+    const unknownLoc: UserLocation = {
+      latitude: null,
+      longitude: null,
+      county: null,
+      district: null,
       location_method: "unknown",
     };
-    // 定位失敗：只記錄估計位置，不改使用者目前的縣市
-    setUserLocation(defaultLoc);
-    return defaultLoc;
+    setUserLocation(unknownLoc);
+    return unknownLoc;
   }, [getClosestTaiwanLocation, applyLocatedSelection]);
 
-  const triggerGpsLocation = React.useCallback(async () => {
+  /** GPS 定位；失敗、拒絕或不在台灣時改用 IP 估測。apply 的意義同上 */
+  const triggerGpsLocation = React.useCallback(async (apply = true): Promise<UserLocation> => {
     if (!navigator.geolocation) {
-      return await triggerBaseStationLocation();
+      return await triggerBaseStationLocation(apply);
     }
     return new Promise<UserLocation>((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
+          localStorage.setItem("location_sharing_permisson_decision", "allow");
           const resolved = getClosestTaiwanLocation(lat, lng);
+          if (!resolved) {
+            resolve(await triggerBaseStationLocation(apply));
+            return;
+          }
           const loc: UserLocation = {
             latitude: lat,
             longitude: lng,
@@ -447,24 +439,33 @@ export default function App() {
             location_method: "gps",
           };
           setUserLocation(loc);
-          localStorage.setItem("location_sharing_permisson_decision", "allow");
-          
-          if (resolved.county) applyLocatedSelection(resolved.county, resolved.district);
+          if (apply) applyLocatedSelection(resolved.county, resolved.district);
           resolve(loc);
         },
         async (error) => {
-          console.warn("GPS Geolocation failed, using base station:", error);
-          // 使用者在瀏覽器原生提示中拒絕：記錄下來，之後直接改用基地台估測，不再重複詢問
+          console.warn("GPS Geolocation failed, using IP estimate:", error);
+          // 使用者在瀏覽器原生提示中拒絕：記錄下來，之後直接改用 IP 估測，不再重複詢問
           if (error.code === error.PERMISSION_DENIED) {
             localStorage.setItem("location_sharing_permisson_decision", "deny");
           }
-          const loc = await triggerBaseStationLocation();
-          resolve(loc);
+          resolve(await triggerBaseStationLocation(apply));
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
       );
     });
   }, [getClosestTaiwanLocation, triggerBaseStationLocation, applyLocatedSelection]);
+
+  /**
+   * 使用者在「選擇區域」按「使用目前位置」：這時才請求 GPS 權限（開頁不主動跳權限提示）。
+   * 這是明確操作，所以即使網址已指定縣市也直接切換。回傳 null 表示成功，否則為提示文字。
+   */
+  const locateUser = React.useCallback(async (): Promise<string | null> => {
+    const loc = await triggerGpsLocation(false);
+    if (!loc.county) return "無法取得你在台灣的位置，請直接選擇縣市";
+    setCityName(loc.county);
+    setDistrict(loc.district || "全部");
+    return null;
+  }, [triggerGpsLocation]);
 
   const addAuditLog = React.useCallback(async (actionType: string, details?: string, overrideLoc?: UserLocation) => {
     const loc = overrideLoc || userLocationRef.current;
@@ -711,11 +712,24 @@ export default function App() {
     let cancelled = false;
     const SELECTION_WAIT_MS = 3000;
     const readyTimer = window.setTimeout(() => setSelectionReady(true), SELECTION_WAIT_MS);
+    /**
+     * 開頁不主動跳出定位權限提示（Lighthouse「載入時要求位置」）：
+     * 只有使用者先前已允許（權限為 granted，不會再跳提示）才用 GPS，其餘用 IP 估測縣市。
+     * 想要精確到行政區，可在「選擇區域」按「使用目前位置」。
+     */
+    const geolocationGranted = async () => {
+      try {
+        if (!navigator.permissions?.query || !navigator.geolocation) return false;
+        const status = await navigator.permissions.query({ name: "geolocation" as PermissionName });
+        return status.state === "granted";
+      } catch {
+        return false;
+      }
+    };
     const initLocation = async () => {
-      const decision = localStorage.getItem("location_sharing_permisson_decision");
-      const activeLoc = decision === "deny"
-        ? await triggerBaseStationLocation()
-        : await triggerGpsLocation();
+      const activeLoc = (await geolocationGranted())
+        ? await triggerGpsLocation()
+        : await triggerBaseStationLocation();
       if (cancelled) return;
       setSelectionReady(true);
       fetchTrendingSearches();
@@ -1473,6 +1487,7 @@ export default function App() {
         {isLocationModalOpen && (
           <LocationSelectionModal
             isOpen={isLocationModalOpen}
+            onLocate={locateUser}
             onClose={() => setIsLocationModalOpen(false)}
             cityName={cityName}
             setCityName={setCityName}

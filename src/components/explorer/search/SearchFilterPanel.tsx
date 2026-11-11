@@ -192,7 +192,7 @@ export function SearchFilterPanel() {
 
           {showTransactionType && (
             <div className="flex items-center gap-2">
-              <span className="hidden shrink-0 text-[10px] font-black tracking-wide text-slate-400 sm:inline">
+              <span className="hidden shrink-0 text-[10px] font-black tracking-wide text-on-surface-variant sm:inline">
                 交易型態
               </span>
               <TransactionTypeTabs

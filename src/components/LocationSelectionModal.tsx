@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { MapPin, Search, X } from "lucide-react";
+import { Loader2, LocateFixed, MapPin, Search, X } from "lucide-react";
 import { CITIES, CITY_DISTRICTS } from "../constants";
 import { FEATURED_CITY_NAMES } from "../constants/app-ui";
 
@@ -11,6 +11,8 @@ interface LocationSelectionModalProps {
   setCityName: (city: string) => void;
   district: string;
   setDistrict: (district: string) => void;
+  /** 「使用目前位置」：回傳 null 表示已切換，否則為錯誤提示 */
+  onLocate?: () => Promise<string | null>;
 }
 
 export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
@@ -19,10 +21,23 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
   cityName,
   setCityName,
   district,
-  setDistrict
+  setDistrict,
+  onLocate,
 }) => {
   const [internalCity, setInternalCity] = useState(cityName);
   const [searchQuery, setSearchQuery] = useState("");
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+
+  const handleLocate = async () => {
+    if (!onLocate || locating) return;
+    setLocating(true);
+    setLocateError(null);
+    const error = await onLocate();
+    setLocating(false);
+    if (error) setLocateError(error);
+    else onClose();
+  };
 
   // Update internal state when opened
   useEffect(() => {
@@ -82,6 +97,26 @@ export const LocationSelectionModal: React.FC<LocationSelectionModalProps> = ({
             />
           </div>
         </div>
+
+        {/* 使用目前位置：開頁不主動要求定位權限，由使用者按下才詢問 */}
+        {onLocate && (
+          <div className="px-4 pb-3">
+            <button
+              type="button"
+              onClick={handleLocate}
+              disabled={locating}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-outline-variant bg-surface-container text-sm font-semibold text-primary transition-colors hover:bg-surface-container-highest disabled:opacity-60"
+            >
+              {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+              {locating ? "定位中…" : "使用目前位置"}
+            </button>
+            {locateError && (
+              <p role="status" className="mt-1.5 text-center text-xs font-medium text-error">
+                {locateError}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 熱門城市快選 */}
         <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">

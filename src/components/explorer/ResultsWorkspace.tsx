@@ -45,6 +45,7 @@ import { SORT_OPTIONS, type SortOptionValue } from "../../constants/filterLabels
 import { ResultActions } from "./ResultActions";
 import { formatTotal, formatUnitPerPing, isRentType, itemTypeName, unitPerPingLabel } from "../../utils/priceUnits";
 
+import { LG_UP, useMediaQuery } from "../../hooks/useMediaQuery";
 const ResultsCharts = React.lazy(() => import("../ResultsCharts"));
 const ResultsMap = React.lazy(() => import("../MapViews"));
 
@@ -136,6 +137,7 @@ export function ResultsWorkspace() {
     showFacilities,
     setShowFacilities,
   } = useExplorerUi();
+  const isLargeScreen = useMediaQuery(LG_UP);
 
   /** sortConfig <-> 下拉值（單一來源，避免兩處各自判斷方向） */
   const sortValue: SortOptionValue = !sortConfig
@@ -462,13 +464,16 @@ export function ResultsWorkspace() {
                           </div>
                         }
                       >
-                        <ResultsCharts
-                          priceDistribution={priceDistribution}
-                          priceTrend={priceTrend}
-                          showChartsMobile={showChartsMobile}
-                          unitLabel={unitPerPingLabel(typeName)}
-                          rent={isRentType(typeName)}
-                        />
+                        {/* 手機預設收起圖表：按「圖表」前不載入圖表程式與 SVG */}
+                        {(isLargeScreen || showChartsMobile) && (
+                          <ResultsCharts
+                            priceDistribution={priceDistribution}
+                            priceTrend={priceTrend}
+                            showChartsMobile={showChartsMobile}
+                            unitLabel={unitPerPingLabel(typeName)}
+                            rent={isRentType(typeName)}
+                          />
+                        )}
                       </Suspense>
                       </div>
                     )}

@@ -15,9 +15,6 @@
     <meta name="author" content="實價登錄查詢" />
     <meta name="theme-color" content="#00639b" />
     <!-- GOOGLE_SITE_VERIFICATION -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="canonical" href="/" />
     <link rel="icon" href="/og-image.svg" type="image/svg+xml" />
 
@@ -52,10 +49,11 @@
         var city = params.get("city") || "臺中市";
         var type = params.get("type") || "買賣";
         var district = params.get("district") || "全區";
+        // 舊網址一律轉到對應的縣市頁；不再把臺中市＋買賣（舊預設）轉回首頁，否則會被首頁的定位換成別的縣市
         var segments = district !== "全區"
           ? ["districts", city, district, type]
-          : (city === "臺中市" && type === "買賣" ? [] : ["prices", city, type]);
-        var target = segments.length ? "/" + segments.map(encodeURIComponent).join("/") + "/" : "/";
+          : ["prices", city, type];
+        var target = "/" + segments.map(encodeURIComponent).join("/") + "/";
         window.location.replace(target + window.location.hash);
       })();
     </script>

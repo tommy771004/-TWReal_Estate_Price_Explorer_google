@@ -249,7 +249,7 @@ export function AppliedFilterChips({
       transition={{ duration: 0.25 }}
       className={`${onlyMobileDuplicates ? "hidden md:flex" : "flex"} flex-wrap items-center gap-1.5 overflow-hidden`}
     >
-      <span className="mr-0.5 text-[10px] font-black tracking-wide text-slate-400">已套用</span>
+      <span className="mr-0.5 text-[10px] font-black tracking-wide text-on-surface-variant">已套用</span>
       <AnimatePresence>
         {visible.map((chip) => (
           <motion.span

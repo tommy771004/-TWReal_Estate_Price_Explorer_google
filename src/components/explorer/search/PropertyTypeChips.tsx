@@ -32,7 +32,7 @@ export function PropertyTypeChips({ value, onChange }: Props) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="hidden shrink-0 text-[10px] font-black tracking-wide text-slate-400 sm:inline">
+      <span className="hidden shrink-0 text-[10px] font-black tracking-wide text-on-surface-variant sm:inline">
         標的種類
       </span>
       <div className="-mx-3 flex flex-nowrap gap-1.5 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 [&::-webkit-scrollbar]:hidden">

@@ -16,7 +16,7 @@ type Props = {
 export function ScenarioPresetChips({ onApplyPreset }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-0.5 text-[10px] font-black tracking-wide text-slate-400">快速開始</span>
+      <span className="mr-0.5 text-[10px] font-black tracking-wide text-on-surface-variant">快速開始</span>
       {QUERY_PRESETS.map((p) => (
         <button
           key={p.id}

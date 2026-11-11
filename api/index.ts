@@ -209,6 +209,27 @@ function updateTrendingQuery(query: string, type: "city" | "district" | "keyword
   }
 }
 
+/**
+ * 使用者大概位置（城市等級），給首頁預選縣市用。
+ * 資料來自 Vercel 邊緣節點附在請求上的 x-vercel-ip-* 標頭，不呼叫第三方 IP 服務，也不記錄 IP。
+ * 每位使用者結果不同，必須 no-store，避免 CDN 把某人的位置快取給其他人。
+ * 本機開發沒有這些標頭，回傳 success: false。
+ */
+app.get("/api/geo", (req, res) => {
+  res.set("Cache-Control", "private, no-store");
+  const header = (name: string) => {
+    const v = req.headers[name];
+    return (Array.isArray(v) ? v[0] : v)?.trim() || "";
+  };
+  const country = header("x-vercel-ip-country").toUpperCase();
+  const latitude = parseFloat(header("x-vercel-ip-latitude"));
+  const longitude = parseFloat(header("x-vercel-ip-longitude"));
+  if (!country || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return res.json({ success: false });
+  }
+  return res.json({ success: true, country, latitude, longitude });
+});
+
 app.get("/api/trending-searches", (_req, res) => {
   const sorted = [...trendingQueries].sort((a, b) => b.count - a.count).slice(0, 8);
   return res.json({ success: true, data: sorted });

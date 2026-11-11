@@ -25,6 +25,7 @@ import {
   getSpecialTags,
   getCommunityHistoryKey,
 } from "../utils/real-estate-helpers";
+import { MD_UP, useMediaQuery } from "../hooks/useMediaQuery";
 import { calculateDistance } from "../lib/utils";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_APP_TEXTS, type AppTexts } from "../constants/texts";
@@ -147,6 +148,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
     : null;
   const mobileChip =
     "inline-flex max-w-[7rem] shrink-0 items-center truncate rounded-full bg-surface-container-highest px-2 py-0.5 text-[11px] font-medium text-on-surface-variant";
+  const isDesktop = useMediaQuery(MD_UP);
   const mobileIconButton =
     "flex h-11 w-11 items-center justify-center rounded-full transition-colors";
 
@@ -169,7 +171,9 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
       onClick={() => setSelectedItem(item)}
       className="@container group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[24px] bg-surface-container-low border border-outline-variant/40 pb-0 pl-3.5 pr-1 pt-3 transition-all duration-200 hover:shadow-[var(--md-elevation-2)] hover:border-outline-variant hover:bg-surface-container [content-visibility:auto] [contain-intrinsic-size:auto_120px] md:p-4 md:[contain-intrinsic-size:auto_220px]"
     >
-      {/* ── 手機：精簡卡（整張點開詳情；地址＋價格、重點規格、日期與 44px 動作） ── */}
+      {/* ── 手機：精簡卡（整張點開詳情；地址＋價格、重點規格、日期與 44px 動作） ──
+          只渲染目前螢幕用得到的那一套，避免每張卡 DOM 加倍 */}
+      {!isDesktop && (
       <div className="md:hidden">
         <div className="flex min-w-0 items-start justify-between gap-3 pr-2.5">
           <div className="min-w-0 flex-1">
@@ -283,8 +287,10 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
           </button>
         </div>
       </div>
+      )}
 
       {/* ── md 以上：完整卡片 ── */}
+      {isDesktop && (
       <div className="hidden min-w-0 md:flex md:h-full md:flex-col">
       {/* ── Top: tags + actions ── */}
       <div className="flex min-w-0 items-start gap-2">
@@ -320,7 +326,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
           {hasCoords && (
             <span
               title="官方門牌多為區間遮蔽，地圖座標為約略定位"
-              className="inline-flex items-center gap-0.5 rounded-full bg-surface-container-highest px-2 py-0.5 text-[10px] font-medium text-on-surface-variant/80"
+              className="inline-flex items-center gap-0.5 rounded-full bg-surface-container-highest px-2 py-0.5 text-[10px] font-medium text-on-surface-variant"
             >
               <MapPinOff size={10} className="shrink-0" />
               約略
@@ -364,7 +370,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
         <div className="min-w-0 flex-1">
           <time
             dateTime={displayDate}
-            className="mb-1 block text-xs font-medium tabular-nums tracking-wide text-on-surface-variant/70"
+            className="mb-1 block text-xs font-medium tabular-nums tracking-wide text-on-surface-variant"
           >
             {displayDate}
           </time>
@@ -530,6 +536,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
         </Button>
       </div>
       </div>
+      )}
     </motion.div>
   );
 };

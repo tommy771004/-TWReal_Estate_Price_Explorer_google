@@ -18,7 +18,7 @@ export function TransactionTypeTabs({ value, onChange }: Props) {
           className={`px-4 xl:px-6 h-9 font-bold text-xs sm:text-[13px] rounded-xl whitespace-nowrap transition-all ${
             value === t.name
               ? "bg-white dark:bg-slate-800 text-coral-600 dark:text-coral-400 shadow-sm border border-slate-100 dark:border-slate-700"
-              : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              : "text-on-surface-variant hover:text-on-surface"
           }`}
         >
           {transactionTypeLabel(t.name)}
