@@ -169,20 +169,24 @@ export function ResultsWorkspace() {
                   }`}
                 >
                 <div className="relative mt-0 flex w-full flex-1 flex-col overflow-hidden rounded-t-none border border-outline-variant/40 bg-surface-container-low shadow-[var(--md-elevation-1)] sm:mt-4 sm:rounded-[28px]">
-                  <div className="relative flex items-center justify-between gap-2 border-b border-outline-variant/30 bg-surface-container px-3.5 py-3 sm:px-6">
-                    <div className="relative z-10 flex min-w-0 items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container shadow-xs">
+                  {/* 手機：第 1 列結果筆數＋動作，第 2 列視圖切換＋排序；lg 起併成一列。
+                      地圖視圖在手機改由底部導覽切換，這裡只在 lg 以上顯示。 */}
+                  <div className="relative flex flex-wrap items-center justify-between gap-x-2 gap-y-2.5 border-b border-outline-variant/30 bg-surface-container px-3.5 py-2.5 sm:px-6 sm:py-3">
+                    <div className="relative z-10 flex min-w-0 flex-1 items-center gap-3">
+                      <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container shadow-xs sm:flex">
                         <Filter className="h-4 w-4" />
                       </div>
                       <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
                         <span className="truncate text-xs font-medium text-on-surface-variant">
-                          結果 {filteredData.length.toLocaleString()} 筆
+                          <span className="text-sm font-bold text-on-surface sm:text-xs sm:font-medium sm:text-on-surface-variant">
+                            結果 {filteredData.length.toLocaleString()} 筆
+                          </span>
                           <span className="mx-1 text-outline-variant">·</span>
                           {formatPeriodLabel(period)}
                         </span>
                       </div>
                     </div>
-                    <div className="relative z-10 flex shrink-0 items-center gap-2">
+                    <div className="relative z-10 flex shrink-0 items-center">
                     <ResultActions
                       savedSearches={savedSearches}
                       onSaveCurrent={() => setIsSavingSearch(true)}
@@ -193,51 +197,80 @@ export function ResultsWorkspace() {
                       onCopyShareLink={copyShareLink}
                       shareStatus={shareStatus}
                     />
+                    </div>
+                    <div className="relative z-10 flex w-full items-center justify-between gap-2 lg:w-auto lg:justify-end">
                     {/* Material 3 Segmented Button */}
-                    <div className="flex items-center rounded-full border border-outline-variant/50 bg-surface-container-highest p-1 shadow-xs">
+                    <div role="group" aria-label="結果視圖" className="flex items-center rounded-full border border-outline-variant/50 bg-surface-container-highest p-1 shadow-xs">
                       <button
                         type="button"
+                        aria-pressed={viewMode === "list"}
                         onClick={() => setViewMode("list")}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "list" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
                         title="列表"
                         aria-label="列表圖"
                       >
                         <List size={14} />
-                        <span className="hidden xl:inline">列表</span>
+                        <span className="sm:hidden xl:inline">列表</span>
                       </button>
                       <button
                         type="button"
+                        aria-pressed={viewMode === "table"}
                         onClick={() => setViewMode("table")}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "table" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
                         title="表格"
                         aria-label="表格圖"
                       >
                         <Table2 size={14} />
-                        <span className="hidden xl:inline">表格</span>
+                        <span className="sm:hidden xl:inline">表格</span>
                       </button>
                       {typeName === "預售屋" && (
                         <button
                           type="button"
+                          aria-pressed={viewMode === "aggregated"}
                           onClick={() => setViewMode("aggregated")}
                           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "aggregated" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
                           title="建案聚合"
                           aria-label="建案聚合視圖"
                         >
                           <BarChart3 size={14} />
-                          <span className="hidden xl:inline">建案</span>
+                          <span className="sm:hidden xl:inline">建案</span>
                         </button>
                       )}
                       <button
                         type="button"
+                        aria-pressed={viewMode === "map"}
                         onClick={() => setViewMode("map")}
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "map" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
+                        className={`hidden lg:inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${viewMode === "map" ? "bg-primary text-on-primary shadow-xs" : "text-on-surface-variant hover:text-on-surface"}`}
                         title="地圖"
                         aria-label="地圖視圖"
                       >
                         <MapIcon size={14} />
-                        <span className="hidden xl:inline">地圖</span>
+                        <span className="sm:hidden xl:inline">地圖</span>
                       </button>
                     </div>
+                    {(viewMode === "list" || viewMode === "table") && (
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="results-sort"
+                          className="hidden text-xs font-semibold text-on-surface-variant sm:inline"
+                        >
+                          排序
+                        </label>
+                        <select
+                          id="results-sort"
+                          aria-label="排序"
+                          value={sortValue}
+                          onChange={(e) => setSortConfig(sortConfigFromValue(e.target.value as SortOptionValue))}
+                          className="h-9 max-w-[11rem] rounded-full border border-outline bg-surface px-3.5 text-xs font-semibold text-on-surface outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
+                        >
+                          {SORT_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     </div>
                   </div>
 
@@ -370,6 +403,7 @@ export function ResultsWorkspace() {
                       />
                     )}
                     {!loading && (priceDistribution.length > 0 || priceTrend.length > 0) && (
+                      <div id="results-charts" className="scroll-mt-4">
                       <Suspense
                         fallback={
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mx-0 sm:mx-6 mt-6 mb-2">
@@ -385,30 +419,11 @@ export function ResultsWorkspace() {
                           onToggleCharts={() => setShowChartsMobile(!showChartsMobile)}
                         />
                       </Suspense>
+                      </div>
                     )}
                     <div className="w-full flex flex-col min-w-0">
-                      {/* 排序：原本是可水平捲動的 chip 列 + 左右箭頭（共 6 個控制項），
-                          收斂成一顆下拉，選項語意直接寫明方向 */}
-                      <div className="mb-4 flex items-center justify-end gap-2 px-1.5 sm:px-6">
-                        <label
-                          htmlFor="results-sort"
-                          className="text-xs font-semibold text-on-surface-variant"
-                        >
-                          排序
-                        </label>
-                        <select
-                          id="results-sort"
-                          value={sortValue}
-                          onChange={(e) => setSortConfig(sortConfigFromValue(e.target.value as SortOptionValue))}
-                          className="h-9 rounded-full border border-outline bg-surface px-3.5 text-xs font-semibold text-on-surface outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
-                        >
-                          {SORT_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      {/* 排序已移到結果列標題（視圖切換旁），這裡只留間距 */}
+                      <div className="h-4" aria-hidden="true" />
 
                       {viewMode === "table" ? (
                         <motion.div 
@@ -721,8 +736,8 @@ export function ResultsWorkspace() {
                 </div>
               </div>
 
-              {/* 地圖探索：M3 FAB 浮動按鈕 */}
-              <div className="pointer-events-none fixed bottom-24 right-4 z-[55] flex flex-col items-end gap-2 sm:bottom-28 sm:right-6 lg:bottom-10 lg:right-8">
+              {/* 地圖探索：M3 FAB 浮動按鈕。手機改由底部導覽的「地圖」分頁進入，只在桌面顯示 */}
+              <div className="pointer-events-none fixed bottom-10 right-8 z-[55] hidden flex-col items-end gap-2 lg:flex">
                 <AnimatePresence>
                   {mapPeekOpen && (
                     <motion.div

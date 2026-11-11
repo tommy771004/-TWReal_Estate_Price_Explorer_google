@@ -14,7 +14,11 @@ import type { UserLocation } from "../../../types/app";
 import type { PeriodRange } from "../../../utils/real-estate-helpers";
 import { needsRefetch } from "../../../lib/filterScope";
 import { useDraftFilterCount } from "../../../hooks/useDraftFilterCount";
+import { PROPERTY_TYPE_OPTIONS } from "../../../constants/filterLabels";
+import { DEFAULT_PROPERTY_TYPES } from "../../../lib/urlState";
 import { FilterGroupRenderer } from "./FilterGroupRenderer";
+import { FilterGroupShell, groupChip } from "./FilterGroupShell";
+import { isPropertyTypeActive } from "./PropertyTypeChips";
 import { ALL_GROUP_IDS, activeGroupCount, emptyDraft, type FilterDraft } from "./filterDraft";
 
 type Props = {
@@ -32,7 +36,14 @@ type Props = {
   appliedPeriod: PeriodRange;
 };
 
-/** 手機：單一「篩選」底部抽屜，footer 即時顯示筆數。 */
+/** 手機的篩選數量：一般群組＋標的種類（手機上標的種類只在抽屜裡）。 */
+const sheetActiveCount = (d: FilterDraft) =>
+  activeGroupCount(d) + (isPropertyTypeActive(d.propertyTypes) ? 1 : 0);
+
+/**
+ * 手機：單一「篩選」底部抽屜，footer 即時顯示筆數。
+ * 標的種類在手機主畫面不常駐，放在抽屜最上方。
+ */
 export function FilterSheet({
   applied,
   onApply,
@@ -72,7 +83,16 @@ export function FilterSheet({
     skip: mustRefetch,
   });
 
-  const total = activeGroupCount(draft);
+  const total = sheetActiveCount(draft);
+  const appliedCount = sheetActiveCount(applied);
+
+  const togglePropertyType = (pt: string) =>
+    setDraft((d) => ({
+      ...d,
+      propertyTypes: d.propertyTypes.includes(pt)
+        ? d.propertyTypes.filter((p) => p !== pt)
+        : [...d.propertyTypes, pt],
+    }));
 
   const footerLabel = mustRefetch
     ? "重新查詢"
@@ -90,17 +110,20 @@ export function FilterSheet({
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger
-        className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[12px] font-bold transition-all md:hidden ${
-          activeGroupCount(applied) > 0
+        className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-bold transition-all md:hidden ${
+          appliedCount > 0
             ? "border-coral-400/55 bg-coral-500/12 text-coral-700 dark:border-coral-500/40 dark:text-coral-300"
             : "border-slate-200/90 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300"
         }`}
       >
-        <SlidersHorizontal size={13} />
+        <SlidersHorizontal size={14} aria-hidden="true" />
         篩選
-        {activeGroupCount(applied) > 0 && (
-          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-coral-500 px-1 text-[10px] font-black text-white">
-            {activeGroupCount(applied)}
+        {appliedCount > 0 && (
+          <span
+            aria-label={`已套用 ${appliedCount} 組條件`}
+            className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-coral-500 px-1 text-[10px] font-black text-white"
+          >
+            {appliedCount}
           </span>
         )}
       </SheetTrigger>
@@ -124,6 +147,29 @@ export function FilterSheet({
             </p>
           )}
           <div className="space-y-5 pb-2">
+            <FilterGroupShell
+              title="標的種類"
+              active={isPropertyTypeActive(draft.propertyTypes)}
+              onClear={() => patch({ propertyTypes: [...DEFAULT_PROPERTY_TYPES] })}
+            >
+              <div role="group" aria-label="標的種類" className="flex flex-wrap gap-1.5">
+                {PROPERTY_TYPE_OPTIONS.map((option) => {
+                  const checked = draft.propertyTypes.includes(option.value);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={checked}
+                      title={option.hint}
+                      onClick={() => togglePropertyType(option.value)}
+                      className={groupChip(checked)}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </FilterGroupShell>
             {ALL_GROUP_IDS.map((id) => (
               <div key={id}>
                 <FilterGroupRenderer

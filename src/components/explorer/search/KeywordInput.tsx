@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Clock, Search, TrendingUp } from "lucide-react";
 
@@ -16,6 +17,10 @@ type Props = {
   /** 點擊最近搜尋：直接以該關鍵字重新查詢 */
   onPickRecent: (query: string) => void;
   onPickTrending: (item: TrendingSearch) => void;
+  /** 按 Enter（非選字中）時送出查詢 */
+  onSubmit?: () => void;
+  /** 輸入框右端的內嵌按鈕（手機版的圓形查詢鈕） */
+  trailing?: ReactNode;
 };
 
 /** 關鍵字輸入 + 自動完成 / 最近搜尋 / 熱門搜尋下拉。 */
@@ -31,24 +36,39 @@ export function KeywordInput({
   trendingSearches,
   onPickRecent,
   onPickTrending,
+  onSubmit,
+  trailing,
 }: Props) {
   const hasDropdown =
     addressSuggestions.length > 0 || recentSearches.length > 0 || trendingSearches.length > 0;
 
   return (
-    <div className="relative group flex-1">
-      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+    <div className="relative group min-w-0 flex-1">
+      <div className={`absolute inset-y-0 left-0 pl-4 items-center pointer-events-none ${trailing ? "hidden md:flex" : "flex"}`}>
         <Search className="w-4 h-4 text-on-surface-variant group-focus-within:text-primary group-focus-within:scale-110 transition-all duration-200" />
       </div>
       <input
+        id="explorer-keyword"
         type="text"
+        aria-label={placeholder}
         placeholder={placeholder}
-        className="w-full pl-11 pr-4 h-[52px] rounded-full bg-surface-container-highest border border-outline-variant/60 text-on-surface placeholder:text-on-surface-variant/60 outline-none text-sm font-medium focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs"
+        enterKeyHint="search"
+        className={`w-full rounded-full ${trailing ? "h-12 pl-4 pr-12 md:h-[52px] md:pl-11 md:pr-4" : "h-[52px] pl-11 pr-4"} bg-surface-container-highest border border-outline-variant/60 text-on-surface placeholder:text-on-surface-variant/60 outline-none text-sm font-medium focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-xs`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setShowSuggestions(true)}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+        onKeyDown={(e) => {
+          // 注音／倉頡選字時的 Enter 是確認候選字，不能當成送出
+          if (e.key !== "Enter" || e.nativeEvent.isComposing || !onSubmit) return;
+          e.preventDefault();
+          setShowSuggestions(false);
+          onSubmit();
+        }}
       />
+      {trailing && (
+        <div className="absolute inset-y-0 right-1 flex items-center md:hidden">{trailing}</div>
+      )}
 
       <AnimatePresence>
         {showSuggestions && hasDropdown && (

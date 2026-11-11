@@ -119,18 +119,22 @@ export function SearchFilterPanel() {
   /** 交易型態只在選了跟房子有關的標的時才有意義 */
   const showTransactionType = hasHousingPropertyType(propertyTypes);
 
-  const handlePropertyTypesChange = (next: string[]) => {
-    writeDraft({ propertyTypes: next });
-    // 只剩土地／車位時，預售屋與租屋不存在對應的實價登錄，
-    // 必須把交易型態拉回買賣，否則會靜默篩成 0 筆
-    if (!hasHousingPropertyType(next) && typeName !== "買賣") {
+  /** 只剩土地／車位時，預售屋與租屋不存在對應的實價登錄，
+      必須把交易型態拉回買賣，否則會靜默篩成 0 筆 */
+  const syncTypeNameWith = (nextPropertyTypes: string[]) => {
+    if (!hasHousingPropertyType(nextPropertyTypes) && typeName !== "買賣") {
       setTypeName("買賣");
       setViewMode("list");
     }
   };
 
+  const handlePropertyTypesChange = (next: string[]) => {
+    writeDraft({ propertyTypes: next });
+    syncTypeNameWith(next);
+  };
+
   return (
-    <div className="mx-auto mb-3 w-full max-w-[1600px] sm:mb-4">
+    <div data-search-panel className="mx-auto mb-3 w-full max-w-[1600px] scroll-mt-3 sm:mb-4">
       <motion.div
         layout="position"
         animate={{
@@ -139,7 +143,7 @@ export function SearchFilterPanel() {
             : "0 20px 40px -18px rgba(0, 0, 0, 0.22)",
         }}
         transition={{ duration: 0.4 }}
-        className="relative flex flex-col gap-3.5 overflow-visible rounded-[28px] bg-surface-container border border-outline-variant/40 p-3.5 sm:px-5 sm:py-4 shadow-[var(--md-elevation-1)]"
+        className="relative flex flex-col gap-2.5 overflow-visible rounded-[28px] bg-surface-container border border-outline-variant/40 p-3 sm:px-5 sm:py-4 md:gap-3.5 shadow-[var(--md-elevation-1)]"
       >
         {loading && (
           <motion.div
@@ -175,9 +179,12 @@ export function SearchFilterPanel() {
         />
 
         {/* 分類列：標的種類是主要大分類；交易型態附屬於它，
-            只有選了跟房子有關的標的才出現 */}
+            只有選了跟房子有關的標的才出現。
+            手機把標的種類收進篩選抽屜，這一列只剩交易型態＋「篩選」按鈕。 */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <PropertyTypeChips value={propertyTypes} onChange={handlePropertyTypesChange} />
+          <div className="hidden md:block">
+            <PropertyTypeChips value={propertyTypes} onChange={handlePropertyTypesChange} />
+          </div>
 
           {showTransactionType && (
             <div className="flex items-center gap-2">
@@ -193,20 +200,13 @@ export function SearchFilterPanel() {
               />
             </div>
           )}
-        </div>
 
-        <FilterPillBar
-          draft={applied}
-          onPatch={writeDraft}
-          onClearGroup={clearGroup}
-          onClearAll={clearAll}
-          cityName={cityName}
-          onOpenChange={setIsFilterMenuOpen}
-          mobileTrigger={
+          <div className="ml-auto md:hidden">
             <FilterSheet
               applied={applied}
               onApply={(draft, refetch) => {
                 writeDraft(draft);
+                syncTypeNameWith(draft.propertyTypes);
                 if (refetch) window.setTimeout(() => fetchData(), 0);
               }}
               onOpenChange={setIsFilterMenuOpen}
@@ -219,8 +219,19 @@ export function SearchFilterPanel() {
               data={data}
               appliedPeriod={period}
             />
-          }
-        />
+          </div>
+        </div>
+
+        <div className="hidden md:block">
+          <FilterPillBar
+            draft={applied}
+            onPatch={writeDraft}
+            onClearGroup={clearGroup}
+            onClearAll={clearAll}
+            cityName={cityName}
+            onOpenChange={setIsFilterMenuOpen}
+          />
+        </div>
 
         <AppliedFilterChips
             values={{

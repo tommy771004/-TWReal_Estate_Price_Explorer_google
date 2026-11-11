@@ -9,6 +9,10 @@
 :root {
   --font-scale: 1.0;
 
+  /* 版面間距 token：左右外距與區塊之間的間距（手機 12／12，sm 以上 24／16） */
+  --section-margin: 12px;
+  --section-gap: 12px;
+
   /* Material 3 Light Color System */
   --md-sys-color-primary: #00639b;
   --md-sys-color-on-primary: #ffffff;
@@ -289,3 +293,16 @@ html {
   }
 }
 
+/* 版面間距 token：sm 以上放寬 */
+@media (min-width: 640px) {
+  :root {
+    --section-margin: 24px;
+    --section-gap: 16px;
+  }
+}
+
+/* index.html 的靜態樣式把 body 固定為淺色；深色模式（含指南頁）改用 M3 背景色 */
+html.dark body {
+  background-color: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
+}

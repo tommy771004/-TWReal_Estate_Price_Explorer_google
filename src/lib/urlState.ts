@@ -7,6 +7,7 @@ import {
   parseSelectionPath,
 } from "./seoRoutes";
 import { getDefaultPeriod, type PeriodRange } from "../utils/real-estate-helpers";
+import { readDefaultCity } from "../hooks/useDisplayPreferences";
 
 export { buildSelectionPath };
 
@@ -62,6 +63,12 @@ export const parseSelectionFromUrl = (): Selection => {
 
   const pathSelection = parseSelectionPath(window.location.pathname);
   const params = new URLSearchParams(window.location.search);
+  // 直接開首頁「/」且沒帶 ?city= 時，改用使用者在側邊選單設定的預設縣市
+  const isBareHome = window.location.pathname.split("/").filter(Boolean).length === 0 && !params.get("city");
+  const defaultCity = isBareHome ? readDefaultCity() : null;
+  if (pathSelection && defaultCity && CITIES.some((c) => c.name === defaultCity)) {
+    pathSelection.cityName = defaultCity;
+  }
   const selected = pathSelection ?? {
     cityName: params.get("city")?.trim() || DEFAULT_CITY,
     typeName: params.get("type")?.trim() || DEFAULT_TYPE,

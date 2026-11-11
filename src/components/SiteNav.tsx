@@ -1,60 +1,56 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { NAV_GROUPS, NAV_MENU_SECTIONS, groupsForSection } from "../content/siteNav";
-import {
-  ChevronDown,
-  Database,
-  Heart,
-  MessageSquare,
-  MoreHorizontal,
-  Moon,
-  RotateCw,
-  Settings,
-  Sun,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { NAV_GROUPS, NAV_MENU_SECTIONS, getRouteLabel, groupsForSection } from "../content/siteNav";
+import { ChevronDown, Heart, Search } from "lucide-react";
 import type { Transaction } from "../types/real-estate";
+import type { FontSizePreference, ThemePreference } from "../hooks/useDisplayPreferences";
+import { AppDrawer } from "./AppDrawer";
 
 interface SiteNavProps {
+  /** 首頁：頁名同時是頁面的 <h1> */
   brandAsHeading?: boolean;
-  onSettingsClick?: () => void;
-  settingsTitle?: string;
+  theme: ThemePreference;
+  onThemeChange: (theme: ThemePreference) => void;
+  fontSize: FontSizePreference;
+  onFontSizeChange: (size: FontSizePreference) => void;
+  /** 查詢頁：聚焦地址／社區搜尋框；沒給時搜尋鈕連回首頁 */
+  onSearchClick?: () => void;
   favorites?: Transaction[];
   onSelectFavorite?: (item: Transaction) => void;
   onToggleFavorite?: (item: Transaction, event?: ReactMouseEvent) => void;
   loading?: boolean;
   onRefresh?: () => void;
-  darkMode?: boolean;
-  onToggleDarkMode?: () => void;
-  showFeedback?: boolean;
-  onToggleFeedback?: () => void;
+  onFeedback?: () => void;
+  onOpenAdvancedSettings?: () => void;
 }
 
-// 頂部分組導覽列：每個分類以下拉選單收納指南頁，減少首頁資訊堆疊。
+const HEADER_ICON_BUTTON =
+  "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
+
+/**
+ * Header：左側選單鈕＋目前頁名，右側只放搜尋與收藏。
+ * 品牌、主題、字級、設定、意見回饋、重新整理都收進側邊選單（AppDrawer）。
+ * xl 以上仍保留 3 組 mega-menu：桌面的可發現性，也讓指南連結常駐 DOM。
+ */
 export function SiteNav({
   brandAsHeading = false,
-  onSettingsClick,
-  settingsTitle,
+  theme,
+  onThemeChange,
+  fontSize,
+  onFontSizeChange,
+  onSearchClick,
   favorites = [],
   onSelectFavorite,
   onToggleFavorite,
   loading = false,
   onRefresh,
-  darkMode = false,
-  onToggleDarkMode,
-  showFeedback = false,
-  onToggleFeedback,
+  onFeedback,
+  onOpenAdvancedSettings,
 }: SiteNavProps) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [openMobileSection, setOpenMobileSection] = useState<string | null>(null);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
+  const routeLabel = typeof window === "undefined" ? "實價登錄查詢" : getRouteLabel(window.location.pathname);
 
   // 點擊外部或按 Esc 時關閉下拉
   useEffect(() => {
@@ -79,88 +75,101 @@ export function SiteNav({
     };
   }, [favoritesOpen, openGroup]);
 
-  return (
-    <nav
-      ref={navRef}
-      aria-label="主要導覽"
-      className="relative z-30 border-b border-outline-variant/40 bg-surface-container-low/95 backdrop-blur-md"
-    >
-      <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between gap-2 px-3 sm:px-6">
-        <a href="/" className="flex min-w-0 shrink items-center gap-2.5 py-2 text-on-surface sm:gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-container text-on-primary-container shadow-xs">
-            <Database className="h-5 w-5" />
-          </span>
-          <span className="min-w-0">
-            {brandAsHeading ? (
-              <h1 className="truncate font-display text-base font-bold tracking-tight text-on-surface sm:text-lg">
-                實價登錄查詢
-              </h1>
-            ) : (
-              <span className="block truncate font-display text-base font-bold tracking-tight text-on-surface sm:text-lg">
-                實價登錄查詢
-              </span>
-            )}
-            <span className="hidden text-[10px] font-medium tracking-wide text-on-surface-variant/80 2xl:block">
-              Taiwan Real Estate Price Explorer
-            </span>
-          </span>
-        </a>
+  const labelClass = "truncate font-display text-[17px] font-extrabold tracking-tight text-primary md:text-lg";
 
-        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+  return (
+    <header
+      ref={navRef}
+      className="relative z-30 border-b border-outline-variant/40 bg-surface-container-low/90 backdrop-blur-md"
+    >
+      <div className="mx-auto flex h-12 max-w-[1600px] items-center justify-between gap-2 px-1 md:h-14 md:px-3">
+        <div className="flex min-w-0 items-center gap-0.5">
+          <AppDrawer
+            theme={theme}
+            onThemeChange={onThemeChange}
+            fontSize={fontSize}
+            onFontSizeChange={onFontSizeChange}
+            onRefresh={onRefresh}
+            loading={loading}
+            onFeedback={onFeedback}
+            onOpenAdvancedSettings={onOpenAdvancedSettings}
+          />
+          {brandAsHeading ? (
+            <h1 className={labelClass}>{routeLabel}</h1>
+          ) : (
+            <a href="/" className={`${labelClass} rounded-lg hover:opacity-80`}>
+              {routeLabel}
+            </a>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
           {/* 桌面：3 個 mega-menu。分組標題沿用 NAV_GROUPS，連結一個不少 */}
-          <ul className="mr-1 hidden items-center gap-1 xl:flex">
-            {NAV_MENU_SECTIONS.map((section) => {
-              const isOpen = openGroup === section.label;
-              const groups = groupsForSection(section);
-              return (
-                <li key={section.label} className="relative">
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    onClick={() => setOpenGroup(isOpen ? null : section.label)}
-                    className={`inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                      isOpen
-                        ? "bg-secondary-container text-on-secondary-container font-semibold"
-                        : "text-on-surface-variant hover:bg-on-surface/8 hover:text-on-surface"
-                    }`}
-                  >
-                    {section.label}
-                    <ChevronDown
-                      size={14}
-                      className={`opacity-60 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                    />
-                  </button>
-                  {isOpen && (
-                    <div className="absolute left-0 top-full z-40 mt-2 w-[min(46rem,calc(100vw-2rem))] overflow-hidden rounded-[28px] border border-outline-variant/40 bg-surface-container-high p-5 shadow-[var(--md-elevation-3)]">
-                      <div
-                        className={`grid gap-x-6 gap-y-4 ${groups.length > 2 ? "grid-cols-3" : "grid-cols-2"}`}
-                      >
-                        {groups.map((group) => (
-                          <div key={group.label}>
-                            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">
-                              {group.label}
-                            </p>
-                            <ul className="flex flex-col gap-0.5">
-                              {group.links.map((link) => (
-                                <li key={link.href}>
-                                  <a
-                                    href={link.href}
-                                    className="block rounded-xl px-2.5 py-1.5 text-[13px] font-medium text-on-surface-variant transition-colors hover:bg-on-surface/8 hover:text-on-surface"
-                                  >
-                                    {link.label}
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
+          <nav aria-label="網站分類" className="mr-1 hidden xl:block">
+            <ul className="flex items-center gap-1">
+              {NAV_MENU_SECTIONS.map((section) => {
+                const isOpen = openGroup === section.label;
+                const groups = groupsForSection(section);
+                return (
+                  <li key={section.label} className="relative">
+                    <button
+                      type="button"
+                      aria-expanded={isOpen}
+                      onClick={() => setOpenGroup(isOpen ? null : section.label)}
+                      className={`inline-flex h-10 items-center gap-1 rounded-full px-3.5 text-sm font-medium transition-colors ${
+                        isOpen
+                          ? "bg-secondary-container font-semibold text-on-secondary-container"
+                          : "text-on-surface-variant hover:bg-on-surface/8 hover:text-on-surface"
+                      }`}
+                    >
+                      {section.label}
+                      <ChevronDown
+                        size={14}
+                        className={`opacity-60 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="absolute right-0 top-full z-40 mt-2 w-[min(46rem,calc(100vw-2rem))] overflow-hidden rounded-[28px] border border-outline-variant/40 bg-surface-container-high p-5 shadow-[var(--md-elevation-3)]">
+                        <div
+                          className={`grid gap-x-6 gap-y-4 ${groups.length > 2 ? "grid-cols-3" : "grid-cols-2"}`}
+                        >
+                          {groups.map((group) => (
+                            <div key={group.label}>
+                              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">
+                                {group.label}
+                              </p>
+                              <ul className="flex flex-col gap-0.5">
+                                {group.links.map((link) => (
+                                  <li key={link.href}>
+                                    <a
+                                      href={link.href}
+                                      className="block rounded-xl px-2.5 py-1.5 text-[13px] font-medium text-on-surface-variant transition-colors hover:bg-on-surface/8 hover:text-on-surface"
+                                    >
+                                      {link.label}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+
+          {onSearchClick ? (
+            <button type="button" onClick={onSearchClick} className={HEADER_ICON_BUTTON} aria-label="搜尋地址或社區" title="搜尋地址或社區">
+              <Search className="h-[22px] w-[22px]" aria-hidden="true" />
+            </button>
+          ) : (
+            <a href="/" className={HEADER_ICON_BUTTON} aria-label="前往實價登錄查詢" title="前往實價登錄查詢">
+              <Search className="h-[22px] w-[22px]" aria-hidden="true" />
+            </a>
+          )}
 
           {onSelectFavorite && onToggleFavorite && (
             <div className="relative">
@@ -168,17 +177,13 @@ export function SiteNav({
                 type="button"
                 aria-expanded={favoritesOpen}
                 onClick={() => setFavoritesOpen((value) => !value)}
-                className={`relative flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
-                  favoritesOpen
-                    ? "bg-error-container text-on-error-container"
-                    : "text-on-surface-variant hover:bg-on-surface/8 hover:text-error"
-                }`}
-                title="我的最愛"
-                aria-label="我的最愛"
+                className={`${HEADER_ICON_BUTTON} ${favoritesOpen ? "bg-primary/10" : ""}`}
+                title="我的收藏"
+                aria-label={favorites.length > 0 ? `我的收藏，${favorites.length} 筆` : "我的收藏"}
               >
-                <Heart className={`h-5 w-5 ${favorites.length > 0 ? "fill-current text-error" : ""}`} />
+                <Heart className={`h-[22px] w-[22px] ${favorites.length > 0 ? "fill-current" : ""}`} aria-hidden="true" />
                 {favorites.length > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[9px] font-bold text-on-error ring-2 ring-surface">
+                  <span className="absolute right-1 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-tertiary px-1 text-[10px] font-bold text-on-tertiary">
                     {favorites.length}
                   </span>
                 )}
@@ -191,7 +196,7 @@ export function SiteNav({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.98 }}
                     transition={{ duration: 0.18 }}
-                    className="absolute right-0 top-full z-50 mt-2 flex max-h-[min(400px,70dvh)] w-[min(19rem,calc(100vw-0.75rem))] flex-col overflow-hidden rounded-[28px] border border-outline-variant/40 bg-surface-container-high shadow-[var(--md-elevation-3)]"
+                    className="absolute right-0 top-full z-40 mt-2 flex max-h-[min(400px,70dvh)] w-[min(19rem,calc(100vw-0.75rem))] flex-col overflow-hidden rounded-[28px] border border-outline-variant/40 bg-surface-container-high shadow-[var(--md-elevation-3)]"
                   >
                     <div className="flex items-center justify-between border-b border-outline-variant/30 bg-surface-container px-4 py-3">
                       <span className="flex items-center gap-2 text-sm font-semibold text-on-surface">
@@ -247,149 +252,9 @@ export function SiteNav({
               </AnimatePresence>
             </div>
           )}
-
-          {onToggleDarkMode && (
-            <button
-              type="button"
-              onClick={onToggleDarkMode}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-on-surface/8 hover:text-on-surface"
-              title={darkMode ? "切換至淺色模式" : "切換至深色模式"}
-              aria-label={darkMode ? "切換至淺色模式" : "切換至深色模式"}
-            >
-              {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </button>
-          )}
-
-          {/* 次要動作收進「更多」 */}
-          {(onRefresh || onToggleFeedback) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className="hidden h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-on-surface/8 hover:text-on-surface sm:flex"
-                title="更多"
-                aria-label="更多"
-              >
-                <MoreHorizontal className="h-5 w-5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="rounded-2xl border border-outline-variant/40 bg-surface-container-high shadow-[var(--md-elevation-3)]">
-                {onRefresh && (
-                  <DropdownMenuItem onClick={onRefresh} disabled={loading} className="rounded-xl font-medium">
-                    <RotateCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                    重新整理資料
-                  </DropdownMenuItem>
-                )}
-                {onToggleFeedback && (
-                  <DropdownMenuItem onClick={onToggleFeedback} className="rounded-xl font-medium">
-                    <MessageSquare className="h-4 w-4" />
-                    意見回饋
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {onSettingsClick && (
-            <button
-              type="button"
-              onClick={onSettingsClick}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-on-surface/8 hover:text-on-surface"
-              title={settingsTitle || "設定"}
-              aria-label={settingsTitle || "設定"}
-            >
-              <Settings className="h-5 w-5 animate-hover-spin" />
-            </button>
-          )}
-
-          {/* 行動：展開全部選單 */}
-          <button
-            type="button"
-            aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen((v) => !v)}
-            className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors xl:hidden ${
-              mobileOpen
-                ? "border-primary bg-primary-container text-on-primary-container"
-                : "border-outline-variant bg-surface text-on-surface hover:bg-surface-container-high"
-            }`}
-          >
-            選單
-          </button>
         </div>
       </div>
-
-      {/* 行動展開內容 */}
-      {mobileOpen && (
-        <div className="border-t border-outline-variant/30 bg-surface-container-low px-4 pb-4 xl:hidden">
-          {(onRefresh || onToggleFeedback) && (
-            <div className="flex gap-2 border-b border-outline-variant/30 py-3 sm:hidden">
-              {onRefresh && (
-                <button
-                  type="button"
-                  onClick={onRefresh}
-                  disabled={loading}
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-secondary-container px-3 py-2 text-xs font-semibold text-on-secondary-container disabled:opacity-40"
-                >
-                  <RotateCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-                  重新整理
-                </button>
-              )}
-              {onToggleFeedback && (
-                <button
-                  type="button"
-                  onClick={onToggleFeedback}
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-surface-container-highest px-3 py-2 text-xs font-semibold text-on-surface"
-                >
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  意見回饋
-                </button>
-              )}
-            </div>
-          )}
-          <div className="flex flex-col pt-2">
-            {NAV_MENU_SECTIONS.map((section) => {
-              const isOpen = openMobileSection === section.label;
-              return (
-                <div key={section.label} className="border-b border-outline-variant/30 last:border-0">
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    onClick={() => setOpenMobileSection(isOpen ? null : section.label)}
-                    className="flex w-full items-center justify-between gap-2 py-3 text-sm font-semibold text-on-surface"
-                  >
-                    {section.label}
-                    <ChevronDown
-                      size={15}
-                      className={`opacity-60 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                    />
-                  </button>
-                  {isOpen && (
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 pb-3">
-                      {groupsForSection(section).map((group) => (
-                        <div key={group.label}>
-                          <p className="px-1 text-xs font-bold uppercase tracking-wide text-primary">
-                            {group.label}
-                          </p>
-                          <ul className="mt-1 flex flex-col">
-                            {group.links.map((link) => (
-                              <li key={link.href}>
-                                <a
-                                  href={link.href}
-                                  className="block rounded-lg px-2 py-1.5 text-[13px] font-medium text-on-surface-variant hover:bg-on-surface/8 hover:text-on-surface"
-                                >
-                                  {link.label}
-                                </a>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </nav>
+    </header>
   );
 }
 

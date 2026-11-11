@@ -5,6 +5,19 @@ import { SiteNav, SiteFooterNav } from "./SiteNav";
 import { FeedbackForm } from "./FeedbackForm";
 import { syncSeoContentMetadata } from "../lib/seo";
 import { buildBreadcrumbTrail } from "../lib/seoContent";
+import { isGuidePath } from "../content/siteNav";
+import { useDisplayPreferences } from "../hooks/useDisplayPreferences";
+import { BottomNav, BOTTOM_NAV_BASE, type BottomNavItem, type BottomNavKey } from "./BottomNav";
+
+// 指南頁的底部導覽：查詢相關分頁連回首頁，由 App 讀 hash 切到對應視圖
+const BOTTOM_NAV_HREFS: Record<BottomNavKey, string> = {
+  market: "/",
+  map: "/#map",
+  trend: "/#trend",
+  compare: "/#compare",
+  guides: "/buying-guides/",
+};
+const BOTTOM_NAV_ITEMS: BottomNavItem[] = BOTTOM_NAV_BASE.map((item) => ({ ...item, href: BOTTOM_NAV_HREFS[item.key] }));
 
 // 純資訊頁不顯示導購／房貸工具
 const INFO_PATHS = new Set(["/about/", "/contact/", "/privacy/", "/methodology/", "/data-sources/"]);
@@ -25,11 +38,17 @@ export default function SeoContentPage({ page }: { page: SeoContentPageData }) {
   const showMortgage = page.path.startsWith("/buying-guides/") || FINANCE_GUIDES.has(page.path);
   const showAffiliate = !INFO_PATHS.has(page.path);
   const breadcrumb = buildBreadcrumbTrail(page);
+  const { theme, setTheme, fontSize, setFontSize } = useDisplayPreferences();
+  const activeTab: BottomNavKey | null = isGuidePath(page.path)
+    ? "guides"
+    : page.path.startsWith("/prices/")
+      ? "market"
+      : null;
 
   return (
     <>
-    <SiteNav />
-    <main data-seo-content-page className="mx-auto min-h-screen max-w-4xl px-5 py-12 text-slate-800 dark:text-slate-100 sm:px-8">
+    <SiteNav theme={theme} onThemeChange={setTheme} fontSize={fontSize} onFontSizeChange={setFontSize} />
+    <main data-seo-content-page className="mx-auto min-h-screen max-w-4xl px-5 pt-12 pb-[calc(7rem+env(safe-area-inset-bottom))] text-slate-800 dark:text-slate-100 sm:px-8 lg:pb-12">
       <nav aria-label="breadcrumb">
         <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
           {breadcrumb.map((crumb, index) => {
@@ -109,6 +128,7 @@ export default function SeoContentPage({ page }: { page: SeoContentPageData }) {
         <SiteFooterNav />
       </div>
     </main>
+    <BottomNav items={BOTTOM_NAV_ITEMS} activeKey={activeTab} />
     </>
   );
 }

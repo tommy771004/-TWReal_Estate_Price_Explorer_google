@@ -96,6 +96,9 @@ interface CompareBarProps {
   /** 複製目前比較清單的可分享連結 */
   onShareCompare?: () => void | Promise<void>;
   shareStatus?: "idle" | "copied" | "error";
+  /** 受控的比較對話框（底部導覽「比較」分頁也要能打開它） */
+  dialogOpen?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
 }
 
 export function CompareBar({
@@ -105,8 +108,12 @@ export function CompareBar({
   onSelectItem,
   onShareCompare,
   shareStatus = "idle",
+  dialogOpen,
+  onDialogOpenChange,
 }: CompareBarProps) {
-  const [open, setOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const open = dialogOpen ?? uncontrolledOpen;
+  const setOpen = onDialogOpenChange ?? setUncontrolledOpen;
 
   if (items.length === 0) return null;
 
@@ -117,10 +124,12 @@ export function CompareBar({
           initial={{ y: 80, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 80, opacity: 0 }}
-          className="fixed bottom-4 left-1/2 z-[60] w-[min(96vw,720px)] -translate-x-1/2"
+          // 手機：浮在底部膠囊導覽上方 8px；桌面沒有膠囊，維持 bottom-4。
+          // z-[45]：高於膠囊（z-40），低於所有對話框（z-50），開對話框時不會蓋住。
+          className="fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom))] left-1/2 z-[45] w-[min(calc(100vw-1.5rem),720px)] -translate-x-1/2 lg:bottom-4"
         >
-          <div className="flex items-center gap-3 rounded-[28px] border border-outline-variant/40 bg-surface-container-high p-3 shadow-[var(--md-elevation-3)]">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+          <div className="flex items-center gap-2.5 rounded-[24px] border border-outline-variant/40 bg-surface-container-high p-2 pl-3 shadow-[var(--md-elevation-3)] sm:gap-3 sm:rounded-[28px] sm:p-3">
+            <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container sm:flex">
               <Scale size={18} />
             </div>
             <div className="min-w-0 flex-1">
@@ -153,7 +162,7 @@ export function CompareBar({
                 ))}
               </div>
             </div>
-            <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
               <Button
                 type="button"
                 size="sm"
@@ -171,7 +180,8 @@ export function CompareBar({
                   size="sm"
                   disabled={items.length < 1}
                   onClick={() => void onShareCompare()}
-                  className={`h-9 rounded-full border border-outline px-3.5 text-xs font-semibold ${
+                  aria-label={shareStatus === "copied" ? "已複製比較連結" : "分享比較"}
+                  className={`h-9 rounded-full border border-outline px-2.5 text-xs font-semibold sm:px-3.5 ${
                     shareStatus === "copied"
                       ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
                       : "bg-surface text-on-surface hover:bg-surface-container-highest"
@@ -179,11 +189,11 @@ export function CompareBar({
                   title="複製含比較清單的連結"
                 >
                   {shareStatus === "copied" ? (
-                    <CheckCircle2 size={14} className="mr-1" />
+                    <CheckCircle2 size={14} className="sm:mr-1" />
                   ) : (
-                    <Share2 size={14} className="mr-1" />
+                    <Share2 size={14} className="sm:mr-1" />
                   )}
-                  {shareStatus === "copied" ? "已複製" : "分享比較"}
+                  <span className="hidden sm:inline">{shareStatus === "copied" ? "已複製" : "分享比較"}</span>
                 </Button>
               )}
               <Button
@@ -191,9 +201,11 @@ export function CompareBar({
                 variant="ghost"
                 size="sm"
                 onClick={onClear}
-                className="h-9 rounded-full px-3 text-xs font-medium text-on-surface-variant hover:bg-on-surface/8 hover:text-on-surface"
+                aria-label="清空比較清單"
+                className="h-9 rounded-full px-2.5 text-xs font-medium text-on-surface-variant hover:bg-on-surface/8 hover:text-on-surface sm:px-3"
               >
-                清空
+                <X size={16} className="sm:hidden" aria-hidden="true" />
+                <span className="hidden sm:inline">清空</span>
               </Button>
             </div>
           </div>

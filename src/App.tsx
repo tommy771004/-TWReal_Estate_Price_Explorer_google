@@ -64,7 +64,9 @@ import { ExplorerUiProvider } from "./components/explorer/ExplorerUiContext";
 import { useFetchRealEstate } from "./hooks/useFetchRealEstate";
 import type { SavedSearch, ViewMode } from "./types/app";
 
-import { PinnedKpiCompare } from "./components/PinnedKpiCompare";
+import { BottomNav, BOTTOM_NAV_BASE, type BottomNavItem, type BottomNavKey } from "./components/BottomNav";
+import { CompareSheet } from "./components/CompareSheet";
+import { useDisplayPreferences, type ThemePreference } from "./hooks/useDisplayPreferences";
 import {
   formatSnapshotLabel,
   type PinnedMarketSnapshot,
@@ -129,22 +131,8 @@ export default function App() {
       return [];
     }
   });
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('explorer_theme');
-      if (saved) return saved === 'dark';
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return true;
-  });
-
-  const [fontSize, setFontSize] = useState<"small" | "medium" | "large">(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('explorer_font_size');
-      return (saved as "small" | "medium" | "large") || 'medium';
-    }
-    return 'medium';
-  });
+  // 主題（淺色／深色／跟隨系統）與字級：這一頁唯一的擁有者，往下傳給 header、側邊選單與設定對話框
+  const { theme, setTheme, fontSize, setFontSize } = useDisplayPreferences();
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const [appTexts, setAppTexts] = useState<AppTexts>(() => {
@@ -168,30 +156,6 @@ export default function App() {
       return updated;
     });
   };
-
-  useEffect(() => {
-    localStorage.setItem('explorer_font_size', fontSize);
-    const root = document.documentElement;
-    if (fontSize === 'small') {
-      root.style.setProperty('--font-scale', '0.875');
-    } else if (fontSize === 'medium') {
-      root.style.setProperty('--font-scale', '1.0');
-    } else if (fontSize === 'large') {
-      root.style.setProperty('--font-scale', '1.15');
-    }
-  }, [fontSize]);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      document.documentElement.style.colorScheme = 'dark';
-      localStorage.setItem('explorer_theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.style.colorScheme = 'light';
-      localStorage.setItem('explorer_theme', 'light');
-    }
-  }, [darkMode]);
 
   useEffect(() => {
     syncSeoMetadata({ cityName, district, typeName });
@@ -1304,6 +1268,76 @@ export default function App() {
     addAuditLog("export_csv", JSON.stringify({ count: filteredData.length, cityName, district, typeName }));
   }, [filteredData, typeName, cityName, district, addAuditLog]);
 
+  // ── 底部導覽（手機）：行情／地圖／趨勢／比較／指南 ─────────────────────
+  const [navSection, setNavSection] = useState<"market" | "trend">("market");
+  const [isCompareSheetOpen, setIsCompareSheetOpen] = useState(false);
+  const [isCompareDialogOpen, setIsCompareDialogOpen] = useState(false);
+
+  const scrollToElement = React.useCallback((el: Element | null) => {
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }, []);
+
+  const focusKeywordSearch = React.useCallback(() => {
+    const input = document.getElementById("explorer-keyword") as HTMLInputElement | null;
+    if (!input) return;
+    scrollToElement(input.closest("[data-search-panel]") ?? input);
+    input.focus({ preventScroll: true });
+  }, [scrollToElement]);
+
+  const showMarketView = React.useCallback(() => {
+    setNavSection("market");
+    if (viewMode === "map") setViewMode(typeName === "預售屋" ? "aggregated" : "list");
+    scrollToElement(resultsContainerRef.current);
+  }, [viewMode, typeName, scrollToElement]);
+
+  const showMapView = React.useCallback(() => {
+    setViewMode("map");
+    scrollToElement(resultsContainerRef.current);
+  }, [scrollToElement]);
+
+  const showTrendView = React.useCallback(() => {
+    setNavSection("trend");
+    // 圖表只在列表／表格視圖、且有資料時出現；地圖或建案視圖先切回列表
+    if (viewMode !== "list" && viewMode !== "table") setViewMode("list");
+    setShowChartsMobile(true);
+    window.setTimeout(() => {
+      scrollToElement(document.getElementById("results-charts") ?? resultsContainerRef.current);
+    }, 80);
+  }, [viewMode, scrollToElement]);
+
+  // 從指南頁的底部導覽跳回來：/#map、/#trend、/#compare，只在載入時讀一次
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    const timer = window.setTimeout(() => {
+      if (hash === "map") showMapView();
+      else if (hash === "trend") showTrendView();
+      else if (hash === "compare") setIsCompareSheetOpen(true);
+    }, 300);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const bottomNavActions: Record<BottomNavKey, Partial<BottomNavItem>> = {
+    market: { onSelect: showMarketView },
+    map: { onSelect: showMapView },
+    trend: { onSelect: showTrendView },
+    compare: { onSelect: () => setIsCompareSheetOpen(true), badge: compareList.length },
+    guides: { href: "/buying-guides/" },
+  };
+  const bottomNavItems: BottomNavItem[] = BOTTOM_NAV_BASE.map((item) => ({ ...item, ...bottomNavActions[item.key] }));
+  const bottomNavActive: BottomNavKey = isCompareSheetOpen ? "compare" : viewMode === "map" ? "map" : navSection;
+
+  const handleThemeChange = React.useCallback(
+    (next: ThemePreference) => {
+      setTheme(next);
+      addAuditLog("toggle_dark_mode", next);
+    },
+    [setTheme, addAuditLog],
+  );
+
   const explorerUi = {
     cityName, setCityName, typeName, setTypeName, district, setDistrict,
     search, setSearch, propertyTypes, setPropertyTypes,
@@ -1339,7 +1373,14 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-[100dvh] w-full flex flex-col font-sans selection:bg-coral-500/30 bg-transparent  text-ink dark:text-slate-100 pb-20 overflow-x-hidden">
+    <div
+      className={`relative min-h-[100dvh] w-full flex flex-col font-sans selection:bg-coral-500/30 bg-transparent  text-ink dark:text-slate-100 overflow-x-hidden ${
+        // 底部留白：手機要讓出膠囊導覽（＋比較匣）的高度，桌面維持原本的 pb-20
+        compareList.length > 0
+          ? "pb-[calc(10.5rem+env(safe-area-inset-bottom))] lg:pb-28"
+          : "pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-20"
+      }`}
+    >
       <AnimatePresence>
         {isLocationModalOpen && (
           <LocationSelectionModal
@@ -1367,28 +1408,24 @@ export default function App() {
       >
         <SiteNav
           brandAsHeading
-          onSettingsClick={() => setIsSettingsModalOpen(true)}
-          settingsTitle={appTexts.settingsTitle}
+          theme={theme}
+          onThemeChange={handleThemeChange}
+          fontSize={fontSize}
+          onFontSizeChange={setFontSize}
+          onSearchClick={focusKeywordSearch}
           favorites={favorites}
           onSelectFavorite={setSelectedItem}
           onToggleFavorite={toggleFavorite}
           loading={loading}
           onRefresh={fetchData}
-          darkMode={darkMode}
-          onToggleDarkMode={() => {
-            const nextMode = !darkMode;
-            setDarkMode(nextMode);
-            addAuditLog("toggle_dark_mode", nextMode ? "dark" : "light");
+          onFeedback={() => {
+            setShowFeedback(true);
+            addAuditLog("feedback_button_click", "open");
           }}
-          showFeedback={showFeedback}
-          onToggleFeedback={() => {
-            const nextOpen = !showFeedback;
-            setShowFeedback(nextOpen);
-            addAuditLog("feedback_button_click", nextOpen ? "open" : "close");
-          }}
+          onOpenAdvancedSettings={() => setIsSettingsModalOpen(true)}
         />
-        {/* Header + explorer workspace */}
-        <div className="relative z-20 w-full shrink-0 px-1.5 pb-2 pt-4 sm:px-6 sm:pt-6">
+        {/* Header + explorer workspace（外距統一用 --section-margin／--section-gap） */}
+        <div className="relative z-20 w-full shrink-0 px-(--section-margin) pb-2 pt-(--section-gap)">
           <ExplorerUiProvider value={explorerUi}>
           <MarketHeader
             cityName={cityName}
@@ -1402,16 +1439,7 @@ export default function App() {
             pinCurrentMarket={pinCurrentMarket}
           />
 
-          {/* 手機也看得到釘選比價（桌面在右側 rail） */}
-          {pinnedKpis.length > 0 && (
-            <div className="max-w-[1600px] mx-auto w-full px-0 pb-3 lg:hidden">
-              <PinnedKpiCompare
-                pins={pinnedKpis}
-                onUnpin={(id) => setPinnedKpis((prev) => prev.filter((p) => p.id !== id))}
-                onClear={() => setPinnedKpis([])}
-              />
-            </div>
-          )}
+          {/* 手機的釘選比價改在底部導覽「比較」分頁（CompareSheet）；桌面在右側 rail */}
 
           <SearchFilterPanel />
 
@@ -1527,7 +1555,23 @@ export default function App() {
         onSelectItem={setSelectedItem}
         onShareCompare={copyCompareShareLink}
         shareStatus={compareShareStatus}
+        dialogOpen={isCompareDialogOpen}
+        onDialogOpenChange={setIsCompareDialogOpen}
       />
+
+      <CompareSheet
+        open={isCompareSheetOpen}
+        onOpenChange={setIsCompareSheetOpen}
+        items={compareList}
+        onRemove={(id) => setCompareList((prev) => prev.filter((p) => p.id !== id))}
+        onSelectItem={setSelectedItem}
+        onStartCompare={() => setIsCompareDialogOpen(true)}
+        pins={pinnedKpis}
+        onUnpin={(id) => setPinnedKpis((prev) => prev.filter((p) => p.id !== id))}
+        onClearPins={() => setPinnedKpis([])}
+      />
+
+      <BottomNav items={bottomNavItems} activeKey={bottomNavActive} />
 
       <AnimatePresence>
         {compareToast && (
@@ -1535,7 +1579,7 @@ export default function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="fixed bottom-24 left-1/2 z-[70] -translate-x-1/2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-900 shadow-lg dark:border-amber-500/30 dark:bg-amber-950 dark:text-amber-100"
+            className="fixed bottom-[calc(8.5rem+env(safe-area-inset-bottom))] left-1/2 z-[70] -translate-x-1/2 rounded-xl lg:bottom-24 border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-900 shadow-lg dark:border-amber-500/30 dark:bg-amber-950 dark:text-amber-100"
           >
             {compareToast}
           </motion.div>

@@ -102,3 +102,28 @@ export const groupsForSection = (section: NavSection): NavGroup[] =>
   section.groupLabels
     .map((label) => NAV_GROUPS.find((g) => g.label === label))
     .filter((g): g is NavGroup => Boolean(g));
+
+export const SITE_NAME = "實價登錄查詢";
+
+/**
+ * Header 左側顯示的「目前頁面」名稱：先找連結完全相符的分組，再用路徑前綴比對，
+ * 都沒有就退回站名（首頁、各縣市查詢頁、404）。
+ */
+export function getRouteLabel(pathname: string): string {
+  const path = pathname.endsWith("/") ? pathname : `${pathname}/`;
+  if (path === "/") return SITE_NAME;
+  const exact = NAV_GROUPS.find(
+    (group) => group.label !== "房價查詢" && group.links.some((link) => link.href === path),
+  );
+  if (exact) return exact.label.replace(" / ", "／");
+  if (path.startsWith("/buying-guides/") && path.includes("/districts/")) return "各區索引";
+  if (path.startsWith("/buying-guides/")) return "購屋指南";
+  if (path.startsWith("/renting-guides/")) return "租屋指南";
+  if (path.startsWith("/guides/")) return "使用指南";
+  return SITE_NAME;
+}
+
+/** 底部導覽「指南」分頁涵蓋的路徑。 */
+export function isGuidePath(pathname: string): boolean {
+  return ["/buying-guides/", "/renting-guides/", "/guides/"].some((prefix) => pathname.startsWith(prefix));
+}
