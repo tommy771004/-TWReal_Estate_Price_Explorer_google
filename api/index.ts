@@ -24,6 +24,8 @@ const MAX_CACHE_ENTRIES = 48; // 約 22 縣市 × 3 型態，留餘裕
 interface CityTypeCacheEntry {
   rows: any[][];
   fetchedAt: number;
+  /** 本期的期間說明（build_time.xml 的 lvr_time），取不到時為空字串 */
+  lvrTime: string;
 }
 
 const cityTypeCache = new Map<string, CityTypeCacheEntry>();
@@ -75,6 +77,16 @@ function downloadXlsBuffer(url: string): Promise<Buffer> {
   });
 }
 
+/** 本期期間說明，例如「登記日期 115年10月21日至 115年10月31日之買賣案件…」 */
+async function downloadLvrTime(): Promise<string> {
+  try {
+    const xml = (await downloadXlsBuffer("https://plvr.land.moi.gov.tw/Download?fileName=build_time.xml")).toString("utf8");
+    return xml.match(/<lvr_time>([\s\S]*?)<\/lvr_time>/)?.[1]?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
 function parseXlsToRows(buffer: Buffer): any[][] {
   const workbook = xlsx.read(buffer, { type: "buffer" });
   const sheetName =
@@ -91,11 +103,12 @@ async function loadCityTypeRows(cCode: string, txCode: string): Promise<{
   rows: any[][];
   source: "cache" | "live";
   cachedAt: number;
+  lvrTime: string;
 }> {
   const key = cacheKey(cCode, txCode);
   const hit = getCachedEntry(key);
   if (hit) {
-    return { rows: hit.rows, source: "cache", cachedAt: hit.fetchedAt };
+    return { rows: hit.rows, source: "cache", cachedAt: hit.fetchedAt, lvrTime: hit.lvrTime };
   }
 
   let downloadPromise = inflightDownloads.get(key);
@@ -105,9 +118,10 @@ async function loadCityTypeRows(cCode: string, txCode: string): Promise<{
     console.log(`\n📥 [資料下載任務] 啟動下載: ${url}`);
 
     downloadPromise = (async () => {
-      const buffer = await downloadXlsBuffer(url);
+      // 同時取期間說明，和這份 XLS 存在同一個快取項目，確保兩者來自同一期
+      const [buffer, lvrTime] = await Promise.all([downloadXlsBuffer(url), downloadLvrTime()]);
       const rows = parseXlsToRows(buffer);
-      const entry: CityTypeCacheEntry = { rows, fetchedAt: Date.now() };
+      const entry: CityTypeCacheEntry = { rows, fetchedAt: Date.now(), lvrTime };
       setCacheEntry(key, entry);
       console.log(`💾 [快取寫入] ${key} → ${rows.length} 筆，TTL ${CACHE_TTL_MS / 3600000}h`);
       return entry;
@@ -121,7 +135,7 @@ async function loadCityTypeRows(cCode: string, txCode: string): Promise<{
   }
 
   const entry = await downloadPromise;
-  return { rows: entry.rows, source: "live", cachedAt: entry.fetchedAt };
+  return { rows: entry.rows, source: "live", cachedAt: entry.fetchedAt, lvrTime: entry.lvrTime };
 }
 
 function applyRowFilters(
@@ -244,7 +258,7 @@ app.post("/api/proxy-search", async (req, res) => {
     if (needsDownload) currentActiveDownloads++;
 
     try {
-      const { rows, source, cachedAt } = await loadCityTypeRows(cCode, txCode);
+      const { rows, source, cachedAt, lvrTime } = await loadCityTypeRows(cCode, txCode);
       const filtered = applyRowFilters(rows, { district, keyword, period });
 
       console.log(
@@ -264,6 +278,7 @@ app.post("/api/proxy-search", async (req, res) => {
         source,
         cachedAt: new Date(cachedAt).toISOString(),
         rawCount: rows.length,
+        lvrTime,
       });
     } finally {
       if (needsDownload) currentActiveDownloads--;

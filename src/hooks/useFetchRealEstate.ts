@@ -4,7 +4,42 @@ import { CITIES, TRANSACTION_TYPES } from "../constants";
 import type { Transaction } from "../types/real-estate";
 import type { PeriodRange } from "../utils/real-estate-helpers";
 import { mapCsvRows, mapTransactionRow } from "../utils/mapTransactionRows";
-import { fetchHistoryRows, isHistoryEnabled, type CoverageWindow } from "../lib/historyData";
+import {
+  addCoverageWindow,
+  fetchHistoryRows,
+  isHistoryEnabled,
+  mergeLatestRows,
+  periodTouchesRecent,
+  windowFromLvrTime,
+  type CoverageWindow,
+} from "../lib/historyData";
+
+/** 補最新一期最多等多久（從查詢開始算）；逾時就先顯示分片，避免冷啟動下載拖慢查詢 */
+const LATEST_WAIT_MS = 1500;
+
+/**
+ * 即時 API 的最新一期（內政部本期，約 10 天）。只當作分片的補充：
+ * 任何失敗都回傳 null，不影響分片結果。
+ */
+async function fetchLatestRows(
+  body: Record<string, unknown>,
+  signal: AbortSignal
+): Promise<{ rows: string[][]; lvrTime: string } | null> {
+  try {
+    const res = await fetch(`/api/proxy-search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal,
+      body: JSON.stringify(body),
+    });
+    if (!res.ok || !(res.headers.get("content-type") || "").includes("application/json")) return null;
+    const json = await res.json();
+    if (!json?.success || !Array.isArray(json.data)) return null;
+    return { rows: json.data, lvrTime: typeof json.lvrTime === "string" ? json.lvrTime : "" };
+  } catch {
+    return null;
+  }
+}
 
 export type FetchRealEstateParams = {
   cityName: string;
@@ -111,6 +146,30 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
 
         // 優先讀靜態歷史分片（可涵蓋多年、沒有 Vercel 回應大小上限）；失敗才退回即時 API
         if (isHistoryEnabled()) {
+          // 查近期時同步向即時 API 要最新一期，和分片平行進行；
+          // 只等到 LATEST_WAIT_MS，畫面只更新一次（避免二次更新被當成「結果變動」）
+          const startedAt = performance.now();
+          const latestController = new AbortController();
+          const abortLatest = () => latestController.abort();
+          controller.signal.addEventListener("abort", abortLatest);
+          let latest: { rows: string[][]; lvrTime: string } | null = null;
+          let latestSettled = false;
+          const latestPromise = periodTouchesRecent(p.period)
+            ? fetchLatestRows(
+                {
+                  cityCode,
+                  district: activeDistrict,
+                  transactionType: typeCode,
+                  period: p.period,
+                  keyword: activeKeyword,
+                },
+                latestController.signal
+              ).then((r) => {
+                latest = r;
+                latestSettled = true;
+              })
+            : null;
+
           try {
             const history = await fetchHistoryRows({
               cityCode,
@@ -120,15 +179,33 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
               keyword: activeKeyword,
               signal: controller.signal,
             });
+            if (latestPromise && !latestSettled) {
+              const remaining = LATEST_WAIT_MS - (performance.now() - startedAt);
+              if (remaining > 0) {
+                await Promise.race([latestPromise, new Promise((r) => setTimeout(r, remaining))]);
+              }
+            }
+            // 逾時就放棄這次的最新一期（伺服器端仍會下載完並寫入快取，下次查詢就快）
+            if (!latestSettled) abortLatest();
             if (!isLatest()) return;
-            p.setDataSource("history");
+
+            let rows = history.rows;
+            let coverage = history.coverage;
+            const got = latest as { rows: string[][]; lvrTime: string } | null;
+            if (got) {
+              const merged = mergeLatestRows(rows, got.rows, typeCode);
+              rows = merged.rows;
+              const w = windowFromLvrTime(got.lvrTime, typeCode);
+              if (w) coverage = addCoverageWindow(coverage, w);
+            }
+
+            p.setDataSource(got ? "history+latest" : "history");
             p.setDataCachedAt(history.updatedAt);
-            p.setDataCoverage(history.coverage);
-            p.setData(
-              history.rows.map((row, index) => mapTransactionRow(row, index, activeCity, p.typeName))
-            );
+            p.setDataCoverage(coverage);
+            p.setData(rows.map((row, index) => mapTransactionRow(row, index, activeCity, p.typeName)));
             return;
           } catch (historyError: any) {
+            abortLatest();
             if (historyError?.name === "AbortError" || !isLatest()) throw historyError;
             console.warn("[history] 讀取歷史分片失敗，改用即時 API：", historyError);
           }

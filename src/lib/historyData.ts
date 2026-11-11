@@ -173,6 +173,73 @@ export async function fetchHistoryRows(opts: {
   };
 }
 
+// ---------------------------------------------------------------- 合併最新一期（即時 API）
+
+/** 編號欄位（與 build 腳本的 LAYOUT 相同：買賣、預售屋第 27 欄，租賃第 28 欄） */
+const ID_COL: Record<TxCode, number> = { a: 27, b: 27, c: 28 };
+
+/**
+ * 查詢期間是否涵蓋近期：期間結束月份在 6 個月內才需要補最新一期。
+ * 本期檔幾乎都是近幾個月的成交；查舊年份時不必多打一次 API。
+ */
+export function periodTouchesRecent(period: PeriodRange, now: Date = new Date()): boolean {
+  const end = parseInt(period.endY, 10) * 12 + parseInt(period.endM, 10);
+  const current = (now.getFullYear() - 1911) * 12 + (now.getMonth() + 1);
+  return end >= current - 6;
+}
+
+/** 以編號去重，把最新一期中分片還沒有的列加進來（新的排前面）。回傳合併結果與新增筆數。 */
+export function mergeLatestRows(
+  historyRows: Row[],
+  latestRows: Row[],
+  typeCode: string
+): { rows: Row[]; added: number } {
+  const col = ID_COL[typeCode.toLowerCase() as TxCode] ?? 27;
+  const seen = new Set(historyRows.map((r) => r[col]).filter(Boolean));
+  const extra = latestRows.filter((r) => {
+    const id = r[col];
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+  return { rows: extra.length ? [...extra, ...historyRows] : historyRows, added: extra.length };
+}
+
+const rocToIso = (y: string, m: string, d: string) =>
+  `${Number(y) + 1911}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+
+/** 從本期期間說明取出該型態的期間（與 build 腳本的解析規則相同） */
+export function windowFromLvrTime(lvrTime: string, typeCode: string): CoverageWindow | null {
+  const label = { a: "買賣", b: "預售屋", c: "租賃" }[typeCode.toLowerCase() as TxCode];
+  const re =
+    /(\d+)年(\d+)月(\d+)日?\s*至\s*(\d+)年(\d+)月(\d+)日?\s*之(買賣|租賃、預售屋|租賃|預售屋)/g;
+  for (const m of lvrTime.matchAll(re)) {
+    if (m[7] === label || (m[7] === "租賃、預售屋" && label !== "買賣")) {
+      return { from: rocToIso(m[1], m[2], m[3]), to: rocToIso(m[4], m[5], m[6]) };
+    }
+  }
+  return null;
+}
+
+/** 加入一段期間並合併相鄰／重疊的區段 */
+export function addCoverageWindow(coverage: CoverageWindow[], w: CoverageWindow): CoverageWindow[] {
+  const sorted = [...coverage, w].sort((a, b) => a.from.localeCompare(b.from));
+  const out: CoverageWindow[] = [];
+  for (const cur of sorted) {
+    const last = out[out.length - 1];
+    if (last) {
+      const next = new Date(`${last.to}T00:00:00Z`);
+      next.setUTCDate(next.getUTCDate() + 1);
+      if (cur.from <= next.toISOString().slice(0, 10)) {
+        if (cur.to > last.to) last.to = cur.to;
+        continue;
+      }
+    }
+    out.push({ ...cur });
+  }
+  return out;
+}
+
 /** 涵蓋期間的最後一天，轉成民國顯示（如 "115/10/31"） */
 export function coverageEndLabel(coverage: CoverageWindow[]): string | null {
   const last = coverage[coverage.length - 1];
