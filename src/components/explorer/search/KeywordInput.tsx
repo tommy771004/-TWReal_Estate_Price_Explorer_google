@@ -59,8 +59,11 @@ export function KeywordInput({
         onFocus={() => setShowSuggestions(true)}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
         onKeyDown={(e) => {
+          if (e.key !== "Enter" || !onSubmit) return;
+          // 搜尋框自己處理 Enter：不讓事件冒泡到 App 的全域 Enter 監聽，否則會查詢兩次
+          e.stopPropagation();
           // 注音／倉頡選字時的 Enter 是確認候選字，不能當成送出
-          if (e.key !== "Enter" || e.nativeEvent.isComposing || !onSubmit) return;
+          if (e.nativeEvent.isComposing) return;
           e.preventDefault();
           setShowSuggestions(false);
           onSubmit();
