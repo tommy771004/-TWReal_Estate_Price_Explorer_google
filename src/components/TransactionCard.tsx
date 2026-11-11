@@ -22,13 +22,13 @@ import {
 import { Transaction, HistoryCounts } from "../types/real-estate";
 import {
   formatDate,
-  formatPrice,
   getSpecialTags,
   getCommunityHistoryKey,
 } from "../utils/real-estate-helpers";
 import { calculateDistance } from "../lib/utils";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_APP_TEXTS, type AppTexts } from "../constants/texts";
+import { formatTotal, formatUnitPerPing, isRentType, itemTypeName } from "../utils/priceUnits";
 
 interface TransactionCardProps {
   item: Transaction;
@@ -122,12 +122,33 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
 
   const isFavorite = favorites.some((f) => f.id === item.id);
   const displayDate = formatDate(item.date).replace(/-/g, "/");
-  const unitPriceLabel = item.unitPrice
-    ? `${((parseFloat(item.unitPrice) * 3.30578) / 10000).toFixed(1)} 萬/坪`
-    : "-";
-  const buildingTypeLabel = item.buildingType.split("(")[0] || "土地";
+  /** 價格單位跟著這筆資料的型態（查詢中切換型態時，畫面上仍是上一份資料） */
+  const priceType = itemTypeName(item, typeName);
+  const unitPriceLabel = formatUnitPerPing(item.unitPrice, priceType);
+  // 租賃：單獨出租的車位、土地沒有建物型態可看，直接標示交易標的
+  const buildingTypeLabel =
+    isRentType(priceType) && !item.transactionType.includes("房屋")
+      ? item.transactionType || "其他"
+      : item.buildingType.split("(")[0] || "土地";
   const specialTags = getSpecialTags(item.remarks);
   const hasParking = item.parkingPrice && parseFloat(item.parkingPrice) > 0;
+  const buildingPing = parseFloat(item.buildingArea || "0") * 0.3025;
+  const landPing = parseFloat(item.area || "0") * 0.3025;
+  /** 坪數：有建物面積用建物；純土地改顯示土地移轉面積，不再出現「0.00 坪」 */
+  const areaLabel =
+    buildingPing > 0 ? `${buildingPing.toFixed(1)} 坪` : landPing > 0 ? `地 ${landPing.toFixed(1)} 坪` : null;
+  /** 屋齡（建築完成年為民國年，如 0720315） */
+  const completionYear =
+    item.completionDate && item.completionDate.length >= 5
+      ? parseInt(item.completionDate.substring(0, item.completionDate.length - 4), 10)
+      : NaN;
+  const buildingAge = Number.isFinite(completionYear) && completionYear > 0
+    ? new Date().getFullYear() - 1911 - completionYear
+    : null;
+  const mobileChip =
+    "inline-flex max-w-[7rem] shrink-0 items-center truncate rounded-full bg-surface-container-highest px-2 py-0.5 text-[11px] font-medium text-on-surface-variant";
+  const mobileIconButton =
+    "flex h-11 w-11 items-center justify-center rounded-full transition-colors";
 
   return (
     <motion.div
@@ -146,8 +167,125 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
       }}
       key={item.id}
       onClick={() => setSelectedItem(item)}
-      className="@container group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[24px] bg-surface-container-low border border-outline-variant/40 p-4 transition-all duration-200 hover:shadow-[var(--md-elevation-2)] hover:border-outline-variant hover:bg-surface-container [content-visibility:auto] [contain-intrinsic-size:auto_220px]"
+      className="@container group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[24px] bg-surface-container-low border border-outline-variant/40 pb-0 pl-3.5 pr-1 pt-3 transition-all duration-200 hover:shadow-[var(--md-elevation-2)] hover:border-outline-variant hover:bg-surface-container [content-visibility:auto] [contain-intrinsic-size:auto_120px] md:p-4 md:[contain-intrinsic-size:auto_220px]"
     >
+      {/* ── 手機：精簡卡（整張點開詳情；地址＋價格、重點規格、日期與 44px 動作） ── */}
+      <div className="md:hidden">
+        <div className="flex min-w-0 items-start justify-between gap-3 pr-2.5">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-[15px] font-semibold leading-snug text-on-surface">{item.address}</h3>
+            <div className="mt-1.5 flex min-w-0 items-center gap-1 overflow-hidden">
+              <span className={`${mobileChip} bg-secondary-container font-semibold text-on-secondary-container`}>
+                {buildingTypeLabel}
+              </span>
+              {areaLabel && <span className={`${mobileChip} tabular-nums`}>{areaLabel}</span>}
+              {item.floor && <span className={mobileChip}>{item.floor}</span>}
+              {buildingAge != null && buildingAge >= 0 && <span className={mobileChip}>{buildingAge} 年</span>}
+              {hasParking && <span className={mobileChip}>含車位</span>}
+              {item.rooms && item.rooms !== "0" && <span className={mobileChip}>{item.rooms} 房</span>}
+              {nearestStation && (
+                <span className={`${mobileChip} bg-secondary-container text-on-secondary-container`}>
+                  {nearestStation.tags?.name || "車站"}
+                </span>
+              )}
+              {typeName === "預售屋" && item.buildCase && (
+                <span className={`${mobileChip} bg-tertiary-container text-on-tertiary-container`}>{item.buildCase}</span>
+              )}
+            </div>
+            {specialTags.length > 0 && (
+              <div className="mt-1 flex flex-wrap items-center gap-1">
+                {specialTags.map((tag) => (
+                  <span
+                    key={tag.label}
+                    className="inline-flex items-center gap-1 rounded-md bg-error-container px-1.5 py-0.5 text-[10px] font-semibold text-on-error-container"
+                  >
+                    <ShieldCheck size={11} />
+                    {tag.label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex shrink-0 flex-col items-end text-right">
+            <span className="font-display text-lg font-bold leading-tight tracking-tight text-primary tabular-nums">
+              {formatTotal(item.totalPrice, priceType)}
+            </span>
+            <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold tabular-nums text-on-surface-variant">
+              {unitPriceLabel}
+              {showPriceIndicator && (
+                <span
+                  title={`與同區域(${item.district})平均成交單價相比`}
+                  className={`inline-flex items-center gap-0.5 rounded-full px-1 py-0.5 text-[10px] font-bold leading-none ${
+                    priceDiffPercentage >= 0
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "bg-error-container text-on-error-container"
+                  }`}
+                >
+                  {priceDiffPercentage >= 0 ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
+                  {Math.abs(priceDiffPercentage).toFixed(0)}%
+                </span>
+              )}
+            </span>
+          </div>
+        </div>
+        <div className="flex min-w-0 items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-1 text-[11.5px] font-medium text-on-surface-variant">
+            <time dateTime={displayDate} className="shrink-0 tabular-nums">{displayDate}</time>
+            <span className="truncate">
+              · {item.district}
+              {hasCoords && <span title="官方門牌多為區間遮蔽，地圖座標為約略定位"> · 約略位置</span>}
+            </span>
+            {communityCount > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFocusCommunity?.(item, e);
+                }}
+                className="inline-flex h-11 shrink-0 items-center gap-0.5 px-1 font-semibold text-primary"
+              >
+                · 社區 {communityCount} 筆
+                <ArrowRight size={11} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setTrendDistrict(item.district);
+            }}
+            aria-label={`${item.district}區域熱度`}
+            title="區域熱度"
+            className={`${mobileIconButton} text-on-surface-variant hover:bg-on-surface/8`}
+          >
+            <TrendingUp size={17} />
+          </button>
+          {toggleCompare && (
+            <button
+              type="button"
+              onClick={(e) => toggleCompare(item, e)}
+              aria-label={isInCompare ? "移出比較" : "加入比較"}
+              className={`${mobileIconButton} ${
+                isInCompare ? "bg-secondary-container text-on-secondary-container" : "text-on-surface-variant hover:bg-on-surface/8"
+              }`}
+            >
+              <GitCompare size={17} strokeWidth={2.2} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => toggleFavorite(item, e)}
+            aria-label={isFavorite ? "取消收藏" : "加入收藏"}
+            className={`${mobileIconButton} ${isFavorite ? "text-error" : "text-on-surface-variant hover:bg-on-surface/8"}`}
+          >
+            <Heart size={17} className={isFavorite ? "fill-current" : ""} strokeWidth={2.2} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── md 以上：完整卡片 ── */}
+      <div className="hidden min-w-0 md:flex md:h-full md:flex-col">
       {/* ── Top: tags + actions ── */}
       <div className="flex min-w-0 items-start gap-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
@@ -251,9 +389,11 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
 
         <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
           <div className="flex flex-wrap items-baseline justify-end gap-x-1">
-            <span className="text-xs font-medium text-on-surface-variant">{appTexts.totalPrice}</span>
+            <span className="text-xs font-medium text-on-surface-variant">
+              {isRentType(priceType) ? "月租" : appTexts.totalPrice}
+            </span>
             <span className="font-display text-xl font-bold leading-none tracking-tight text-primary tabular-nums">
-              {formatPrice(item.totalPrice)}
+              {formatTotal(item.totalPrice, priceType)}
             </span>
           </div>
 
@@ -262,12 +402,12 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
               <div className="inline-flex max-w-full flex-wrap items-center justify-end gap-1 rounded-md bg-surface-container-highest px-1.5 py-0.5 text-[10px] font-medium text-on-surface-variant">
                 <span className="inline-flex items-center gap-0.5">
                   <Home size={10} />
-                  房 {formatPrice((parseFloat(item.totalPrice) - parseFloat(item.parkingPrice!)).toString())}
+                  房 {formatTotal(parseFloat(item.totalPrice) - parseFloat(item.parkingPrice!), priceType)}
                 </span>
                 <span className="text-outline-variant">|</span>
                 <span className="inline-flex items-center gap-0.5">
                   <Car size={10} />
-                  車 {formatPrice(item.parkingPrice!)}
+                  車 {formatTotal(item.parkingPrice!, priceType)}
                 </span>
               </div>
             </div>
@@ -277,7 +417,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
             <span className="text-xs font-semibold tabular-nums text-on-surface-variant">{unitPriceLabel}</span>
             {showPriceIndicator && (
               <span
-                title={`與同區域(${item.district})平均成交單價 ${((avgPrice * 3.30578) / 10000).toFixed(1)} 萬/坪 相比的差異`}
+                title={`與同區域(${item.district})平均單價 ${formatUnitPerPing(avgPrice, priceType)} 相比的差異`}
                 className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
                   priceDiffPercentage >= 0
                     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
@@ -297,7 +437,11 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
         <span className="inline-flex items-center gap-1 rounded-lg bg-surface-container-highest px-2 py-1 text-on-surface-variant text-[11px] font-medium">
           <Maximize2 className="h-3 w-3 shrink-0 text-primary" />
           <span className="tabular-nums font-semibold">
-            {item.buildingArea ? (parseFloat(item.buildingArea) * 0.3025).toFixed(2) : "0.00"} 坪
+            {buildingPing > 0
+              ? `${buildingPing.toFixed(2)} 坪`
+              : landPing > 0
+                ? `地 ${landPing.toFixed(2)} 坪`
+                : "—"}
           </span>
         </span>
         {item.floor && (
@@ -384,6 +528,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
           <span>詳情</span>
           <ArrowRight size={13} />
         </Button>
+      </div>
       </div>
     </motion.div>
   );

@@ -35,6 +35,15 @@ import {
   getSpecialTags,
   estimateMortgageMonthly,
 } from "../../utils/real-estate-helpers";
+import {
+  formatTotal,
+  formatUnitPerPing,
+  formatUnitValue,
+  isRentType,
+  itemTypeName,
+  unitPerPing,
+  unitPerPingLabel,
+} from "../../utils/priceUnits";
 import { DetailRow } from "../DetailRow";
 import { AffiliateChips } from "../AffiliateMarquee";
 import {
@@ -119,6 +128,8 @@ export function TransactionDetailDialog({
   // 該區塊移除後改掛在唯一保留的試算區，避免導購入口消失
   const affiliateOffers = useAffiliateOffers();
   const loanPartner = offersByCategory(affiliateOffers, "finance")[0];
+  /** 價格單位跟著這筆資料（收藏、比較清單打開的可能與目前查詢型態不同） */
+  const priceType = selectedItem ? itemTypeName(selectedItem, typeName) : typeName;
 
   return (
     <>
@@ -157,16 +168,16 @@ export function TransactionDetailDialog({
                        </div>
                        <div className="flex flex-row items-center sm:items-end gap-3 select-text">
                          <div className="flex items-baseline gap-1.5">
-                           <span className="text-on-surface-variant text-[11px] uppercase font-bold tracking-wider">登錄價</span>
+                           <span className="text-on-surface-variant text-[11px] uppercase font-bold tracking-wider">{isRentType(priceType) ? "月租" : "登錄價"}</span>
                            <span className="text-2xl sm:text-3xl font-display font-black text-on-surface tracking-tight leading-none">
-                             {formatPrice(selectedItem.totalPrice)}
+                             {formatTotal(selectedItem.totalPrice, priceType)}
                            </span>
                          </div>
                          {selectedItem.parkingPrice && parseFloat(selectedItem.parkingPrice) > 0 && (
                             <div className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5 bg-surface-container-highest px-2.5 py-1 rounded-full border border-outline-variant/30 shadow-xs">
-                              <span className="flex items-center gap-1 text-on-surface"><Home size={12} className="text-on-surface-variant" /> {formatPrice((parseFloat(selectedItem.totalPrice) - parseFloat(selectedItem.parkingPrice)).toString())}</span>
+                              <span className="flex items-center gap-1 text-on-surface"><Home size={12} className="text-on-surface-variant" /> {formatTotal(parseFloat(selectedItem.totalPrice) - parseFloat(selectedItem.parkingPrice), priceType)}</span>
                               <span className="text-outline-variant">|</span>
-                              <span className="flex items-center gap-1 text-on-surface"><Car size={12} className="text-on-surface-variant" /> {formatPrice(selectedItem.parkingPrice)}</span>
+                              <span className="flex items-center gap-1 text-on-surface"><Car size={12} className="text-on-surface-variant" /> {formatTotal(selectedItem.parkingPrice, priceType)}</span>
                             </div>
                          )}
                        </div>
@@ -248,7 +259,7 @@ export function TransactionDetailDialog({
                   {/* High Density Stats Grid */}
                   <motion.div variants={modalItemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                     {[
-                      { icon: <DollarSign size={20} />, label: "單價/坪", value: selectedItem.unitPrice ? `${(parseFloat(selectedItem.unitPrice) * 3.30578 / 10000).toFixed(1)} 萬` : "-", sub: "實價登錄單價", color: "text-coral-500", bg: "bg-coral-500/5" },
+                      { icon: <DollarSign size={20} />, label: "單價/坪", value: formatUnitPerPing(selectedItem.unitPrice, priceType), sub: "實價登錄單價", color: "text-coral-500", bg: "bg-coral-500/5" },
                       { icon: <Maximize2 size={20} />, label: "建物面積", value: `${selectedItem.buildingArea || selectedItem.area || "0"} ㎡`, sub: `約 ${(parseFloat(selectedItem.buildingArea || selectedItem.area || "0") * 0.3025).toFixed(2)} 坪`, color: "text-amber-500", bg: "bg-amber-500/5" },
                       { icon: <Layers size={20} />, label: "移轉層次", value: selectedItem.floor ? `${selectedItem.floor}F` : "土地", sub: `總樓層 ${selectedItem.totalFloor || "-"}F`, color: "text-purple-500", bg: "bg-purple-500/5" },
                       { icon: <Clock size={20} />, label: "屋齡", value: (() => {
@@ -289,10 +300,10 @@ export function TransactionDetailDialog({
                           <div className="flex flex-col gap-1">
                             <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-1">扣車位後總價</span>
                             <div className="text-2xl font-black text-ink dark:text-white tracking-tight flex items-baseline gap-1">
-                              {formatPrice((parseFloat(selectedItem.totalPrice) - parseFloat(selectedItem.parkingPrice)).toString())}
+                              {formatTotal(parseFloat(selectedItem.totalPrice) - parseFloat(selectedItem.parkingPrice), priceType)}
                             </div>
                             <span className="text-xs font-bold text-slate-500">
-                              總價 {formatPrice(selectedItem.totalPrice)} - 車位 {formatPrice(selectedItem.parkingPrice)}
+                              總價 {formatTotal(selectedItem.totalPrice, priceType)} - 車位 {formatTotal(selectedItem.parkingPrice, priceType)}
                             </span>
                           </div>
 
@@ -316,10 +327,10 @@ export function TransactionDetailDialog({
                                 const houseArea = parseFloat(selectedItem.buildingArea) - parseFloat(selectedItem.parkingArea || "0");
                                 if (houseTotal > 0 && houseArea > 0) {
                                   const realUnitP = houseTotal / houseArea; // 元/平方米
-                                  return (realUnitP * 3.30578 / 10000).toFixed(1);
+                                  return formatUnitValue(unitPerPing(realUnitP, priceType), priceType);
                                 }
                                 return "-";
-                              })()} <span className="text-base">萬/坪</span>
+                              })()} <span className="text-base">{unitPerPingLabel(priceType)}</span>
                             </div>
                             <span className="text-xs font-bold text-emerald-600/60 dark:text-emerald-400/60">
                               排除車位干擾的真實單價
@@ -347,7 +358,7 @@ export function TransactionDetailDialog({
                   </div>
 
                   {/* 簡易房貸月付試算（等額本息估算，非正式核貸） */}
-                  {typeName !== "租賃" && parseFloat(selectedItem.totalPrice || "0") > 0 && (
+                  {!isRentType(priceType) && parseFloat(selectedItem.totalPrice || "0") > 0 && (
                     <motion.div variants={modalItemVariants} className="space-y-3">
                       <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm flex items-center gap-2">
                         <DollarSign size={12} className="text-emerald-500" /> 簡易房貸月付試算
@@ -489,7 +500,7 @@ export function TransactionDetailDialog({
                         <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 drop-shadow-sm">車位資訊</h3>
                         <div className="grid grid-cols-2 gap-px bg-slate-200/40 dark:bg-slate-800/50 rounded-[1.5rem] overflow-hidden border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
                           <DetailRow label="車位類別" value={selectedItem.parkingType} />
-                          <DetailRow label="車位總價" value={formatPrice(selectedItem.parkingPrice)} />
+                          <DetailRow label="車位總價" value={formatTotal(selectedItem.parkingPrice, priceType)} />
                           <DetailRow label="車位移轉面積" value={selectedItem.parkingArea ? `${selectedItem.parkingArea} ㎡ (約 ${(parseFloat(selectedItem.parkingArea) * 0.3025).toFixed(2)} 坪)` : "-"} />
                         </div>
                       </div>
@@ -513,12 +524,12 @@ export function TransactionDetailDialog({
                            <div className="flex items-center gap-4">
                              <div className="flex flex-col items-end gap-1">
                                <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">最高單價</span>
-                               <span className="text-sm font-black text-coral-600 dark:text-coral-400">{Math.max(...communityChartData.map(c => c.unitPrice)).toFixed(1)} <span className="text-[10px]">萬/坪</span></span>
+                               <span className="text-sm font-black text-coral-600 dark:text-coral-400">{formatUnitValue(Math.max(...communityChartData.map(c => c.unitPrice)), priceType)} <span className="text-[10px]">{unitPerPingLabel(priceType)}</span></span>
                              </div>
                              <div className="w-px h-8 bg-slate-200 dark:bg-slate-700/50" />
                              <div className="flex flex-col items-end gap-1">
                                <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">最低單價</span>
-                               <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{Math.min(...communityChartData.map(c => c.unitPrice)).toFixed(1)} <span className="text-[10px]">萬/坪</span></span>
+                               <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatUnitValue(Math.min(...communityChartData.map(c => c.unitPrice)), priceType)} <span className="text-[10px]">{unitPerPingLabel(priceType)}</span></span>
                              </div>
                            </div>
                          </div>
@@ -526,7 +537,7 @@ export function TransactionDetailDialog({
                          {/* Trend Chart */}
                          <div className="h-[180px] w-full -max-w-xs sm:max-w-none mt-2">
                             <Suspense fallback={<Skeleton className="h-full w-full rounded-2xl" />}>
-                              <CommunityTrendChart data={communityChartData} />
+                              <CommunityTrendChart data={communityChartData} unitLabel={unitPerPingLabel(priceType)} />
                             </Suspense>
                          </div>
                          
@@ -544,8 +555,8 @@ export function TransactionDetailDialog({
                                    <span className="text-sm font-bold text-ink dark:text-slate-200 truncate max-w-[140px] sm:max-w-[200px]">{record.address}</span>
                                  </div>
                                  <div className="flex items-end flex-col gap-0.5 shrink-0">
-                                   <span className="text-sm font-black text-ink dark:text-white leading-none">{record.unitPrice} <span className="text-[10px] font-bold text-slate-400">萬/坪</span></span>
-                                   <span className="text-[10px] font-bold text-slate-500">{formatPrice(record.totalPrice.toString())} | {record.floor}</span>
+                                   <span className="text-sm font-black text-ink dark:text-white leading-none">{formatUnitValue(record.unitPrice, priceType)} <span className="text-[10px] font-bold text-slate-400">{unitPerPingLabel(priceType)}</span></span>
+                                   <span className="text-[10px] font-bold text-slate-500">{formatTotal(record.totalPrice.toString(), priceType)} | {record.floor}</span>
                                  </div>
                                </div>
                              ))}

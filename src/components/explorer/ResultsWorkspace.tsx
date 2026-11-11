@@ -10,7 +10,10 @@ import {
   Compass,
   Database,
   MapPinOff,
+  MoreHorizontal,
+  Loader2,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +43,7 @@ import {
 import { useExplorerUi } from "./ExplorerUiContext";
 import { SORT_OPTIONS, type SortOptionValue } from "../../constants/filterLabels";
 import { ResultActions } from "./ResultActions";
+import { formatTotal, formatUnitPerPing, isRentType, itemTypeName, unitPerPingLabel } from "../../utils/priceUnits";
 
 const ResultsCharts = React.lazy(() => import("../ResultsCharts"));
 const ResultsMap = React.lazy(() => import("../MapViews"));
@@ -95,6 +99,7 @@ export function ResultsWorkspace() {
     copyShareLink,
     handleExportCsv,
     data,
+    hasQueried,
     filteredData,
     paginatedData,
     error,
@@ -169,24 +174,34 @@ export function ResultsWorkspace() {
                   }`}
                 >
                 <div className="relative mt-0 flex w-full flex-1 flex-col overflow-hidden rounded-[28px] border border-outline-variant/40 bg-surface-container-low shadow-[var(--md-elevation-1)] sm:mt-4">
-                  {/* 手機：第 1 列結果筆數＋動作，第 2 列視圖切換＋排序；lg 起併成一列。
+                  {/* 手機：筆數、視圖切換、排序、⋯（儲存／匯出／分享）同一列；
+                      sm 起動作改成三顆 icon，視圖切換＋排序換到第 2 列；lg 起併成一列。
                       地圖視圖在手機改由底部導覽切換，這裡只在 lg 以上顯示。 */}
-                  <div className="relative flex flex-wrap items-center justify-between gap-x-2 gap-y-2.5 border-b border-outline-variant/30 bg-surface-container px-3.5 py-2.5 sm:px-6 sm:py-3">
+                  <div className="relative flex flex-wrap items-center justify-between gap-x-1.5 gap-y-2.5 border-b border-outline-variant/30 bg-surface-container py-1.5 pl-3.5 pr-1.5 sm:gap-x-2 sm:px-6 sm:py-3">
                     <div className="relative z-10 flex min-w-0 flex-1 items-center gap-3">
                       <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container shadow-xs sm:flex">
                         <Filter className="h-4 w-4" />
                       </div>
-                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-                        <span className="truncate text-xs font-medium text-on-surface-variant">
-                          <span className="text-sm font-bold text-on-surface sm:text-xs sm:font-medium sm:text-on-surface-variant">
-                            結果 {filteredData.length.toLocaleString()} 筆
+                      <div className="flex min-w-0 flex-col sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2.5">
+                        <span className="flex items-center gap-1.5 truncate text-sm font-bold text-on-surface sm:text-xs sm:font-medium sm:text-on-surface-variant">
+                          <span>
+                            <span className="sm:hidden">{filteredData.length.toLocaleString()} 筆</span>
+                            <span className="hidden sm:inline">結果 {filteredData.length.toLocaleString()} 筆</span>
                           </span>
-                          <span className="mx-1 text-outline-variant">·</span>
+                          {loading && (
+                            <span role="status" className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
+                              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                              更新中…
+                            </span>
+                          )}
+                        </span>
+                        <span className="truncate text-[11px] font-medium text-on-surface-variant sm:text-xs">
+                          <span className="mr-1 hidden text-outline-variant sm:inline">·</span>
                           {formatPeriodLabel(period)}
                         </span>
                       </div>
                     </div>
-                    <div className="relative z-10 flex shrink-0 items-center">
+                    <div className="relative z-10 hidden shrink-0 items-center sm:flex">
                     <ResultActions
                       savedSearches={savedSearches}
                       onSaveCurrent={() => setIsSavingSearch(true)}
@@ -198,7 +213,7 @@ export function ResultsWorkspace() {
                       shareStatus={shareStatus}
                     />
                     </div>
-                    <div className="relative z-10 flex w-full items-center justify-between gap-2 lg:w-auto lg:justify-end">
+                    <div className="relative z-10 flex items-center gap-1.5 sm:w-full sm:justify-between sm:gap-2 lg:w-auto lg:justify-end">
                     {/* Material 3 Segmented Button */}
                     <div role="group" aria-label="結果視圖" className="flex items-center rounded-full border border-outline-variant/50 bg-surface-container-highest p-1 shadow-xs">
                       <button
@@ -210,7 +225,7 @@ export function ResultsWorkspace() {
                         aria-label="列表圖"
                       >
                         <List size={14} />
-                        <span className="sm:hidden xl:inline">列表</span>
+                        <span className="hidden xl:inline">列表</span>
                       </button>
                       <button
                         type="button"
@@ -221,7 +236,7 @@ export function ResultsWorkspace() {
                         aria-label="表格圖"
                       >
                         <Table2 size={14} />
-                        <span className="sm:hidden xl:inline">表格</span>
+                        <span className="hidden xl:inline">表格</span>
                       </button>
                       {typeName === "預售屋" && (
                         <button
@@ -233,7 +248,7 @@ export function ResultsWorkspace() {
                           aria-label="建案聚合視圖"
                         >
                           <BarChart3 size={14} />
-                          <span className="sm:hidden xl:inline">建案</span>
+                          <span className="hidden xl:inline">建案</span>
                         </button>
                       )}
                       <button
@@ -261,7 +276,7 @@ export function ResultsWorkspace() {
                           aria-label="排序"
                           value={sortValue}
                           onChange={(e) => setSortConfig(sortConfigFromValue(e.target.value as SortOptionValue))}
-                          className="h-9 max-w-[11rem] rounded-full border border-outline bg-surface px-3.5 text-xs font-semibold text-on-surface outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
+                          className="h-9 max-w-[6.5rem] rounded-full border border-outline bg-surface px-3 text-xs font-semibold text-on-surface outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary sm:max-w-[11rem] sm:px-3.5"
                         >
                           {SORT_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -272,10 +287,35 @@ export function ResultsWorkspace() {
                       </div>
                     )}
                     </div>
+                    {/* 手機：儲存／匯出／分享收進 ⋯ */}
+                    <Popover>
+                      <PopoverTrigger
+                        className="relative z-10 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-on-surface/8 sm:hidden"
+                        aria-label="更多：儲存條件、匯出 CSV、分享連結"
+                        title="更多"
+                      >
+                        <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="end"
+                        className="w-auto rounded-full border-outline-variant/40 bg-surface-container-high p-1 shadow-[var(--md-elevation-2)]"
+                      >
+                        <ResultActions
+                          savedSearches={savedSearches}
+                          onSaveCurrent={() => setIsSavingSearch(true)}
+                          onApplySaved={applySavedSearch}
+                          onDeleteSaved={deleteSavedSearch}
+                          onExportCsv={handleExportCsv}
+                          exportDisabled={filteredData.length === 0}
+                          onCopyShareLink={copyShareLink}
+                          shareStatus={shareStatus}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                 <AnimatePresence mode="wait">
-                  {loading ? (
+                  {loading && data.length === 0 ? (
                     <motion.div
                       key="loading-spinner-view"
                       initial={{ opacity: 0, y: 15 }}
@@ -317,7 +357,10 @@ export function ResultsWorkspace() {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.99, y: -15 }}
                     transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex-1 min-h-[300px] flex flex-col p-4 sm:p-6 overflow-x-auto w-full"
+                    aria-busy={loading}
+                    className={`flex-1 min-h-[300px] flex flex-col p-4 sm:p-6 overflow-x-auto w-full transition-opacity ${
+                      loading ? "pointer-events-none opacity-50" : ""
+                    }`}
                   >
                     <Table className="min-w-[800px]">
                       <TableHeader className="sticky top-0 bg-surface-container z-10 border-b border-outline-variant/30">
@@ -391,9 +434,16 @@ export function ResultsWorkspace() {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.99, y: -15 }}
                     transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex-1 min-h-[300px] flex flex-col max-w-[1600px] mx-auto w-full"
+                    aria-busy={loading}
+                    className={`flex-1 min-h-[300px] flex flex-col max-w-[1600px] mx-auto w-full transition-opacity ${
+                      loading ? "pointer-events-none opacity-50" : ""
+                    }`}
                   >
-                    <ResultDeltaBanner delta={resultDelta} onDismiss={() => setResultDelta(null)} />
+                    <ResultDeltaBanner
+                      delta={resultDelta}
+                      onDismiss={() => setResultDelta(null)}
+                      showMedianUnit={!isRentType(typeName)}
+                    />
                     {/* 座標解析進度只跟地圖有關，列表／表格使用者不需要看到 */}
                     {viewMode === "map" && (
                       <GeocodeProgress
@@ -402,7 +452,7 @@ export function ResultsWorkspace() {
                         totalToGeocode={totalToGeocode}
                       />
                     )}
-                    {!loading && (priceDistribution.length > 0 || priceTrend.length > 0) && (
+                    {(priceDistribution.length > 0 || priceTrend.length > 0) && (
                       <div id="results-charts" className="scroll-mt-4">
                       <Suspense
                         fallback={
@@ -416,14 +466,15 @@ export function ResultsWorkspace() {
                           priceDistribution={priceDistribution}
                           priceTrend={priceTrend}
                           showChartsMobile={showChartsMobile}
-                          onToggleCharts={() => setShowChartsMobile(!showChartsMobile)}
+                          unitLabel={unitPerPingLabel(typeName)}
+                          rent={isRentType(typeName)}
                         />
                       </Suspense>
                       </div>
                     )}
                     <div className="w-full flex flex-col min-w-0">
                       {/* 排序已移到結果列標題（視圖切換旁），這裡只留間距 */}
-                      <div className="h-4" aria-hidden="true" />
+                      <div className="h-2 sm:h-4" aria-hidden="true" />
 
                       {viewMode === "table" ? (
                         <motion.div 
@@ -440,8 +491,8 @@ export function ResultsWorkspace() {
                                 <TableHead className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">地址</TableHead>
                                 <TableHead className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">型態</TableHead>
                                 <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-on-surface-variant">坪數</TableHead>
-                                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-on-surface-variant">單價</TableHead>
-                                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-on-surface-variant">總價</TableHead>
+                                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-on-surface-variant">單價（{unitPerPingLabel(typeName)}）</TableHead>
+                                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-on-surface-variant">{isRentType(typeName) ? "月租" : "總價"}</TableHead>
                                 <TableHead className="pr-5 text-right text-xs font-bold uppercase tracking-wider text-on-surface-variant">操作</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -450,8 +501,12 @@ export function ResultsWorkspace() {
                                 const ping = item.buildingArea
                                   ? (parseFloat(item.buildingArea) * 0.3025).toFixed(1)
                                   : "—";
+                                // 單位寫在表頭；查詢中切換型態時舊資料單位不同，就保留單位字樣
+                                const rowType = itemTypeName(item, typeName);
                                 const unitWan = item.unitPrice
-                                  ? ((parseFloat(item.unitPrice) * 3.30578) / 10000).toFixed(1)
+                                  ? rowType === typeName
+                                    ? formatUnitPerPing(item.unitPrice, rowType).replace(/ (萬|元)\/坪$/, "")
+                                    : formatUnitPerPing(item.unitPrice, rowType)
                                   : "—";
                                 const inCompare = compareList.some((c) => c.id === item.id);
                                 return (
@@ -479,7 +534,7 @@ export function ResultsWorkspace() {
                                       {unitWan}
                                     </TableCell>
                                     <TableCell className="text-right text-sm font-bold tabular-nums text-primary">
-                                      {formatPrice(item.totalPrice)}
+                                      {formatTotal(item.totalPrice, rowType)}
                                     </TableCell>
                                     <TableCell className="pr-5 text-right" onClick={(e) => e.stopPropagation()}>
                                       <div className="flex items-center justify-end gap-1.5">
@@ -600,13 +655,17 @@ export function ResultsWorkspace() {
                           <Compass className="w-6 h-6 text-primary" />
                         </div>
                         <p className="font-bold text-base tracking-tight text-on-surface text-center">
-                          {data.length === 0
-                            ? "尚未查詢或來源無資料"
+                          {!hasQueried
+                            ? "正在載入行情…"
+                            : data.length === 0
+                            ? "這個範圍沒有成交資料"
                             : (appTexts.noData.includes("。") ? appTexts.noData.split("。")[0] : appTexts.noData)}
                         </p>
                         <p className="text-xs mt-1.5 font-medium text-on-surface-variant text-center max-w-sm">
-                          {data.length === 0
-                            ? "選擇區域後按「開始查詢」，或先放寬期間與關鍵字再試。"
+                          {!hasQueried
+                            ? "稍後會自動顯示這個區域的成交行情。"
+                            : data.length === 0
+                            ? "換個行政區、放寬期間，或清除關鍵字再試。"
                             : "可一鍵放寬條件後重新套用篩選（前端篩選立即生效）。"}
                         </p>
                         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
@@ -706,7 +765,7 @@ export function ResultsWorkspace() {
                         cityName={cityName}
                         district={district}
                         filteredData={filteredData}
-                        formatPrice={formatPrice}
+                        formatPrice={(p: string) => formatTotal(p, typeName)}
                         geocodedCount={geocodedCount}
                         isGeocoding={isGeocoding}
                         mapLayer={mapLayer}
@@ -775,7 +834,7 @@ export function ResultsWorkspace() {
                               cityName={cityName}
                               district={district}
                               filteredData={filteredData.slice(0, 40)}
-                              formatPrice={formatPrice}
+                              formatPrice={(p: string) => formatTotal(p, typeName)}
                               geocodedCount={geocodedCount}
                               isGeocoding={isGeocoding}
                               mapLayer={mapLayer}

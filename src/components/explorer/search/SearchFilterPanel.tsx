@@ -7,6 +7,7 @@ import { FilterPillBar } from "./FilterPillBar";
 import { FilterSheet } from "./FilterSheet";
 import { AppliedFilterChips } from "./AppliedFilterChips";
 import { PropertyTypeChips } from "./PropertyTypeChips";
+import { isRentType } from "../../../utils/priceUnits";
 import { TransactionTypeTabs } from "./TransactionTypeTabs";
 import { ScenarioPresetChips } from "./ScenarioPresetChips";
 import { emptyDraft, type FilterDraft } from "./filterDraft";
@@ -182,9 +183,12 @@ export function SearchFilterPanel() {
             只有選了跟房子有關的標的才出現。
             手機把標的種類收進篩選抽屜，這一列只剩交易型態＋「篩選」按鈕。 */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <div className="hidden md:block">
-            <PropertyTypeChips value={propertyTypes} onChange={handlePropertyTypesChange} />
-          </div>
+          {/* 租屋不套用標的種類（租賃資料的標的是「租賃房屋」等），不顯示這組選項 */}
+          {!isRentType(typeName) && (
+            <div className="hidden md:block">
+              <PropertyTypeChips value={propertyTypes} onChange={handlePropertyTypesChange} />
+            </div>
+          )}
 
           {showTransactionType && (
             <div className="flex items-center gap-2">
@@ -230,6 +234,7 @@ export function SearchFilterPanel() {
             onClearAll={clearAll}
             cityName={cityName}
             onOpenChange={setIsFilterMenuOpen}
+            rent={isRentType(typeName)}
           />
         </div>
 

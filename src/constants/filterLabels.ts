@@ -68,6 +68,15 @@ export const TOTAL_PRICE_PRESETS: RangePreset[] = [
   { label: "3000萬以上", min: "3000", max: "" },
 ];
 
+/** 月租（租賃；單位：元） */
+export const RENT_PRICE_PRESETS: RangePreset[] = [
+  { label: "1.5萬以下", min: "", max: "15000" },
+  { label: "1.5–2.5萬", min: "15000", max: "25000" },
+  { label: "2.5–4萬", min: "25000", max: "40000" },
+  { label: "4–6萬", min: "40000", max: "60000" },
+  { label: "6萬以上", min: "60000", max: "" },
+];
+
 /** 坪數 */
 export const AREA_PRESETS: RangePreset[] = [
   { label: "15坪以下", min: "", max: "15" },

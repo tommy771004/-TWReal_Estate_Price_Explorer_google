@@ -41,6 +41,23 @@ async function fetchLatestRows(
   }
 }
 
+/** 一次查詢實際向資料來源要的範圍（縣市、型態、行政區、關鍵字、期間） */
+export type FetchedScope = {
+  cityName: string;
+  typeName: string;
+  district: string;
+  search: string;
+  period: PeriodRange;
+};
+
+export type FetchOptions = {
+  /** 由條件變更自動觸發（非使用者按查詢）：不計入熱門搜尋與最近搜尋 */
+  auto?: boolean;
+};
+
+const scopeKey = (s: FetchedScope) =>
+  [s.cityName, s.typeName, s.district, s.search.trim(), s.period.startY, s.period.startM, s.period.endY, s.period.endM].join("|");
+
 export type FetchRealEstateParams = {
   cityName: string;
   typeName: string;
@@ -79,25 +96,51 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
   const robotTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   /** 遞增請求世代：只採納最後一次請求的結果 */
   const requestIdRef = useRef(0);
+  /** 最近一次發出的查詢範圍；自動查詢用它判斷現有資料夠不夠 */
+  const lastScopeRef = useRef<FetchedScope | null>(null);
+  /** 畫面上這份 data 是用哪個範圍查到的（查詢中仍是上一份）；結果快照比對用 */
+  const dataScopeRef = useRef<FetchedScope | null>(null);
+  /** 進行中請求的範圍 key：同範圍的重複呼叫（例如自動查詢＋按鈕）直接略過 */
+  const inflightKeyRef = useRef<string | null>(null);
 
   const fetchData = useCallback(
-    async (keywordOverride?: string, cityOverride?: string, districtOverride?: string) => {
+    async (
+      keywordOverride?: string,
+      cityOverride?: string,
+      districtOverride?: string,
+      options?: FetchOptions
+    ) => {
       const p = paramsRef.current;
+      // 也會被直接當作 onClick 使用：非字串參數一律忽略
       const activeKeyword =
         typeof keywordOverride === "string" ? keywordOverride : p.search;
-      const activeCity = cityOverride || p.cityName;
-      const activeDistrict = districtOverride || p.district;
+      const activeCity = (typeof cityOverride === "string" && cityOverride) || p.cityName;
+      const activeDistrict = (typeof districtOverride === "string" && districtOverride) || p.district;
+      const auto = options?.auto === true;
+
+      const scope: FetchedScope = {
+        cityName: activeCity,
+        typeName: p.typeName,
+        district: activeDistrict,
+        search: activeKeyword,
+        period: p.period,
+      };
+      const key = scopeKey(scope);
+      if (inflightKeyRef.current === key) return;
+      inflightKeyRef.current = key;
+      lastScopeRef.current = scope;
 
       if (typeof keywordOverride === "string" && keywordOverride !== p.search) {
         p.setSearch(keywordOverride);
       }
-      if (cityOverride) p.setCityName(cityOverride);
-      if (districtOverride) p.setDistrict(districtOverride);
+      if (typeof cityOverride === "string" && cityOverride) p.setCityName(cityOverride);
+      if (typeof districtOverride === "string" && districtOverride) p.setDistrict(districtOverride);
 
-      p.addRecentSearch(activeKeyword);
+      if (!auto) p.addRecentSearch(activeKeyword);
       p.addAuditLog(
         "search_properties",
         JSON.stringify({
+          auto,
           cityName: activeCity,
           district: activeDistrict,
           propertyTypes: p.propertyTypes,
@@ -162,6 +205,7 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
                   transactionType: typeCode,
                   period: p.period,
                   keyword: activeKeyword,
+                  auto,
                 },
                 latestController.signal
               ).then((r) => {
@@ -202,6 +246,7 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
             p.setDataSource(got ? "history+latest" : "history");
             p.setDataCachedAt(history.updatedAt);
             p.setDataCoverage(coverage);
+            dataScopeRef.current = scope;
             p.setData(rows.map((row, index) => mapTransactionRow(row, index, activeCity, p.typeName)));
             return;
           } catch (historyError: any) {
@@ -229,6 +274,7 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
               area: p.area,
               age: p.age,
               keyword: activeKeyword,
+              auto,
             }),
           });
         } finally {
@@ -265,6 +311,7 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
 
         const result = await response.json();
         if (!isLatest()) return;
+        dataScopeRef.current = scope;
 
         p.setDataSource(result.source || null);
         p.setDataCachedAt(typeof result.cachedAt === "string" ? result.cachedAt : null);
@@ -305,7 +352,7 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
         if (error?.name === "AbortError") {
           // 仍是最新請求卻被 abort → 多半是逾時；若已被更新請求取代則略過
           if (requestIdRef.current === requestId) {
-            p.setError("連線逾時或請求已取消，請再按「開始查詢」重試。");
+            p.setError("連線逾時或請求已取消，請按「重新載入資料」再試一次。");
             p.setData([]);
           }
           return;
@@ -317,6 +364,7 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
       } finally {
         // 僅最後一筆請求收尾 UI
         if (requestIdRef.current === requestId) {
+          inflightKeyRef.current = null;
           robotTimeoutsRef.current.forEach(clearTimeout);
           robotTimeoutsRef.current = [];
           p.setRobotStatus("");
@@ -328,5 +376,5 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
     [] // 穩定身分：參數一律走 paramsRef
   );
 
-  return { fetchData, abortControllerRef };
+  return { fetchData, abortControllerRef, lastScopeRef, dataScopeRef };
 }

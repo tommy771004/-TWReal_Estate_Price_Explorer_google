@@ -15,6 +15,8 @@ type Props = {
   draft: FilterDraft;
   onPatch: (patch: Partial<FilterDraft>) => void;
   cityName: string;
+  /** 租賃：價格群組改用月租／元/坪 */
+  rent?: boolean;
 };
 
 /**
@@ -29,6 +31,7 @@ export function FilterGroupRenderer({
   draft,
   onPatch,
   cityName,
+  rent = false,
 }: Props): ReactElement {
   switch (id) {
     case "price":
@@ -40,6 +43,7 @@ export function FilterGroupRenderer({
             unitPrice: draft.unitPrice,
           }}
           onChange={(v) => onPatch(v)}
+          rent={rent}
         />
       );
 

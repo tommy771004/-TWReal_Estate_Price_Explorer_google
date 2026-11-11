@@ -3,6 +3,7 @@ import type { Transaction } from "../types/real-estate";
 import type { PeriodRange } from "../utils/real-estate-helpers";
 import { isSpecialRelationTransaction } from "../utils/real-estate-helpers";
 import { calculateDistance } from "../lib/utils";
+import { totalValue, unitPerPing } from "../utils/priceUnits";
 import type { ManagementFilter, ParkingFilter } from "../lib/urlState";
 import type { NearbyAnchor, SortConfig, UserLocation } from "../types/app";
 
@@ -27,6 +28,11 @@ export type FilterParams = {
   nearbyAnchor: NearbyAnchor | null;
   userLocation: UserLocation;
   sortConfig: SortConfig | null;
+  /**
+   * 交易型態：決定價格篩選的單位。買賣／預售屋為「萬」「萬/坪」，
+   * 租賃為「元/月」「元/坪」（totalPriceMinWan/MaxWan 欄位在租賃時存的是元）。
+   */
+  typeName?: string;
 };
 
 /**
@@ -50,6 +56,7 @@ export function filterTransactions(params: FilterParams): Transaction[] {
     focusBuildCase,
     excludeSpecial,
     totalPriceMinWan = "",
+    typeName = "買賣",
     totalPriceMaxWan,
     nearbyKm,
     nearbyAnchor,
@@ -100,7 +107,7 @@ export function filterTransactions(params: FilterParams): Transaction[] {
       const priceVal = parseFloat(item.unitPrice) || 0;
       let comparePrice = priceVal;
       if (unitPrice.unit === "1") {
-        comparePrice = (priceVal * 3.30578) / 10000;
+        comparePrice = unitPerPing(priceVal, typeName);
       }
       const min = parseFloat(unitPrice.min);
       const max = parseFloat(unitPrice.max);
@@ -181,7 +188,7 @@ export function filterTransactions(params: FilterParams): Transaction[] {
 
     let matchesBudget = true;
     if (totalPriceMinWan !== "" || totalPriceMaxWan !== "") {
-      const itemWan = (parseFloat(item.totalPrice) || 0) / 10000;
+      const itemWan = totalValue(parseFloat(item.totalPrice) || 0, typeName);
       const minWan = parseFloat(totalPriceMinWan);
       const maxWan = parseFloat(totalPriceMaxWan);
       if (!Number.isNaN(minWan) && itemWan < minWan) matchesBudget = false;
@@ -317,6 +324,7 @@ export function useFilteredTransactions(params: FilterParams): Transaction[] {
       nearbyAnchor,
       userLocation.latitude,
       userLocation.longitude,
+      params.typeName,
     ]
   );
 }

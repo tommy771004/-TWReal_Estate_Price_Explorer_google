@@ -6,9 +6,11 @@ import type { SnapshotDelta } from "../lib/userDataPortability";
 type Props = {
   delta: SnapshotDelta | null;
   onDismiss: () => void;
+  /** 快照的中位單價以萬/坪計；租賃不適用，不顯示 */
+  showMedianUnit?: boolean;
 };
 
-export function ResultDeltaBanner({ delta, onDismiss }: Props) {
+export function ResultDeltaBanner({ delta, onDismiss, showMedianUnit = true }: Props) {
   return (
     <AnimatePresence>
       {delta && (
@@ -30,12 +32,12 @@ export function ResultDeltaBanner({ delta, onDismiss }: Props) {
                 <span className="opacity-70">{delta.previous.label}</span>
                 {" · "}
                 上次 {delta.previous.count.toLocaleString()} 筆
-                {delta.previous.medianUnitWan != null && (
+                {showMedianUnit && delta.previous.medianUnitWan != null && (
                   <>（中位約 {delta.previous.medianUnitWan.toFixed(1)} 萬/坪）</>
                 )}
                 {" → "}
                 目前 {delta.current.count.toLocaleString()} 筆
-                {delta.current.medianUnitWan != null && (
+                {showMedianUnit && delta.current.medianUnitWan != null && (
                   <>（中位約 {delta.current.medianUnitWan.toFixed(1)} 萬/坪）</>
                 )}
               </p>

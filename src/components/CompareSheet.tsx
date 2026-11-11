@@ -1,6 +1,7 @@
 import { GitCompare, Pin, X } from "lucide-react";
 import { Sheet, SheetBody, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { Transaction } from "../types/real-estate";
+import { formatUnitPerPing, itemTypeName } from "../utils/priceUnits";
 import type { PinnedMarketSnapshot } from "../utils/market-snapshot";
 import { MAX_COMPARE } from "./CompareBar";
 import { PinnedKpiCompare } from "./PinnedKpiCompare";
@@ -18,10 +19,10 @@ interface CompareSheetProps {
   onClearPins: () => void;
 }
 
-function unitPriceWan(item: Transaction): string | null {
-  const v = parseFloat(item.unitPrice || "");
-  if (!Number.isFinite(v) || v <= 0) return null;
-  return `${((v * 3.30578) / 10000).toFixed(1)} 萬/坪`;
+/** 單位跟著每筆資料：買賣「萬/坪」、租賃「元/坪」 */
+function unitPriceText(item: Transaction): string | null {
+  const text = formatUnitPerPing(item.unitPrice, itemTypeName(item));
+  return text === "-" ? null : text;
 }
 
 /**
@@ -77,7 +78,7 @@ export function CompareSheet({
             ) : (
               <ul className="flex flex-col gap-1.5">
                 {items.map((item) => {
-                  const price = unitPriceWan(item);
+                  const price = unitPriceText(item);
                   return (
                     <li key={item.id} className="flex items-center gap-1 rounded-2xl bg-surface-container p-1.5 pl-3">
                       <button

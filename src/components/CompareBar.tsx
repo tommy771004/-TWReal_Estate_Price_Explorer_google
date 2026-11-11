@@ -2,7 +2,8 @@ import React from "react";
 import { GitCompare, X, Scale, Share2, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import type { Transaction } from "../types/real-estate";
-import { formatDate, formatPrice } from "../utils/real-estate-helpers";
+import { formatDate } from "../utils/real-estate-helpers";
+import { formatTotal, formatUnitPerPing, itemTypeName } from "../utils/priceUnits";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,16 +35,19 @@ export function parseCompareIdsFromSearch(search: string): string[] {
   }
 }
 
-function unitPriceWan(item: Transaction): string {
-  const v = parseFloat(item.unitPrice || "");
-  if (!Number.isFinite(v) || v <= 0) return "—";
-  return ((v * 3.30578) / 10000).toFixed(1);
+/** 比較清單可能混有租賃與買賣，單位跟著每筆資料（萬/坪 或 元/坪） */
+function unitPriceText(item: Transaction): string {
+  const text = formatUnitPerPing(item.unitPrice, itemTypeName(item));
+  return text === "-" ? "—" : text;
 }
 
-function areaPing(item: Transaction): string {
-  const v = parseFloat(item.buildingArea || item.area || "");
-  if (!Number.isFinite(v)) return "—";
-  return (v * 0.3025).toFixed(1);
+/** 有建物面積顯示建坪；純土地（建物面積 0）改顯示「地 X 坪」，不再出現 0.0 坪 */
+function areaText(item: Transaction): string {
+  const building = parseFloat(item.buildingArea || "");
+  if (Number.isFinite(building) && building > 0) return `${(building * 0.3025).toFixed(1)} 坪`;
+  const land = parseFloat(item.area || "");
+  if (Number.isFinite(land) && land > 0) return `地 ${(land * 0.3025).toFixed(1)} 坪`;
+  return "—";
 }
 
 function ageYears(item: Transaction): string {
@@ -66,7 +70,7 @@ function parkingText(item: Transaction): string {
   if (item.parkingType || (item.parkingPrice && parseFloat(item.parkingPrice) > 0)) {
     const price =
       item.parkingPrice && parseFloat(item.parkingPrice) > 0
-        ? ` ${formatPrice(item.parkingPrice)}`
+        ? ` ${formatTotal(item.parkingPrice, itemTypeName(item))}`
         : "";
     return `${item.parkingType || "有車位"}${price}`;
   }
@@ -76,9 +80,9 @@ function parkingText(item: Transaction): string {
 const ROWS: { key: string; label: string; get: (t: Transaction) => string }[] = [
   { key: "district", label: "行政區", get: (t) => t.district || "—" },
   { key: "date", label: "交易日", get: (t) => formatDate(t.date) },
-  { key: "total", label: "總價", get: (t) => formatPrice(t.totalPrice) },
-  { key: "unit", label: "單價(萬/坪)", get: unitPriceWan },
-  { key: "area", label: "建物坪數", get: (t) => `${areaPing(t)} 坪` },
+  { key: "total", label: "總價／月租", get: (t) => formatTotal(t.totalPrice, itemTypeName(t)) },
+  { key: "unit", label: "單價（每坪）", get: unitPriceText },
+  { key: "area", label: "坪數", get: areaText },
   { key: "floor", label: "樓層", get: (t) => (t.floor ? `${t.floor}${t.totalFloor ? ` / ${t.totalFloor}` : ""}` : "—") },
   { key: "age", label: "屋齡(年)", get: ageYears },
   { key: "layout", label: "格局", get: layoutText },

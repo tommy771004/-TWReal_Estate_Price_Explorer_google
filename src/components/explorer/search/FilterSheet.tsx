@@ -20,6 +20,7 @@ import { FilterGroupRenderer } from "./FilterGroupRenderer";
 import { FilterGroupShell, groupChip } from "./FilterGroupShell";
 import { isPropertyTypeActive } from "./PropertyTypeChips";
 import { ALL_GROUP_IDS, activeGroupCount, emptyDraft, type FilterDraft } from "./filterDraft";
+import { isRentType } from "../../../utils/priceUnits";
 
 type Props = {
   /** 目前已套用的條件，開啟時作為草稿種子 */
@@ -36,9 +37,9 @@ type Props = {
   appliedPeriod: PeriodRange;
 };
 
-/** 手機的篩選數量：一般群組＋標的種類（手機上標的種類只在抽屜裡）。 */
-const sheetActiveCount = (d: FilterDraft) =>
-  activeGroupCount(d) + (isPropertyTypeActive(d.propertyTypes) ? 1 : 0);
+/** 手機的篩選數量：一般群組＋標的種類（手機上標的種類只在抽屜裡；租屋不套用標的種類）。 */
+const sheetActiveCount = (d: FilterDraft, typeName: string) =>
+  activeGroupCount(d) + (!isRentType(typeName) && isPropertyTypeActive(d.propertyTypes) ? 1 : 0);
 
 /**
  * 手機：單一「篩選」底部抽屜，footer 即時顯示筆數。
@@ -81,10 +82,11 @@ export function FilterSheet({
     focusBuildCase,
     userLocation,
     skip: mustRefetch,
+    typeName,
   });
 
-  const total = sheetActiveCount(draft);
-  const appliedCount = sheetActiveCount(applied);
+  const total = sheetActiveCount(draft, typeName);
+  const appliedCount = sheetActiveCount(applied, typeName);
 
   const togglePropertyType = (pt: string) =>
     setDraft((d) => ({
@@ -147,6 +149,8 @@ export function FilterSheet({
             </p>
           )}
           <div className="space-y-5 pb-2">
+            {/* 租賃資料的標的都是「租賃房屋」等，不對應這組分類：租屋時不顯示 */}
+            {!isRentType(typeName) && (
             <FilterGroupShell
               title="標的種類"
               active={isPropertyTypeActive(draft.propertyTypes)}
@@ -170,6 +174,7 @@ export function FilterSheet({
                 })}
               </div>
             </FilterGroupShell>
+            )}
             {ALL_GROUP_IDS.map((id) => (
               <div key={id}>
                 <FilterGroupRenderer
@@ -177,6 +182,7 @@ export function FilterSheet({
                   draft={draft}
                   onPatch={patch}
                   cityName={cityName}
+                  rent={isRentType(typeName)}
                 />
               </div>
             ))}

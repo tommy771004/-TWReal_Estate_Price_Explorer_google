@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { Transaction } from "../types/real-estate";
 import type { HistoryCounts } from "../types/real-estate";
 import { computeMarketSnapshot } from "../utils/market-snapshot";
+import { isRentHousing, isRentType, totalValue, unitPerPing } from "../utils/priceUnits";
 
 export type PriceBin = { name: string; count: number; sortValue: number };
 export type PriceTrendPoint = { month: string; avgPrice: number; sortKey: number };
@@ -64,7 +65,11 @@ export function useMarketAnalytics(
 
   const priceDistribution = useMemo((): PriceBin[] => {
     if (filteredData.length < 10) return [];
-    const prices = filteredData.map((d) => parseFloat(d.totalPrice) / 10000).filter((p) => !isNaN(p));
+    const rent = isRentType(typeName);
+    // 租賃：只看住宅租金（單獨出租的車位、土地不列入），單位為元/月
+    const prices = (rent ? filteredData.filter(isRentHousing) : filteredData)
+      .map((d) => totalValue(parseFloat(d.totalPrice), typeName))
+      .filter((p) => !isNaN(p));
     if (prices.length === 0) return [];
     let minP = prices[0];
     let maxP = prices[0];
@@ -76,7 +81,8 @@ export function useMarketAnalytics(
     const max = Math.ceil(maxP);
     const range = max - min;
     let step = 100;
-    if (range > 10000) step = 2000;
+    if (rent) step = range > 100000 ? 10000 : range > 40000 ? 5000 : range > 15000 ? 2000 : 1000;
+    else if (range > 10000) step = 2000;
     else if (range > 5000) step = 1000;
     else if (range > 2000) step = 500;
     else if (range > 1000) step = 200;
@@ -93,12 +99,14 @@ export function useMarketAnalytics(
     });
     return Array.from(bins.entries())
       .map(([binStart, count]) => ({
-        name: `${binStart}-${binStart + step}萬`,
+        name: rent
+          ? `${binStart.toLocaleString()}-${(binStart + step).toLocaleString()}元`
+          : `${binStart}-${binStart + step}萬`,
         count,
         sortValue: binStart,
       }))
       .sort((a, b) => a.sortValue - b.sortValue);
-  }, [filteredData]);
+  }, [filteredData, typeName]);
 
   const priceTrend = useMemo((): PriceTrendPoint[] => {
     if (filteredData.length < 10) return [];
@@ -109,7 +117,7 @@ export function useMarketAnalytics(
         const m = item.date.substring(item.date.length - 4, item.date.length - 2);
         const priceVal = parseFloat(item.unitPrice);
         if (isNaN(priceVal) || priceVal <= 0) return;
-        const pricePerPing = (priceVal * 3.30578) / 10000;
+        const pricePerPing = unitPerPing(priceVal, typeName);
         const monthKey = `${y}/${m}`;
         const current = monthMap.get(monthKey) || { sum: 0, count: 0 };
         current.sum += pricePerPing;
@@ -120,11 +128,11 @@ export function useMarketAnalytics(
     return Array.from(monthMap.entries())
       .map(([month, d]) => ({
         month,
-        avgPrice: Math.round((d.sum / d.count) * 10) / 10,
+        avgPrice: isRentType(typeName) ? Math.round(d.sum / d.count) : Math.round((d.sum / d.count) * 10) / 10,
         sortKey: parseInt(month.replace("/", "")),
       }))
       .sort((a, b) => a.sortKey - b.sortKey);
-  }, [filteredData]);
+  }, [filteredData, typeName]);
 
   const aggregatedPreSaleData = useMemo((): AggregatedPreSale[] => {
     if (typeName !== "預售屋" || filteredData.length === 0) return [];
@@ -194,7 +202,10 @@ export function useMarketAnalytics(
       .sort((a, b) => b.count - a.count);
   }, [filteredData, typeName]);
 
-  const marketSnapshot = useMemo(() => computeMarketSnapshot(filteredData), [filteredData]);
+  const marketSnapshot = useMemo(
+    () => computeMarketSnapshot(filteredData, typeName),
+    [filteredData, typeName]
+  );
 
   return {
     districtAveragePrices,

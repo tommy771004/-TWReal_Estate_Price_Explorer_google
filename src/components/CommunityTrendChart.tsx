@@ -18,7 +18,14 @@ type CommunityTrendPoint = {
   totalPrice: number;
 };
 
-export default function CommunityTrendChart({ data }: { data: CommunityTrendPoint[] }) {
+export default function CommunityTrendChart({
+  data,
+  unitLabel = "萬/坪",
+}: {
+  data: CommunityTrendPoint[];
+  /** 單價單位：買賣「萬/坪」、租賃「元/坪」 */
+  unitLabel?: string;
+}) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
@@ -41,7 +48,7 @@ export default function CommunityTrendChart({ data }: { data: CommunityTrendPoin
                 {point.isCurrent && <span className="rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold text-blue-600">當前點擊</span>}
               </div>
               <div className="flex items-baseline gap-1 text-lg font-black text-ink dark:text-white">
-                {point.unitPrice} <span className="text-xs font-bold text-slate-400">萬/坪</span>
+                {point.unitPrice.toLocaleString()} <span className="text-xs font-bold text-slate-400">{unitLabel}</span>
               </div>
               <div className="flex justify-between text-xs font-bold text-slate-500">
                 <span>總價: {formatPrice(point.totalPrice.toString())}</span>

@@ -26,6 +26,8 @@ export interface Transaction {
   remarks: string;
   id: string;
   buildCase?: string;
+  /** 資料來源的交易型態（買賣／預售屋／租賃），決定價格單位；舊的收藏、比較資料可能沒有 */
+  typeName?: string;
   lat?: number | string;
   lng?: number | string;
 }

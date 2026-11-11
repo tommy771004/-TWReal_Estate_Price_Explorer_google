@@ -1,7 +1,6 @@
 import { motion } from "motion/react";
-import { ArrowUpDown, BarChart3, TrendingUp } from "lucide-react";
+import { BarChart3, TrendingUp } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Button } from "@/components/ui/button";
 
 type PriceTrendPoint = {
   month: string;
@@ -18,8 +17,12 @@ type PriceDistributionPoint = {
 interface ResultsChartsProps {
   priceDistribution: PriceDistributionPoint[];
   priceTrend: PriceTrendPoint[];
+  /** 手機是否展開（開關在市場摘要列上；lg 以上一律顯示） */
   showChartsMobile: boolean;
-  onToggleCharts: () => void;
+  /** 走勢的單價單位（買賣「萬/坪」、租賃「元/坪」） */
+  unitLabel?: string;
+  /** 租賃：分布圖是月租金而非成交總價 */
+  rent?: boolean;
 }
 
 const CustomTooltip = ({ active, payload, label, unit = "" }: any) => {
@@ -41,30 +44,15 @@ export default function ResultsCharts({
   priceDistribution,
   priceTrend,
   showChartsMobile,
-  onToggleCharts,
+  unitLabel = "萬/坪",
+  rent = false,
 }: ResultsChartsProps) {
   if (priceDistribution.length === 0 && priceTrend.length === 0) {
     return null;
   }
 
   return (
-    <div className="flex flex-col gap-4 mx-0 sm:mx-6 mt-6 mb-2">
-      <div className="lg:hidden">
-        <Button
-          variant="outline"
-          className="w-full bg-surface border border-outline rounded-full h-12 font-semibold shadow-xs flex items-center justify-between text-on-surface hover:bg-surface-container-highest px-5"
-          onClick={onToggleCharts}
-        >
-          <span className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" />
-            市場分析圖表
-          </span>
-          <motion.div animate={{ rotate: showChartsMobile ? 180 : 0 }}>
-            <ArrowUpDown className="w-4 h-4 text-on-surface-variant" />
-          </motion.div>
-        </Button>
-      </div>
-
+    <div className={`${showChartsMobile ? "flex" : "hidden lg:flex"} flex-col gap-4 mx-0 sm:mx-6 mt-6 mb-2`}>
       <div className={`grid-cols-1 lg:grid-cols-2 gap-4 ${!showChartsMobile ? "hidden lg:grid" : "grid"}`}>
         {priceTrend.length > 0 && (
           <motion.div
@@ -78,7 +66,7 @@ export default function ResultsCharts({
               <div className="w-8 h-8 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center">
                 <TrendingUp className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-on-surface uppercase tracking-wider">成交單價走勢</span>
+              <span className="text-xs font-bold text-on-surface uppercase tracking-wider">{rent ? "單坪月租走勢" : "成交單價走勢"}</span>
             </div>
             <div className="h-[140px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -103,7 +91,7 @@ export default function ResultsCharts({
                     axisLine={false}
                     tick={{ fontSize: 10, fill: "var(--on-surface-variant)", fontWeight: 500 }}
                   />
-                  <Tooltip content={<CustomTooltip unit=" 萬/坪" />} />
+                  <Tooltip content={<CustomTooltip unit={` ${unitLabel}`} />} />
                   <Area type="monotone" name="平均單價" dataKey="avgPrice" stroke="var(--primary)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorPrice)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -123,7 +111,7 @@ export default function ResultsCharts({
               <div className="w-8 h-8 rounded-xl bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
                 <BarChart3 className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-on-surface uppercase tracking-wider">成交總價分布</span>
+              <span className="text-xs font-bold text-on-surface uppercase tracking-wider">{rent ? "月租金分布" : "成交總價分布"}</span>
             </div>
             <div className="h-[140px] w-full">
               <ResponsiveContainer width="100%" height="100%">

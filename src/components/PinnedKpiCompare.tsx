@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { Pin, X, ArrowRightLeft } from "lucide-react";
 import type { PinnedMarketSnapshot } from "../utils/market-snapshot";
 import { medianUnitPriceDeltaPct } from "../utils/market-snapshot";
+import { formatUnitValue, isRentType, totalLabel, unitPerPingLabel } from "../utils/priceUnits";
 
 interface PinnedKpiCompareProps {
   pins: PinnedMarketSnapshot[];
@@ -38,6 +39,8 @@ function PinCard({
   onUnpin: (id: string) => void;
   highlight?: "higher" | "lower" | null;
 }) {
+  const rent = isRentType(pin.typeName);
+  const unitLabel = unitPerPingLabel(pin.typeName);
   return (
     <div
       className={`relative flex-1 min-w-0 rounded-[20px] border p-3 transition-colors ${
@@ -66,19 +69,25 @@ function PinCard({
       <div className="grid grid-cols-2 gap-1.5">
         <Metric label="筆數" value={pin.count.toLocaleString()} />
         <Metric
-          label="中位單價"
-          value={pin.medianUnitPrice != null ? pin.medianUnitPrice.toFixed(1) : "—"}
-          unit="萬/坪"
+          label={rent ? "中位單坪月租" : "中位單價"}
+          value={pin.medianUnitPrice != null ? formatUnitValue(pin.medianUnitPrice, pin.typeName) : "—"}
+          unit={unitLabel}
         />
         <Metric
-          label="平均單價"
-          value={pin.avgUnitPrice != null ? pin.avgUnitPrice.toFixed(1) : "—"}
-          unit="萬/坪"
+          label={rent ? "平均單坪月租" : "平均單價"}
+          value={pin.avgUnitPrice != null ? formatUnitValue(pin.avgUnitPrice, pin.typeName) : "—"}
+          unit={unitLabel}
         />
         <Metric
-          label="中位總價"
-          value={pin.medianTotalPrice != null ? pin.medianTotalPrice.toFixed(0) : "—"}
-          unit="萬"
+          label={rent ? "中位月租" : "中位總價"}
+          value={
+            pin.medianTotalPrice != null
+              ? rent
+                ? Math.round(pin.medianTotalPrice).toLocaleString()
+                : pin.medianTotalPrice.toFixed(0)
+              : "—"
+          }
+          unit={totalLabel(pin.typeName)}
         />
       </div>
     </div>
@@ -89,7 +98,9 @@ export function PinnedKpiCompare({ pins, onUnpin, onClear }: PinnedKpiComparePro
   if (pins.length === 0) return null;
 
   const [a, b] = pins;
-  const delta = a && b ? medianUnitPriceDeltaPct(a.medianUnitPrice, b.medianUnitPrice) : null;
+  // 租金（元/坪）與買賣（萬/坪）單位不同，混在一起時不算高低差
+  const comparable = Boolean(a && b && isRentType(a.typeName) === isRentType(b.typeName));
+  const delta = a && b && comparable ? medianUnitPriceDeltaPct(a.medianUnitPrice, b.medianUnitPrice) : null;
   const aHighlight =
     delta == null ? null : delta > 0.5 ? ("higher" as const) : delta < -0.5 ? ("lower" as const) : null;
   const bHighlight =
@@ -113,7 +124,11 @@ export function PinnedKpiCompare({ pins, onUnpin, onClear }: PinnedKpiComparePro
             釘選比價
           </h3>
           <p className="mt-0.5 text-xs font-medium text-on-surface-variant">
-            {pins.length === 1 ? "再釘選另一區即可對照" : "中位單價對照"}
+            {pins.length === 1
+              ? "再釘選另一區即可對照"
+              : comparable
+                ? "中位單價對照"
+                : "租金與買賣單位不同，僅並列參考"}
           </p>
         </div>
         <button

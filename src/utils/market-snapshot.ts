@@ -1,5 +1,6 @@
 import type { Transaction } from "../types/real-estate";
 import { formatDate, median } from "./real-estate-helpers";
+import { isRentHousing, isRentType, totalValue, unitPerPing } from "./priceUnits";
 
 export type MarketSnapshot = {
   count: number;
@@ -22,15 +23,20 @@ export type PinnedMarketSnapshot = MarketSnapshot & {
   pinnedAt: number;
 };
 
-export function computeMarketSnapshot(rows: Transaction[]): MarketSnapshot {
-  const unitPrices = rows
+/**
+ * 單價、總價的單位跟著交易型態：買賣／預售屋為萬/坪、萬；租賃為元/坪、元/月，
+ * 且租賃只統計住宅租賃（單獨出租的車位、土地不列入行情）。
+ */
+export function computeMarketSnapshot(rows: Transaction[], typeName = "買賣"): MarketSnapshot {
+  const priced = isRentType(typeName) ? rows.filter(isRentHousing) : rows;
+  const unitPrices = priced
     .map((item) => parseFloat(item.unitPrice || ""))
     .filter((value) => Number.isFinite(value) && value > 0)
-    .map((value) => (value * 3.30578) / 10000);
-  const totalPrices = rows
+    .map((value) => unitPerPing(value, typeName));
+  const totalPrices = priced
     .map((item) => parseFloat(item.totalPrice || ""))
     .filter((value) => Number.isFinite(value) && value > 0)
-    .map((value) => value / 10000);
+    .map((value) => totalValue(value, typeName));
   const districtCounts = rows.reduce((acc, item) => {
     if (item.district) acc.set(item.district, (acc.get(item.district) || 0) + 1);
     return acc;

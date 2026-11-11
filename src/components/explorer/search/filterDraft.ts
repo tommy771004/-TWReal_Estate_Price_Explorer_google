@@ -78,10 +78,10 @@ export const isGroupActive = (id: FilterGroupId, d: FilterDraft): boolean => {
 };
 
 /** 膠囊上顯示的摘要文字，null 代表沒套用。 */
-export const groupSummary = (id: FilterGroupId, d: FilterDraft): string | null => {
+export const groupSummary = (id: FilterGroupId, d: FilterDraft, rent = false): string | null => {
   switch (id) {
     case "price":
-      return priceSummary(d);
+      return priceSummary(d, rent);
     case "area":
       return areaSummary(d.area);
     case "layout":

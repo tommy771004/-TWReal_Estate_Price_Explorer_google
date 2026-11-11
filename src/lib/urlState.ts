@@ -89,6 +89,22 @@ export const parseSelectionFromUrl = (): Selection => {
   return { cityName, typeName, district };
 };
 
+/**
+ * 網址或使用者偏好是否已明確指定縣市：縣市／行政區路徑（SEO 頁）、?city=、
+ * 或首頁「/」且設定了有效的預設縣市。這些情況下開啟時的定位不可覆寫縣市與行政區。
+ */
+export const hasExplicitSelection = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const segments = window.location.pathname.split("/").filter(Boolean);
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("city")?.trim()) return true;
+  if (segments.length === 0) {
+    const defaultCity = readDefaultCity();
+    return Boolean(defaultCity && CITIES.some((c) => c.name === defaultCity));
+  }
+  return parseSelectionPath(window.location.pathname) !== null;
+};
+
 const pickYear = (raw: string | null, fallback: string): string => {
   if (!raw) return fallback;
   const n = parseInt(raw, 10);

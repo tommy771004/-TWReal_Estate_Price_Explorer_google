@@ -63,6 +63,7 @@ export function mapTransactionRow(
     remarks: isRent ? row[27] || "" : row[26] || "",
     id: String(isRent ? row[28] || `item-${index}` : row[27] || `item-${index}`),
     buildCase: isPreSale ? row[28] || undefined : undefined,
+    typeName,
     lat,
     lng,
   };

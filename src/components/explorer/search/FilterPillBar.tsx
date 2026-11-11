@@ -19,6 +19,8 @@ type Props = {
   onClearAll: () => void;
   cityName: string;
   onOpenChange: (open: boolean) => void;
+  /** 租賃：價格膠囊改為「租金」，單位為元 */
+  rent?: boolean;
   /** 手機用的「篩選」抽屜觸發鈕，與膠囊列同一行 */
   mobileTrigger?: ReactNode;
 };
@@ -35,6 +37,7 @@ export function FilterPillBar({
   cityName,
   onOpenChange,
   mobileTrigger,
+  rent = false,
 }: Props) {
   const total = activeGroupCount(draft);
 
@@ -47,14 +50,14 @@ export function FilterPillBar({
       {ALL_GROUP_IDS.map((id) => (
         <Fragment key={id}>
         <FilterPill
-          label={FILTER_GROUP_LABELS[id]}
-          summary={groupSummary(id, draft)}
+          label={rent && id === "price" ? "租金" : FILTER_GROUP_LABELS[id]}
+          summary={groupSummary(id, draft, rent)}
           active={isGroupActive(id, draft)}
           onClear={() => onClearGroup(id)}
           onOpenChange={onOpenChange}
           xlOnly={XL_ONLY.includes(id)}
         >
-          <FilterGroupRenderer id={id} draft={draft} onPatch={onPatch} cityName={cityName} />
+          <FilterGroupRenderer id={id} draft={draft} onPatch={onPatch} cityName={cityName} rent={rent} />
         </FilterPill>
         </Fragment>
       ))}
@@ -75,6 +78,7 @@ export function FilterPillBar({
                   draft={draft}
                   onPatch={onPatch}
                   cityName={cityName}
+                  rent={rent}
                 />
               </div>
             ))}

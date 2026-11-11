@@ -30,6 +30,7 @@ import {
 import { syncSeoMetadata } from "./lib/seo";
 import {
   parseSelectionFromUrl,
+  hasExplicitSelection,
   parseQueryFiltersFromUrl,
   buildShareableUrl,
   type ManagementFilter,
@@ -63,6 +64,15 @@ import { SearchFilterPanel } from "./components/explorer/search/SearchFilterPane
 import { ResultsWorkspace } from "./components/explorer/ResultsWorkspace";
 import { ExplorerUiProvider } from "./components/explorer/ExplorerUiContext";
 import { useFetchRealEstate } from "./hooks/useFetchRealEstate";
+import { needsRefetch } from "./lib/filterScope";
+import {
+  formatUnitValue,
+  isRentType,
+  rentPropertyTypes,
+  totalLabel,
+  unitPerPing,
+  unitPerPingLabel,
+} from "./utils/priceUnits";
 import type { SavedSearch, ViewMode } from "./types/app";
 
 import { BottomNav, BOTTOM_NAV_BASE, type BottomNavItem, type BottomNavKey } from "./components/BottomNav";
@@ -73,12 +83,29 @@ import {
   type PinnedMarketSnapshot,
 } from "./utils/market-snapshot";
 
+/** 開啟頁面時自動載入第一次查詢（縣市決定後）。設為 false 則維持「先選條件、按查詢才載入」，之後換條件仍會自動更新。 */
+const AUTO_QUERY_ON_OPEN = true;
+
 export default function App() {
   const initialSelection = parseSelectionFromUrl();
   const initialFilters = parseQueryFiltersFromUrl();
   const [cityName, setCityName] = useState(initialSelection.cityName);
   const [typeName, setTypeName] = useState(initialSelection.typeName);
   const [district, setDistrict] = useState(initialSelection.district);
+  /** 網址或預設縣市已指定縣市時，開啟時的定位只記錄位置，不改縣市與行政區 */
+  const selectionLockedRef = useRef(hasExplicitSelection());
+  const initialSelectionRef = useRef(initialSelection);
+  const selectionRef = useRef({ cityName, district });
+  selectionRef.current = { cityName, district };
+  /** 套用定位到的縣市；使用者在定位完成前已自行改過縣市／行政區時也不覆寫 */
+  const applyLocatedSelection = React.useCallback((county: string, locatedDistrict: string) => {
+    if (selectionLockedRef.current) return;
+    const current = selectionRef.current;
+    const initial = initialSelectionRef.current;
+    if (current.cityName !== initial.cityName || current.district !== initial.district) return;
+    setCityName(county);
+    setDistrict(locatedDistrict || "全部");
+  }, []);
   const [search, setSearch] = useState(initialFilters.search);
   
   const [propertyTypes, setPropertyTypes] = useState<string[]>(initialFilters.propertyTypes);
@@ -353,10 +380,7 @@ export default function App() {
             location_method: "base_station",
           };
           setUserLocation(loc);
-          if (resolved.county) {
-            setCityName(resolved.county);
-            setDistrict(resolved.district || "全部");
-          }
+          if (resolved.county) applyLocatedSelection(resolved.county, resolved.district);
           return loc;
         }
       }
@@ -381,10 +405,7 @@ export default function App() {
             location_method: "base_station",
           };
           setUserLocation(loc);
-          if (resolved.county) {
-            setCityName(resolved.county);
-            setDistrict(resolved.district || "全部");
-          }
+          if (resolved.county) applyLocatedSelection(resolved.county, resolved.district);
           return loc;
         }
       }
@@ -403,12 +424,10 @@ export default function App() {
       district: defaultDistrict,
       location_method: "unknown",
     };
+    // 定位失敗：只記錄估計位置，不改使用者目前的縣市
     setUserLocation(defaultLoc);
-
-    setCityName(defaultCity.name);
-    setDistrict(defaultDistrict);
     return defaultLoc;
-  }, [getClosestTaiwanLocation]);
+  }, [getClosestTaiwanLocation, applyLocatedSelection]);
 
   const triggerGpsLocation = React.useCallback(async () => {
     if (!navigator.geolocation) {
@@ -430,10 +449,7 @@ export default function App() {
           setUserLocation(loc);
           localStorage.setItem("location_sharing_permisson_decision", "allow");
           
-          if (resolved.county) {
-            setCityName(resolved.county);
-            setDistrict(resolved.district || "全部");
-          }
+          if (resolved.county) applyLocatedSelection(resolved.county, resolved.district);
           resolve(loc);
         },
         async (error) => {
@@ -448,7 +464,7 @@ export default function App() {
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
       );
     });
-  }, [getClosestTaiwanLocation, triggerBaseStationLocation]);
+  }, [getClosestTaiwanLocation, triggerBaseStationLocation, applyLocatedSelection]);
 
   const addAuditLog = React.useCallback(async (actionType: string, details?: string, overrideLoc?: UserLocation) => {
     const loc = overrideLoc || userLocationRef.current;
@@ -591,6 +607,11 @@ export default function App() {
 
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
+  /** 是否已發出過查詢：區分「尚未載入」與「查了但沒有資料」 */
+  const [hasQueried, setHasQueried] = useState(false);
+  useEffect(() => {
+    if (loading) setHasQueried(true);
+  }, [loading]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [robotStatus, setRobotStatus] = useState("");
   const [selectedItem, setSelectedItem] = useState<Transaction | null>(null);
@@ -625,7 +646,7 @@ export default function App() {
   const [mortgageYears, setMortgageYears] = useState(30);
   const [mortgageRate, setMortgageRate] = useState(2.1);
 
-  const { fetchData } = useFetchRealEstate({
+  const { fetchData, lastScopeRef, dataScopeRef } = useFetchRealEstate({
     cityName,
     typeName,
     district,
@@ -679,24 +700,76 @@ export default function App() {
     }
   }, [fetchData]);
 
-  // 僅掛載時初始化一次：只做定位（交由瀏覽器原生權限提示），不自動查詢，由使用者自行按下「開始查詢」
+  /**
+   * 縣市是否已決定，可以開始自動查詢：網址／預設縣市已指定就立刻開始；
+   * 否則等定位結果（最多 SELECTION_WAIT_MS），避免先查預設縣市又馬上換掉。
+   */
+  const [selectionReady, setSelectionReady] = useState(() => selectionLockedRef.current);
+
+  // 僅掛載時初始化一次：定位（交由瀏覽器原生權限提示），完成後由下方的自動查詢載入資料
   useEffect(() => {
     let cancelled = false;
+    const SELECTION_WAIT_MS = 3000;
+    const readyTimer = window.setTimeout(() => setSelectionReady(true), SELECTION_WAIT_MS);
     const initLocation = async () => {
       const decision = localStorage.getItem("location_sharing_permisson_decision");
       const activeLoc = decision === "deny"
         ? await triggerBaseStationLocation()
         : await triggerGpsLocation();
       if (cancelled) return;
+      setSelectionReady(true);
       fetchTrendingSearches();
       addAuditLog("app_mount", "User opened price explorer", activeLoc);
     };
     initLocation();
     return () => {
       cancelled = true;
+      window.clearTimeout(readyTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only bootstrap
   }, []);
+
+  /**
+   * 買賣／預售屋的價格條件是「萬」「萬/坪」，租賃是「元/月」「元/坪」，數字無法互通：
+   * 使用者在租賃與非租賃之間切換時清掉價格條件，避免例如「總價 ≤ 1500 萬」變成「月租 ≤ 1500 元」。
+   * （套用已儲存條件、情境預設會連同價格一起設定，仍直接用 setTypeName。）
+   */
+  const changeTypeName = React.useCallback((next: string) => {
+    if (isRentType(typeName) !== isRentType(next)) {
+      setTotalPriceMinWan("");
+      setTotalPriceMaxWan("");
+      setUnitPrice({ min: "", max: "", unit: "1" });
+    }
+    setTypeName(next);
+  }, [typeName]);
+
+  /**
+   * 選了就更新：縣市、交易型態、行政區、期間改變時，若現有資料不夠（換縣市／型態、
+   * 放寬行政區或期間）就自動重新查詢；收窄則交給前端篩選，不打 API。
+   * 關鍵字仍由使用者按 Enter／查詢鈕送出；只有「清空已送出的關鍵字」會自動補抓完整資料。
+   * 桌面篩選彈出層開著時（期間年月會逐一改）先不查，關閉後只查一次。
+   */
+  const periodKey = `${period.startY}-${period.startM}-${period.endY}-${period.endM}`;
+  const searchIsEmpty = search.trim() === "";
+  useEffect(() => {
+    if (!selectionReady || isFilterMenuOpen) return;
+    const last = lastScopeRef.current;
+    if (!last && !AUTO_QUERY_ON_OPEN) return;
+    if (
+      last &&
+      !needsRefetch(last, {
+        cityName,
+        typeName,
+        district,
+        search: searchIsEmpty ? "" : last.search,
+        period,
+      })
+    ) {
+      return;
+    }
+    fetchData(undefined, undefined, undefined, { auto: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- period 以 periodKey 比對；關鍵字只看是否清空
+  }, [selectionReady, isFilterMenuOpen, cityName, typeName, district, periodKey, searchIsEmpty, fetchData]);
 
   // Smoothly scroll to the results block when changing page numbers
   useEffect(() => {
@@ -768,7 +841,9 @@ export default function App() {
     data,
     search,
     district,
-    propertyTypes,
+    // 租賃的交易標的是「租賃房屋」等，不對應房地／建物／土地：租屋不套用標的種類
+    propertyTypes: rentPropertyTypes(typeName, propertyTypes),
+    typeName,
     period,
     unitPrice,
     area,
@@ -925,13 +1000,13 @@ export default function App() {
        const houseTotal = parseFloat(item.totalPrice) - parseFloat(item.parkingPrice || "0");
        const houseArea = parseFloat(item.buildingArea) - parseFloat(item.parkingArea || "0");
        if (houseTotal > 0 && houseArea > 0) {
-          unitPrice = (houseTotal / houseArea) * 3.30578 / 10000;
+          unitPrice = unitPerPing(houseTotal / houseArea, typeName);
        } else if (item.unitPrice && parseFloat(item.unitPrice) > 0) {
-          unitPrice = (parseFloat(item.unitPrice) * 3.30578 / 10000);
+          unitPrice = unitPerPing(parseFloat(item.unitPrice), typeName);
        }
        return {
           date: item.date ? `${item.date.substring(0, item.date.length - 4)}/${item.date.substring(item.date.length - 4, item.date.length - 2)}` : '-', // format YY/MM
-          unitPrice: parseFloat(unitPrice.toFixed(1)),
+          unitPrice: isRentType(typeName) ? Math.round(unitPrice) : parseFloat(unitPrice.toFixed(1)),
           isCurrent: item.id === selectedItem.id,
           address: item.address,
           floor: item.floor || '-',
@@ -1047,6 +1122,9 @@ export default function App() {
   useEffect(() => {
     if (loading || data.length === 0) return;
     if (filteredData.length === 0 && data.length === 0) return;
+    // 條件剛改、新資料還沒回來時，畫面上仍是上一個範圍的資料：不記錄、不比對
+    const dataScope = dataScopeRef.current;
+    if (!dataScope || needsRefetch(dataScope, { cityName, typeName, district, search: dataScope.search, period })) return;
 
     const key = buildFilterSnapshotKey({
       cityName,
@@ -1155,19 +1233,25 @@ export default function App() {
       icon: Database,
     },
     {
-      label: "中位單價",
-      value: marketSnapshot.medianUnitPrice != null ? marketSnapshot.medianUnitPrice.toFixed(1) : "--",
+      label: isRentType(typeName) ? "中位單坪月租" : "中位單價",
+      value: marketSnapshot.medianUnitPrice != null ? formatUnitValue(marketSnapshot.medianUnitPrice, typeName) : "--",
+      unit: unitPerPingLabel(typeName),
       helper: marketSnapshot.avgUnitPrice != null
-        ? `平均 ${marketSnapshot.avgUnitPrice.toFixed(1)} 萬/坪`
-        : "萬/坪",
+        ? `平均 ${formatUnitValue(marketSnapshot.avgUnitPrice, typeName)} ${unitPerPingLabel(typeName)}`
+        : unitPerPingLabel(typeName),
       icon: TrendingUp,
     },
     {
-      label: "中位總價",
-      value: marketSnapshot.medianTotalPrice != null ? marketSnapshot.medianTotalPrice.toFixed(0) : "--",
+      label: isRentType(typeName) ? "中位月租" : "中位總價",
+      value: marketSnapshot.medianTotalPrice != null
+        ? isRentType(typeName)
+          ? Math.round(marketSnapshot.medianTotalPrice).toLocaleString()
+          : marketSnapshot.medianTotalPrice.toFixed(0)
+        : "--",
+      unit: totalLabel(typeName),
       helper: marketSnapshot.avgTotalPrice != null
-        ? `平均 ${marketSnapshot.avgTotalPrice.toFixed(0)} 萬`
-        : "萬元",
+        ? `平均 ${isRentType(typeName) ? Math.round(marketSnapshot.avgTotalPrice).toLocaleString() : marketSnapshot.avgTotalPrice.toFixed(0)} ${totalLabel(typeName)}`
+        : isRentType(typeName) ? "元/月" : "萬元",
       icon: DollarSign,
     },
     {
@@ -1342,7 +1426,8 @@ export default function App() {
   );
 
   const explorerUi = {
-    cityName, setCityName, typeName, setTypeName, district, setDistrict,
+    hasQueried,
+    cityName, setCityName, typeName, setTypeName: changeTypeName, district, setDistrict,
     search, setSearch, propertyTypes, setPropertyTypes,
     period, setPeriod, unitPrice, setUnitPrice, area, setArea, age, setAge,
     roomsMin, setRoomsMin, hasManagement, setHasManagement,
@@ -1441,6 +1526,17 @@ export default function App() {
             marketSnapshotCount={marketSnapshot.count}
             marketKpis={marketKpis}
             pinCurrentMarket={pinCurrentMarket}
+            showCharts={showChartsMobile}
+            onToggleCharts={() => {
+              const next = !showChartsMobile;
+              setShowChartsMobile(next);
+              if (next) {
+                // 圖表在結果區內：打開後捲到圖表位置
+                window.setTimeout(() => {
+                  document.getElementById("results-charts")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 80);
+              }
+            }}
           />
 
           {/* 手機的釘選比價改在底部導覽「比較」分頁（CompareSheet）；桌面在右側 rail */}

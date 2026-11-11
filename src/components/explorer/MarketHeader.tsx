@@ -1,4 +1,4 @@
-import { ChevronDown, Database, ShieldCheck, Clock, Pin } from "lucide-react";
+import { BarChart3, ChevronDown, Database, ShieldCheck, Clock, Pin } from "lucide-react";
 import { formatCachedAtLabel } from "../../utils/real-estate-helpers";
 import { coverageEndLabel, type CoverageWindow } from "../../lib/historyData";
 import type { LucideIcon } from "lucide-react";
@@ -8,6 +8,8 @@ export type MarketKpi = {
   value: string;
   helper: string;
   icon: LucideIcon;
+  /** 數值單位（收合列顯示用），如「萬/坪」「元/月」 */
+  unit?: string;
 };
 
 type Props = {
@@ -22,7 +24,13 @@ type Props = {
   marketSnapshotCount: number;
   marketKpis: MarketKpi[];
   pinCurrentMarket: () => void;
+  /** 手機：收合列上的「圖表」鈕，開關結果區的市場分析圖表 */
+  showCharts?: boolean;
+  onToggleCharts?: () => void;
 };
+
+/** 收合列上直接顯示的 KPI（不必展開就看得到行情） */
+const PEEK_LABELS = ["中位單價", "中位總價", "中位單坪月租", "中位月租"] as const;
 
 const toRoc = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
@@ -59,7 +67,12 @@ export function MarketHeader({
   marketSnapshotCount,
   marketKpis,
   pinCurrentMarket,
+  showCharts = false,
+  onToggleCharts,
 }: Props) {
+  const peek = PEEK_LABELS.map((label) => marketKpis.find((k) => k.label === label)).filter(
+    (k): k is MarketKpi => Boolean(k && k.value !== "--")
+  );
   return (
     <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-3 px-0 pt-1 pb-2">
       {/* 標題 + 徽章：滿寬單欄 */}
@@ -101,11 +114,51 @@ export function MarketHeader({
         <details className="group overflow-hidden rounded-[22px] border border-outline-variant/40 bg-surface-container shadow-xs">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-1.5 pl-4 pr-1.5 outline-none transition-colors hover:bg-on-surface/8 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
             <div className="min-w-0">
-              <h3 id="market-summary" className="text-xs font-bold uppercase tracking-wider text-primary">
+              <h3
+                id="market-summary"
+                className={`text-xs font-bold uppercase tracking-wider text-primary ${peek.length ? "sr-only md:not-sr-only" : ""}`}
+              >
                 市場摘要
               </h3>
+              {/* 手機：收合時就顯示中位單價／總價（數字放進原本的列，不增加高度） */}
+              {peek.length > 0 && (
+                <dl className="flex min-w-0 items-center gap-3 md:hidden">
+                  {peek.map((k, i) => (
+                    <div key={k.label} className="flex min-w-0 items-center gap-3">
+                      {i > 0 && <span aria-hidden="true" className="h-6 w-px bg-outline-variant/60" />}
+                      <div className="flex min-w-0 flex-col leading-tight">
+                        <dt className="text-[10px] font-bold text-on-surface-variant">{k.label}</dt>
+                        <dd className="truncate text-[15px] font-bold tabular-nums text-primary">
+                          {k.value}
+                          {k.unit && <span className="ml-0.5 text-[10px] font-semibold">{k.unit}</span>}
+                        </dd>
+                      </div>
+                    </div>
+                  ))}
+                </dl>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {onToggleCharts && peek.length > 0 && (
+                <button
+                  type="button"
+                  aria-pressed={showCharts}
+                  onClick={(e) => {
+                    // 在 <summary> 裡：不要順便展開／收合摘要
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleCharts();
+                  }}
+                  className={`inline-flex h-8 items-center gap-1 rounded-full px-3 text-xs font-bold transition-colors lg:hidden ${
+                    showCharts
+                      ? "bg-primary text-on-primary"
+                      : "bg-secondary-container text-on-secondary-container"
+                  }`}
+                >
+                  <BarChart3 size={13} aria-hidden="true" />
+                  圖表
+                </button>
+              )}
               <span className="hidden items-center gap-1.5 rounded-full bg-surface-container-highest px-2.5 py-0.5 text-xs font-semibold text-on-surface-variant sm:inline-flex">
                 <ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400" /> Open Data
               </span>

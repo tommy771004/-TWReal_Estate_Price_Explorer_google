@@ -233,15 +233,18 @@ let currentActiveDownloads = 0;
 
 app.post("/api/proxy-search", async (req, res) => {
   try {
-    const { cityCode, district, transactionType, period, keyword } = req.body;
+    const { cityCode, district, transactionType, period, keyword, auto } = req.body;
 
     const cName = CITY_CODE_TO_NAME[String(cityCode || "A").toUpperCase()] || "臺北市";
-    if (keyword && String(keyword).trim()) {
-      updateTrendingQuery(String(keyword).trim(), "keyword");
-    } else if (district && district !== "全部") {
-      updateTrendingQuery(`${cName} ${district}`, "district");
-    } else {
-      updateTrendingQuery(cName, "city");
+    // 換條件時前端自動發出的查詢不算熱門搜尋，只計使用者主動送出的
+    if (auto !== true) {
+      if (keyword && String(keyword).trim()) {
+        updateTrendingQuery(String(keyword).trim(), "keyword");
+      } else if (district && district !== "全部") {
+        updateTrendingQuery(`${cName} ${district}`, "district");
+      } else {
+        updateTrendingQuery(cName, "city");
+      }
     }
 
     const txCode = String(transactionType || "a").toLowerCase();

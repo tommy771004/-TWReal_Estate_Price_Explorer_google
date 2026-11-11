@@ -67,7 +67,11 @@ export function SearchBar({
               <span className="hidden text-[10px] font-bold uppercase tracking-wider leading-none text-on-surface-variant md:block">
                 縣市 / 行政區
               </span>
-              <span className="truncate text-sm font-semibold leading-none text-on-surface">
+              {/* 手機寬度只夠放一個名稱：選了行政區就顯示行政區（縣市在標題裡） */}
+              <span className="truncate text-sm font-semibold leading-none text-on-surface md:hidden">
+                {district !== "全部" ? district : cityName}
+              </span>
+              <span className="hidden truncate text-sm font-semibold leading-none text-on-surface md:block">
                 {locationLabel}
               </span>
             </span>

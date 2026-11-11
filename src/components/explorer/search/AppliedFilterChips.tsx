@@ -55,19 +55,32 @@ export type AppliedFilterActions = {
   setActivePresetId: (v: QueryPresetId | null) => void;
 };
 
-type Chip = { id: string; label: string; onClear?: () => void; muted?: boolean };
+type Chip = {
+  id: string;
+  label: string;
+  onClear?: () => void;
+  muted?: boolean;
+  /** 手機上已由區域 chip／交易型態分段鈕顯示，不重複 */
+  mobileDuplicate?: boolean;
+};
 
 function buildChips(f: AppliedFilterValues, a: AppliedFilterActions): Chip[] {
   const chips: Chip[] = [];
 
   if (f.district !== "全部") {
-    chips.push({ id: "district", label: f.district, onClear: () => a.setDistrict("全部") });
+    chips.push({
+      id: "district",
+      label: f.district,
+      onClear: () => a.setDistrict("全部"),
+      mobileDuplicate: true,
+    });
   }
 
   if (f.typeName !== "買賣") {
     chips.push({
       id: "typeName",
       label: f.typeName,
+      mobileDuplicate: true,
       onClear: () => {
         a.setTypeName("買賣");
         a.setViewMode("list");
@@ -93,8 +106,8 @@ function buildChips(f: AppliedFilterValues, a: AppliedFilterActions): Chip[] {
   if (f.unitPrice.min || f.unitPrice.max) {
     chips.push({
       id: "unitPrice",
-      label: `單價 ${f.unitPrice.min || "0"}–${f.unitPrice.max || "∞"} ${
-        f.unitPrice.unit === "1" ? "萬/坪" : "元/㎡"
+      label: `${f.typeName === "租賃" ? "單坪月租" : "單價"} ${f.unitPrice.min || "0"}–${f.unitPrice.max || "∞"} ${
+        f.unitPrice.unit === "1" ? (f.typeName === "租賃" ? "元/坪" : "萬/坪") : "元/㎡"
       }`,
       onClear: () => a.setUnitPrice({ min: "", max: "", unit: "1" }),
     });
@@ -169,12 +182,17 @@ function buildChips(f: AppliedFilterValues, a: AppliedFilterActions): Chip[] {
   }
 
   if (f.totalPriceMinWan || f.totalPriceMaxWan) {
+    // 租賃時這兩個欄位存的是月租（元）
+    const rent = f.typeName === "租賃";
+    const name = rent ? "月租" : "總價";
+    const unit = rent ? "元" : "萬";
+    const fmt = (v: string) => (rent ? Number(v).toLocaleString() : v);
     const label =
       f.totalPriceMinWan && f.totalPriceMaxWan
-        ? `總價 ${f.totalPriceMinWan}–${f.totalPriceMaxWan} 萬`
+        ? `${name} ${fmt(f.totalPriceMinWan)}–${fmt(f.totalPriceMaxWan)} ${unit}`
         : f.totalPriceMaxWan
-          ? `總價 ≤ ${f.totalPriceMaxWan} 萬`
-          : `總價 ≥ ${f.totalPriceMinWan} 萬`;
+          ? `${name} ≤ ${fmt(f.totalPriceMaxWan)} ${unit}`
+          : `${name} ≥ ${fmt(f.totalPriceMinWan)} ${unit}`;
     chips.push({
       id: "budget",
       label,
@@ -219,6 +237,7 @@ export function AppliedFilterChips({
 
   if (chips.length === 0) return <>{fallback}</>;
 
+  const onlyMobileDuplicates = chips.every((c) => c.mobileDuplicate);
   const overflow = chips.length - MAX_VISIBLE_CHIPS;
   const visible = expanded || overflow <= 0 ? chips : chips.slice(0, MAX_VISIBLE_CHIPS);
 
@@ -228,7 +247,7 @@ export function AppliedFilterChips({
       animate={{ opacity: 1, height: "auto", marginTop: 0 }}
       exit={{ opacity: 0, height: 0, marginTop: 0 }}
       transition={{ duration: 0.25 }}
-      className="flex flex-wrap items-center gap-1.5 overflow-hidden"
+      className={`${onlyMobileDuplicates ? "hidden md:flex" : "flex"} flex-wrap items-center gap-1.5 overflow-hidden`}
     >
       <span className="mr-0.5 text-[10px] font-black tracking-wide text-slate-400">已套用</span>
       <AnimatePresence>
@@ -239,7 +258,7 @@ export function AppliedFilterChips({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.2 }}
-            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+            className={`${chip.mobileDuplicate ? "hidden md:inline-flex" : "inline-flex"} items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold ${
               chip.muted
                 ? "border-slate-200/80 bg-slate-100/80 text-slate-600 dark:border-slate-700/50 dark:bg-slate-800/60 dark:text-slate-300"
                 : "border-coral-200/60 bg-coral-500/10 text-coral-600 dark:border-coral-500/30 dark:bg-coral-500/15 dark:text-coral-400"

@@ -3,6 +3,7 @@ import type { Transaction } from "../types/real-estate";
 import type { UserLocation } from "../types/app";
 import { filterTransactions } from "./useFilteredTransactions";
 import type { FilterDraft } from "../components/explorer/search/filterDraft";
+import { rentPropertyTypes } from "../utils/priceUnits";
 
 type Params = {
   data: Transaction[];
@@ -14,6 +15,8 @@ type Params = {
   userLocation: UserLocation;
   /** 需要重新向後端取資料時不算數字 */
   skip: boolean;
+  /** 交易型態：租賃不套用標的種類 */
+  typeName: string;
 };
 
 /**
@@ -30,6 +33,7 @@ export function useDraftFilterCount({
   focusBuildCase,
   userLocation,
   skip,
+  typeName,
 }: Params): { count: number | null; pending: boolean } {
   const deferredDraft = useDeferredValue(draft);
   const pending = deferredDraft !== draft;
@@ -40,7 +44,8 @@ export function useDraftFilterCount({
       data,
       search,
       district,
-      propertyTypes: deferredDraft.propertyTypes,
+      propertyTypes: rentPropertyTypes(typeName, deferredDraft.propertyTypes),
+      typeName,
       period: deferredDraft.period,
       unitPrice: deferredDraft.unitPrice,
       area: deferredDraft.area,
@@ -57,7 +62,7 @@ export function useDraftFilterCount({
       userLocation,
       sortConfig: null,
     }).length;
-  }, [data, deferredDraft, search, district, focusBuildCase, userLocation, skip]);
+  }, [data, deferredDraft, search, district, focusBuildCase, userLocation, skip, typeName]);
 
   return { count, pending };
 }

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { NAV_GROUPS, NAV_MENU_SECTIONS, getRouteLabel, groupsForSection } from "../content/siteNav";
 import { ChevronDown, Heart, Search } from "lucide-react";
 import type { Transaction } from "../types/real-estate";
+import { formatUnitPerPing, itemTypeName } from "../utils/priceUnits";
 import type { FontSizePreference, ThemePreference } from "../hooks/useDisplayPreferences";
 import { AppDrawer } from "./AppDrawer";
 
@@ -230,7 +231,7 @@ export function SiteNav({
                                 <span className="text-[11px] text-on-surface-variant">{favorite.district}</span>
                                 {favorite.unitPrice && (
                                   <span className="text-[11px] font-semibold text-primary">
-                                    {((parseFloat(favorite.unitPrice) * 3.30578) / 10000).toFixed(1)} 萬/坪
+                                    {formatUnitPerPing(favorite.unitPrice, itemTypeName(favorite))}
                                   </span>
                                 )}
                               </span>
