@@ -73,6 +73,8 @@ export function MarketHeader({
   const peek = PEEK_LABELS.map((label) => marketKpis.find((k) => k.label === label)).filter(
     (k): k is MarketKpi => Boolean(k && k.value !== "--")
   );
+  const showChartButton = Boolean(onToggleCharts) && peek.length > 0;
+
   return (
     <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-3 px-0 pt-1 pb-2">
       {/* 標題 + 徽章：滿寬單欄 */}
@@ -110,9 +112,9 @@ export function MarketHeader({
       </section>
 
       {/* 市場摘要：M3 Card */}
-      <section aria-labelledby="market-summary" className="flex flex-col gap-2.5">
+      <section aria-labelledby="market-summary" className="relative flex flex-col gap-2.5">
         <details className="group overflow-hidden rounded-[22px] border border-outline-variant/40 bg-surface-container shadow-xs">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-1.5 pl-4 pr-1.5 outline-none transition-colors hover:bg-on-surface/8 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-1.5 pl-4 pr-1.5 outline-none transition-colors hover:bg-on-surface/8 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
             <div className="min-w-0">
               <h3
                 id="market-summary"
@@ -123,43 +125,26 @@ export function MarketHeader({
               {/* 手機：收合時就顯示中位單價／總價（數字放進原本的列，不增加高度） */}
               {peek.length > 0 && (
                 <dl className="flex min-w-0 items-center gap-3 md:hidden">
+                  {/* dt／dd 必須直接放在 dl 底下的單層 div 裡（無障礙檢查 definition-list），分隔線改用左邊框 */}
                   {peek.map((k, i) => (
-                    <div key={k.label} className="flex min-w-0 items-center gap-3">
-                      {i > 0 && <span aria-hidden="true" className="h-6 w-px bg-outline-variant/60" />}
-                      <div className="flex min-w-0 flex-col leading-tight">
-                        <dt className="text-[10px] font-bold text-on-surface-variant">{k.label}</dt>
-                        <dd className="truncate text-[15px] font-bold tabular-nums text-primary">
-                          {k.value}
-                          {k.unit && <span className="ml-0.5 text-[10px] font-semibold">{k.unit}</span>}
-                        </dd>
-                      </div>
+                    <div
+                      key={k.label}
+                      className={`flex min-w-0 flex-col leading-tight ${i > 0 ? "border-l border-outline-variant/60 pl-3" : ""}`}
+                    >
+                      <dt className="text-[10px] font-bold text-on-surface-variant">{k.label}</dt>
+                      <dd className="truncate text-[15px] font-bold tabular-nums text-primary">
+                        {k.value}
+                        {k.unit && <span className="ml-0.5 text-[10px] font-semibold">{k.unit}</span>}
+                      </dd>
                     </div>
                   ))}
                 </dl>
               )}
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {onToggleCharts && peek.length > 0 && (
-                <button
-                  type="button"
-                  aria-pressed={showCharts}
-                  onClick={(e) => {
-                    // 在 <summary> 裡：不要順便展開／收合摘要
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onToggleCharts();
-                  }}
-                  className={`inline-flex h-8 items-center gap-1 rounded-full px-3 text-xs font-bold transition-colors lg:hidden ${
-                    showCharts
-                      ? "bg-primary text-on-primary"
-                      : "bg-secondary-container text-on-secondary-container"
-                  }`}
-                >
-                  <BarChart3 size={13} aria-hidden="true" />
-                  圖表
-                </button>
-              )}
-              <span className="hidden items-center gap-1.5 rounded-full bg-surface-container-highest px-2.5 py-0.5 text-xs font-semibold text-on-surface-variant sm:inline-flex">
+              {/* 圖表鈕實際放在 <details> 外面（見下方），這裡只保留同寬的空位 */}
+              {showChartButton && <span aria-hidden="true" className="w-[4.25rem] shrink-0 lg:hidden" />}
+              <span className={`hidden items-center gap-1.5 rounded-full bg-surface-container-highest px-2.5 py-0.5 text-xs font-semibold text-on-surface-variant ${showChartButton ? "lg:inline-flex" : "sm:inline-flex"}`}>
                 <ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400" /> Open Data
               </span>
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-highest text-on-surface-variant transition-transform group-open:rotate-180">
@@ -208,6 +193,25 @@ export function MarketHeader({
             </div>
           </div>
         </details>
+        {/*
+          手機「圖表」鈕：放在 <summary> 裡會變成「可點擊元素裡又有按鈕」（無障礙檢查 nested-interactive），
+          所以移到 <details> 外，疊在摘要列右側預留的空位上（右側 = 邊框 1px + pr-1.5 + 展開箭頭 32px + gap 8px）。
+        */}
+        {showChartButton && (
+          <button
+            type="button"
+            aria-pressed={showCharts}
+            onClick={onToggleCharts}
+            className={`absolute right-[47px] top-[7px] inline-flex h-8 w-[4.25rem] items-center justify-center gap-1 rounded-full text-xs font-bold transition-colors lg:hidden ${
+              showCharts
+                ? "bg-primary text-on-primary"
+                : "bg-secondary-container text-on-secondary-container"
+            }`}
+          >
+            <BarChart3 size={13} aria-hidden="true" />
+            圖表
+          </button>
+        )}
       </section>
     </div>
   );
