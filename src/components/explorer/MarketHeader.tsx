@@ -98,15 +98,15 @@ export function MarketHeader({
 
       {/* 市場摘要：M3 Card */}
       <section aria-labelledby="market-summary" className="flex flex-col gap-2.5">
-        <details className="group overflow-hidden rounded-[24px] border border-outline-variant/40 bg-surface-container shadow-xs">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3.5 outline-none transition-colors hover:bg-on-surface/8 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
+        <details className="group overflow-hidden rounded-[22px] border border-outline-variant/40 bg-surface-container shadow-xs">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-1.5 pl-4 pr-1.5 outline-none transition-colors hover:bg-on-surface/8 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
             <div className="min-w-0">
               <h3 id="market-summary" className="text-xs font-bold uppercase tracking-wider text-primary">
                 市場摘要
               </h3>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="hidden items-center gap-1.5 rounded-full bg-surface-container-highest px-3 py-1 text-xs font-semibold text-on-surface-variant sm:inline-flex">
+              <span className="hidden items-center gap-1.5 rounded-full bg-surface-container-highest px-2.5 py-0.5 text-xs font-semibold text-on-surface-variant sm:inline-flex">
                 <ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400" /> Open Data
               </span>
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-highest text-on-surface-variant transition-transform group-open:rotate-180">
