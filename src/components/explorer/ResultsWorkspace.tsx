@@ -168,7 +168,7 @@ export function ResultsWorkspace() {
                       : "grid-cols-1"
                   }`}
                 >
-                <div className="relative mt-0 flex w-full flex-1 flex-col overflow-hidden rounded-t-none border border-outline-variant/40 bg-surface-container-low shadow-[var(--md-elevation-1)] sm:mt-4 sm:rounded-[28px]">
+                <div className="relative mt-0 flex w-full flex-1 flex-col overflow-hidden rounded-[28px] border border-outline-variant/40 bg-surface-container-low shadow-[var(--md-elevation-1)] sm:mt-4">
                   {/* 手機：第 1 列結果筆數＋動作，第 2 列視圖切換＋排序；lg 起併成一列。
                       地圖視圖在手機改由底部導覽切換，這裡只在 lg 以上顯示。 */}
                   <div className="relative flex flex-wrap items-center justify-between gap-x-2 gap-y-2.5 border-b border-outline-variant/30 bg-surface-container px-3.5 py-2.5 sm:px-6 sm:py-3">
