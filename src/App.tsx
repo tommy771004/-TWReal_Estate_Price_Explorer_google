@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import type { CoverageWindow } from "./lib/historyData";
 import { motion, AnimatePresence } from "motion/react";
 import {
   DollarSign,
@@ -618,6 +619,7 @@ export default function App() {
 
   const [dataSource, setDataSource] = useState<string | null>(null);
   const [dataCachedAt, setDataCachedAt] = useState<string | null>(null);
+  const [dataCoverage, setDataCoverage] = useState<CoverageWindow[] | null>(null);
   /** 詳情房貸試算（等額本息，僅前端估算） */
   const [mortgageLtv, setMortgageLtv] = useState(0.8);
   const [mortgageYears, setMortgageYears] = useState(30);
@@ -641,6 +643,7 @@ export default function App() {
     setError,
     setDataSource,
     setDataCachedAt,
+    setDataCoverage,
     setRobotStatus,
     addRecentSearch,
     addAuditLog,
@@ -1434,6 +1437,7 @@ export default function App() {
             filteredCount={filteredData.length}
             dataSource={dataSource}
             dataCachedAt={dataCachedAt}
+            dataCoverage={dataCoverage}
             marketSnapshotCount={marketSnapshot.count}
             marketKpis={marketKpis}
             pinCurrentMarket={pinCurrentMarket}

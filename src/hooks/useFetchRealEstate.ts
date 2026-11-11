@@ -4,6 +4,7 @@ import { CITIES, TRANSACTION_TYPES } from "../constants";
 import type { Transaction } from "../types/real-estate";
 import type { PeriodRange } from "../utils/real-estate-helpers";
 import { mapCsvRows, mapTransactionRow } from "../utils/mapTransactionRows";
+import { fetchHistoryRows, isHistoryEnabled, type CoverageWindow } from "../lib/historyData";
 
 export type FetchRealEstateParams = {
   cityName: string;
@@ -23,6 +24,8 @@ export type FetchRealEstateParams = {
   setError: Dispatch<SetStateAction<string | null>>;
   setDataSource: Dispatch<SetStateAction<string | null>>;
   setDataCachedAt: Dispatch<SetStateAction<string | null>>;
+  /** 歷史分片的登記期間涵蓋範圍；走即時 API 時為 null */
+  setDataCoverage: Dispatch<SetStateAction<CoverageWindow[] | null>>;
   setRobotStatus: Dispatch<SetStateAction<string>>;
   addRecentSearch: (kw: string) => void;
   addAuditLog: (action: string, details?: string) => void;
@@ -81,6 +84,7 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
       p.setError(null);
       p.setDataSource(null);
       p.setDataCachedAt(null);
+      p.setDataCoverage(null);
       robotTimeoutsRef.current.forEach(clearTimeout);
       robotTimeoutsRef.current = [];
       p.setRobotStatus("正在連線內政部開放資料...");
@@ -104,6 +108,31 @@ export function useFetchRealEstate(p: FetchRealEstateParams) {
       try {
         const cityCode = CITIES.find((c) => c.name === activeCity)?.code || "A";
         const typeCode = TRANSACTION_TYPES.find((t) => t.name === p.typeName)?.code || "A";
+
+        // 優先讀靜態歷史分片（可涵蓋多年、沒有 Vercel 回應大小上限）；失敗才退回即時 API
+        if (isHistoryEnabled()) {
+          try {
+            const history = await fetchHistoryRows({
+              cityCode,
+              typeCode,
+              period: p.period,
+              district: activeDistrict,
+              keyword: activeKeyword,
+              signal: controller.signal,
+            });
+            if (!isLatest()) return;
+            p.setDataSource("history");
+            p.setDataCachedAt(history.updatedAt);
+            p.setDataCoverage(history.coverage);
+            p.setData(
+              history.rows.map((row, index) => mapTransactionRow(row, index, activeCity, p.typeName))
+            );
+            return;
+          } catch (historyError: any) {
+            if (historyError?.name === "AbortError" || !isLatest()) throw historyError;
+            console.warn("[history] 讀取歷史分片失敗，改用即時 API：", historyError);
+          }
+        }
 
         // 額外逾時：避免網路掛起時 UI 永遠卡在 loading（與 abort 並用）
         const timeoutId = setTimeout(() => controller.abort(), 90_000);

@@ -1,5 +1,6 @@
 import { ChevronDown, Database, ShieldCheck, Clock, Pin } from "lucide-react";
 import { formatCachedAtLabel } from "../../utils/real-estate-helpers";
+import { coverageEndLabel, type CoverageWindow } from "../../lib/historyData";
 import type { LucideIcon } from "lucide-react";
 
 export type MarketKpi = {
@@ -16,10 +17,36 @@ type Props = {
   filteredCount: number;
   dataSource: string | null;
   dataCachedAt: string | null;
+  /** 歷史分片的登記期間涵蓋範圍（走即時 API 時為 null） */
+  dataCoverage?: CoverageWindow[] | null;
   marketSnapshotCount: number;
   marketKpis: MarketKpi[];
   pinCurrentMarket: () => void;
 };
+
+const toRoc = (iso: string) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${y - 1911}/${m}/${d}`;
+};
+
+const shiftDay = (iso: string, days: number) => {
+  const t = new Date(`${iso}T00:00:00Z`);
+  t.setUTCDate(t.getUTCDate() + days);
+  return t.toISOString().slice(0, 10);
+};
+
+/** 最近一段缺口（本期與上一季之間尚未發布的期間），如「115/9/11–115/10/20」 */
+function latestGapLabel(coverage: CoverageWindow[]): string | null {
+  if (coverage.length < 2) return null;
+  const prev = coverage[coverage.length - 2];
+  const last = coverage[coverage.length - 1];
+  return `${toRoc(shiftDay(prev.to, 1))}–${toRoc(shiftDay(last.from, -1))}`;
+}
+
+const coverageTitle = (coverage: CoverageWindow[]) =>
+  `已收錄的登記（租賃、預售屋為訂約／交易）期間：${coverage
+    .map((w) => `${toRoc(w.from)}–${toRoc(w.to)}`)
+    .join("、")}`;
 
 export function MarketHeader({
   cityName,
@@ -28,6 +55,7 @@ export function MarketHeader({
   filteredCount,
   dataSource,
   dataCachedAt,
+  dataCoverage,
   marketSnapshotCount,
   marketKpis,
   pinCurrentMarket,
@@ -48,6 +76,22 @@ export function MarketHeader({
             <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
               <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400" /> 內政部開放資料
             </span>
+            {dataCoverage && coverageEndLabel(dataCoverage) && (
+              <>
+                <span className="text-outline-variant">·</span>
+                <span
+                  className="inline-flex items-center gap-1.5 text-on-surface-variant"
+                  title={coverageTitle(dataCoverage)}
+                >
+                  <Clock size={14} aria-hidden="true" /> 資料至 {coverageEndLabel(dataCoverage)}
+                </span>
+                {latestGapLabel(dataCoverage) && (
+                  <span className="text-on-surface-variant/80">
+                    （{latestGapLabel(dataCoverage)} 待內政部季資料補齊）
+                  </span>
+                )}
+              </>
+            )}
           </p>
         </div>
       </section>
